@@ -1,2 +1,8 @@
-# Configuration de déploiement Supabase prévue prochainement
-# En attente des clés et du code SQL
+name: Test Connexion
+on: [push] # Se déclenche à chaque fois que vous envoyez du code
+jobs:
+  coucou:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Message de test
+        run: echo "Le terrain est prêt pour Supabase !"
