@@ -1,0 +1,12 @@
+name: Check Supabase Connection
+on: [push] # Se lance dès que vous validez ce fichier
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Tester l'URL Supabase
+        run: |
+          curl -s -I "${{ secrets.SUPABASE_URL }}/rest/v1/" \
+          -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
+          -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
+          | grep "HTTP/"
