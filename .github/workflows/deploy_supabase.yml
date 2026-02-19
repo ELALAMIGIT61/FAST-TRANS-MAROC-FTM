@@ -1,3 +1,4 @@
+-- Initial database schema
 name: Deploy SQL to Supabase
 
 on:
