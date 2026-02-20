@@ -1,47 +1,85 @@
-# OSX
-.DS_Store
+# ====================================
+# Environment Variables (CRITIQUE)
+# ====================================
+.env
+.env.local
+.env.production
+.env.*.local
+.env.development
+.env.test
 
-# Thumbnails
-._*
-
-# Files that might appear in the root of a volume
-.DocumentRevisions-V100
-.fseventsd
-.Spotlight-V100
-.TemporaryItems
-.Trashes
-.VolumeIcon.icns
-
-# Xcode
-build/
-*.pbxuser
-!default.pbxuser
-*.mode1v3
-!default.mode1v3
-*.mode2v3
-!default.mode2v3
-*.perspectivev3
-!default.perspectivev3
-xcuserdata
-*.xccheckout
-*.moved-aside
-DerivedData
-*.hmap
-*.ipa
-*.xcuserstate
-project.xcworkspace
-
-# Android/IJ
-.idea
-.gradle
-local.properties
-
-# node.js
+# ====================================
+# Expo / React Native
+# ====================================
+.expo/
+.expo-shared/
+dist/
+web-build/
 node_modules/
-npm-debug.log
 
-# BUCK
-buck-out/
-\.buckd/
-android/app/libs
-android/keystores/debug.keystore
+# Metro bundler cache
+.metro-health-check*
+
+# ====================================
+# Build Artifacts
+# ====================================
+# iOS
+*.ipa
+*.dSYM.zip
+*.dSYM
+ios/Pods/
+ios/.xcode.env.local
+
+# Android
+*.apk
+*.aab
+*.jks
+*.keystore
+android/.gradle/
+android/app/build/
+
+# Certificates
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+
+# ====================================
+# Logs
+# ====================================
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+*.log
+logs/
+
+# ====================================
+# OS Files
+# ====================================
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# ====================================
+# IDE / Editors
+# ====================================
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# ====================================
+# Testing
+# ====================================
+coverage/
+.nyc_output/
+
+# ====================================
+# Temporary Files
+# ====================================
+tmp/
+temp/
+*.tmp
