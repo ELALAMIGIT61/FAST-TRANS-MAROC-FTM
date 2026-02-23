@@ -1,0 +1,61 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "🚀 Expo: Start Metro Bundler",
+      "type": "node",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/frontend",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["expo", "start"],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen"
+    },
+    {
+      "name": "🐛 Attach to Expo",
+      "type": "reactnative",
+      "request": "attach",
+      "cwd": "${workspaceFolder}/frontend",
+      "port": 19000,
+      "sourceMaps": true
+    },
+    {
+      "name": "📱 Debug Android App",
+      "type": "reactnative",
+      "request": "launch",
+      "platform": "android",
+      "cwd": "${workspaceFolder}/frontend",
+      "sourceMaps": true,
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "🍎 Debug iOS App",
+      "type": "reactnative",
+      "request": "launch",
+      "platform": "ios",
+      "cwd": "${workspaceFolder}/frontend",
+      "sourceMaps": true,
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "🌐 Debug Web App",
+      "type": "chrome",
+      "request": "launch",
+      "url": "http://localhost:19006",
+      "webRoot": "${workspaceFolder}/frontend",
+      "sourceMaps": true,
+      "trace": true
+    }
+  ],
+  "compounds": [
+    {
+      "name": "🔥 Start Expo + Attach Debugger",
+      "configurations": [
+        "🚀 Expo: Start Metro Bundler",
+        "🐛 Attach to Expo"
+      ],
+      "stopAll": true
+    }
+  ]
+}
+```
