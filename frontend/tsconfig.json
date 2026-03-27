@@ -5,6 +5,18 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"]
-    }
-  }
+    },
+    "moduleResolution": "bundler",
+    "jsx": "react-native",
+    "allowJs": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    ".expo/types/**/*.d.ts",
+    "expo-env.d.ts"
+  ]
 }
