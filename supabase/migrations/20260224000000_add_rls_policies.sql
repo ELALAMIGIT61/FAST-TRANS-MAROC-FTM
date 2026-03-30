@@ -346,6 +346,7 @@ CREATE POLICY "reminders_insert_own"
 ALTER VIEW available_drivers OWNER TO postgres;
 GRANT SELECT ON available_drivers TO authenticated;
 
+DROP VIEW IF EXISTS public_parcel_tracking CASCADE;
 CREATE OR REPLACE VIEW public_parcel_tracking
 WITH (security_invoker = false)
 AS
