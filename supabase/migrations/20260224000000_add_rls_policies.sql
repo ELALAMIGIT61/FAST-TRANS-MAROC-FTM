@@ -352,7 +352,7 @@ AS
 SELECT
     ep.id,
     ep.tracking_number,
-    ep.status,
+    m.status,
     ep.created_at,
     ep.recipient_name,
     LEFT(ep.recipient_phone, 6) || '****' AS recipient_phone_partial,
