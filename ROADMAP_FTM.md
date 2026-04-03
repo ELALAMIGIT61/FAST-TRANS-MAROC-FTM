@@ -1,15 +1,12 @@
-cat > /workspaces/FAST-TRANS-MAROC-FTM/ROADMAP_FTM.md << 'ENDOFFILE'
-
 # ROADMAP FTM — Document de Référence Sessions Claude
 
 # Fast Trans Maroc — Application Mobile Marocaine
 
-# Dernière mise à jour : 01/04/2026
+# Dernière mise à jour : 03/04/2026
 
 ---
 
 ## 1. INFORMATIONS PROJET
-
 ```
 Projet      : Fast Trans Maroc (FTM)
 Stack       : Expo SDK 50 / React Native / TypeScript strict
@@ -21,7 +18,6 @@ Codespaces  : zany-disco-jj95647gqv473pj9
 ---
 
 ## 2. RÈGLES CRITIQUES — À LIRE EN PREMIER
-
 ```
 ⛔ NE JAMAIS utiliser npm audit fix --force
    (casse la stack SDK 50 → SDK 55 incompatible)
@@ -35,7 +31,6 @@ Codespaces  : zany-disco-jj95647gqv473pj9
 ---
 
 ## 3. ÉTAT TECHNIQUE ACTUEL
-
 ```
 SDK Expo          : 50.0.21 ✅ stable
 Vulnerabilities   : 23 (outils dev uniquement)
@@ -44,13 +39,15 @@ Vulnerabilities   : 23 (outils dev uniquement)
 App démarre       : ✅ Web Bundled confirmé
 Écran OTP         : ✅ s'affiche correctement
 Connexion Supabase: ✅ .env configuré dans frontend/
-Mode test OTP     : ⏳ à activer
+Mode test OTP     : ✅ configuré (MessageBird fictif)
+                    Numéro test : +212600000000
+                    Code fixe   : 123456
+                    Valide jusqu'au : 31/12/2026
 ```
 
 ---
 
 ## 4. GITHUB SECRETS CONFIGURÉS
-
 ```
 SUPABASE_ACCESS_TOKEN  ✅
 SUPABASE_PROJECT_ID    ✅ (ustckqnecsilxqlyjute)
@@ -61,8 +58,9 @@ SUPABASE_ANON_KEY      ✅
 ---
 
 ## 5. HISTORIQUE COMMITS CLÉS
-
 ```
+5075470 fix: correct infinite recursion in profiles_select_admin RLS policy
+ec7d061 fix(security): enable RLS on push_tokens table
 d2379c5 fix(P7): drop and recreate public_parcel_tracking view
 24ccfbb fix(P7): correct ep.status to m.status in RLS migration
 dbe39f7 feat(P7): admin dashboard, RLS policies, CI/CD
@@ -78,19 +76,18 @@ dbe39f7 feat(P7): admin dashboard, RLS policies, CI/CD
 ---
 
 ## 6. MIGRATIONS SUPABASE DÉPLOYÉES
-
 ```
-20260220155500_initial_schema.sql          ✅ P1-P2
-20260221000000_add_rpc_nearby_drivers.sql  ✅ P3
-20260222000000_add_tracking_functions.sql  ✅ P4
-20260223000000_add_push_tokens.sql         ✅ P6
-20260224000000_add_rls_policies.sql        ✅ P7
+20260220155500_initial_schema.sql                 ✅ P1-P2
+20260221000000_add_rpc_nearby_drivers.sql         ✅ P3
+20260222000000_add_tracking_functions.sql         ✅ P4
+20260223000000_add_push_tokens.sql                ✅ P6
+20260224000000_add_rls_policies.sql               ✅ P7
+20260226000000_fix_profiles_rls_recursion.sql     ✅ Phase 2.1
 ```
 
 ---
 
 ## 7. EDGE FUNCTIONS DÉPLOYÉES
-
 ```
 send-push-notification   ✅
 register-push-token      ✅
@@ -101,7 +98,6 @@ send-tracking-sms        ✅
 ---
 
 ## 8. ARBORESCENCE COMPLÈTE DU REPO
-
 ```
 FAST-TRANS-MAROC-FTM/
 ├── .github/
@@ -207,7 +203,8 @@ FAST-TRANS-MAROC-FTM/
 │       ├── 20260221000000_add_rpc_nearby_drivers.sql
 │       ├── 20260222000000_add_tracking_functions.sql
 │       ├── 20260223000000_add_push_tokens.sql
-│       └── 20260224000000_add_rls_policies.sql
+│       ├── 20260224000000_add_rls_policies.sql
+│       └── 20260226000000_fix_profiles_rls_recursion.sql
 ├── .env.example
 ├── .gitignore
 ├── install_P1_files.sh
@@ -230,7 +227,6 @@ FAST-TRANS-MAROC-FTM/
 ---
 
 ## 9. SERVICES EXTERNES — ÉTAT
-
 ```
 Twilio SMS       : ⏳ pas encore configuré
                    Nécessaire avant production
@@ -243,11 +239,13 @@ CRON reminders   : ⏳ à planifier dans Supabase
 ---
 
 ## 10. ÉTAPES RESTANTES
-
 ```
 PHASE 2 — TESTS & DEBUGGING
-  2.1 ⏳ Activer mode test Supabase OTP
-  2.2 ⏳ Tester Auth complète
+  2.1 ✅ OTP sans Twilio résolu
+         → MessageBird fictif configuré
+         → Numéro test +212600000000 / 123456
+         → Récursion RLS profiles corrigée
+  2.2 ⏳ Tester Auth complète (client/driver/admin)
   2.3 ⏳ Tester écrans client
   2.4 ⏳ Tester écrans driver
   2.5 ⏳ Tester écrans admin
@@ -278,7 +276,6 @@ PHASE 6 — PUBLICATION
 ---
 
 ## 11. TEMPLATE DÉBUT DE SESSION CLAUDE
-
 ```
 PROJET : Fast Trans Maroc (FTM)
 STACK : Expo SDK 50 / React Native / TypeScript
@@ -297,4 +294,3 @@ ERREUR ACTUELLE :
 [Coller l'erreur si applicable]
 ```
 
-ENDOFFILE
