@@ -1,16 +1,19 @@
 import * as Notifications from 'expo-notifications';
 import * as Haptics from 'expo-haptics';
+import { Platform } from 'react-native';
 import { supabase } from '../lib/supabaseClient';
 
 // ─── CONFIGURATION HANDLERS ───────────────────────────────────────────────────
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge:  true,
-  }),
-});
+if (Platform.OS !== 'web') {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge:  true,
+    }),
+  });
+}
 
 // ─── MAPPING TYPE → ICÔNE ─────────────────────────────────────────────────────
 
