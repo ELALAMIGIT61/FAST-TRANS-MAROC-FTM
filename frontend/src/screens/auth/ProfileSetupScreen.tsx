@@ -1,7 +1,7 @@
 // /frontend/src/screens/auth/ProfileSetupScreen.tsx
 // FTM — Création du profil (nom + rôle)
- 
-import React, { useState } from 'react';
+
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -10,50 +10,64 @@ import {
   ActivityIndicator,
   StyleSheet,
   ScrollView,
-} from 'react-native';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import type { RouteProp } from '@react-navigation/native';
-import { COLORS, FONT_SIZES, RADIUS, SPACING } from '../../constants/theme';
-import { handleCreateProfile } from '../../services/authService';
-import { t } from '../../services/i18nService';
-import type { AuthStackParamList } from '../../navigation/RootNavigator';
- 
-type RoleOption = 'client' | 'driver';
- 
+} from "react-native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import type { RouteProp } from "@react-navigation/native";
+import { COLORS, FONT_SIZES, RADIUS, SPACING } from "../../constants/theme";
+import { handleCreateProfile } from "../../services/authService";
+import { t } from "../../services/i18nService";
+import type { AuthStackParamList } from "../../navigation/RootNavigator";
+
+type RoleOption = "client" | "driver";
+
 type Props = {
-  navigation: NativeStackNavigationProp<AuthStackParamList, 'ProfileSetup'>;
-  route: RouteProp<AuthStackParamList, 'ProfileSetup'>;
+  navigation: NativeStackNavigationProp<AuthStackParamList, "ProfileSetup">;
+  route: RouteProp<AuthStackParamList, "ProfileSetup">;
 };
- 
+
 export default function ProfileSetupScreen({ navigation, route }: Props) {
   const { authUserId, formattedPhone } = route.params;
- 
-  const [fullName, setFullName] = useState('');
+
+  const [fullName, setFullName] = useState("");
   const [selectedRole, setSelectedRole] = useState<RoleOption | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
- 
-  const canSubmit = fullName.trim().length >= 2 && selectedRole !== null && !isLoading;
- 
+
+  const canSubmit =
+    fullName.trim().length >= 2 && selectedRole !== null && !isLoading;
+
   async function onPressStart() {
     if (!selectedRole) return;
     setErrorMessage(null);
     setIsLoading(true);
- 
-    const result = await handleCreateProfile(authUserId, formattedPhone, fullName.trim(), selectedRole);
- 
+
+    const result = await handleCreateProfile(
+      authUserId,
+      formattedPhone,
+      fullName.trim(),
+      selectedRole,
+    );
+
     setIsLoading(false);
- 
+
     if (result.error) {
       setErrorMessage(result.error);
       return;
     }
- 
-    // Navigation selon rôle — RootNavigator écoute les changements de session
-    // On peut forcer ici si nécessaire
-    console.log('[FTM-DEBUG] ProfileSetup - Profile created, role:', selectedRole);
+
+    console.log(
+      "[FTM-DEBUG] ProfileSetup - Profile created, role:",
+      selectedRole,
+    );
+
+    // Navigation forcée selon rôle
+    if (selectedRole === "client") {
+      navigation.reset({ index: 0, routes: [{ name: "ClientHome" as any }] });
+    } else if (selectedRole === "driver") {
+      navigation.reset({ index: 0, routes: [{ name: "DriverHome" as any }] });
+    }
   }
- 
+
   return (
     <ScrollView
       style={styles.scroll}
@@ -62,9 +76,8 @@ export default function ProfileSetupScreen({ navigation, route }: Props) {
     >
       <Text style={styles.title}>Créez votre profil</Text>
       <Text style={styles.subtitle}>Quelques infos pour commencer</Text>
- 
-      {/* Champ nom complet */}
-      <Text style={styles.label}>{t('your_name')}</Text>
+
+      <Text style={styles.label}>{t("your_name")}</Text>
       <TextInput
         style={styles.input}
         placeholder="Ex: Youssef Benali"
@@ -74,47 +87,52 @@ export default function ProfileSetupScreen({ navigation, route }: Props) {
         autoCapitalize="words"
         returnKeyType="done"
       />
- 
-      {/* Sélection rôle */}
-      <Text style={styles.label}>{t('you_are')}</Text>
+
+      <Text style={styles.label}>{t("you_are")}</Text>
       <View style={styles.rolesRow}>
         <TouchableOpacity
           style={[
             styles.roleCard,
-            selectedRole === 'client' && styles.roleCardSelected,
+            selectedRole === "client" && styles.roleCardSelected,
           ]}
-          onPress={() => setSelectedRole('client')}
+          onPress={() => setSelectedRole("client")}
           activeOpacity={0.8}
         >
           <Text style={styles.roleIcon}>🧑</Text>
-          <Text style={[styles.roleTitle, selectedRole === 'client' && styles.roleTitleSelected]}>
-            {t('client')}
+          <Text
+            style={[
+              styles.roleTitle,
+              selectedRole === "client" && styles.roleTitleSelected,
+            ]}
+          >
+            {t("client")}
           </Text>
           <Text style={styles.roleDesc}>Expédiez facilement</Text>
         </TouchableOpacity>
- 
+
         <TouchableOpacity
           style={[
             styles.roleCard,
-            selectedRole === 'driver' && styles.roleCardSelected,
+            selectedRole === "driver" && styles.roleCardSelected,
           ]}
-          onPress={() => setSelectedRole('driver')}
+          onPress={() => setSelectedRole("driver")}
           activeOpacity={0.8}
         >
           <Text style={styles.roleIcon}>🚚</Text>
-          <Text style={[styles.roleTitle, selectedRole === 'driver' && styles.roleTitleSelected]}>
-            {t('driver')}
+          <Text
+            style={[
+              styles.roleTitle,
+              selectedRole === "driver" && styles.roleTitleSelected,
+            ]}
+          >
+            {t("driver")}
           </Text>
           <Text style={styles.roleDesc}>Devenez transporteur FTM</Text>
         </TouchableOpacity>
       </View>
- 
-      {/* Message d'erreur */}
-      {errorMessage && (
-        <Text style={styles.errorText}>{errorMessage}</Text>
-      )}
- 
-      {/* Bouton Commencer */}
+
+      {errorMessage && <Text style={styles.errorText}>{errorMessage}</Text>}
+
       <TouchableOpacity
         style={[styles.button, !canSubmit && styles.buttonDisabled]}
         onPress={onPressStart}
@@ -124,13 +142,13 @@ export default function ProfileSetupScreen({ navigation, route }: Props) {
         {isLoading ? (
           <ActivityIndicator color={COLORS.white} />
         ) : (
-          <Text style={styles.buttonText}>{t('start')}</Text>
+          <Text style={styles.buttonText}>{t("start")}</Text>
         )}
       </TouchableOpacity>
     </ScrollView>
   );
 }
- 
+
 const styles = StyleSheet.create({
   scroll: {
     flex: 1,
@@ -144,22 +162,22 @@ const styles = StyleSheet.create({
   title: {
     fontSize: FONT_SIZES.xxl,
     color: COLORS.textDark,
-    fontWeight: '700',
-    textAlign: 'center',
+    fontWeight: "700",
+    textAlign: "center",
     marginBottom: SPACING.sm,
   },
   subtitle: {
     fontSize: FONT_SIZES.sm,
     color: COLORS.textMuted,
-    textAlign: 'center',
+    textAlign: "center",
     marginBottom: SPACING.xl,
   },
   label: {
     fontSize: FONT_SIZES.sm,
     color: COLORS.textMuted,
-    fontWeight: '600',
+    fontWeight: "600",
     marginBottom: SPACING.sm,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
     letterSpacing: 0.5,
   },
   input: {
@@ -170,12 +188,12 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZES.md,
     color: COLORS.textDark,
     borderWidth: 1,
-    borderColor: '#E0E0E0',
+    borderColor: "#E0E0E0",
     height: 52,
     marginBottom: SPACING.lg,
   },
   rolesRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: SPACING.md,
     marginBottom: SPACING.xl,
   },
@@ -184,9 +202,9 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.white,
     borderRadius: RADIUS.card,
     padding: SPACING.md,
-    alignItems: 'center',
+    alignItems: "center",
     borderWidth: 2,
-    borderColor: '#E0E0E0',
+    borderColor: "#E0E0E0",
     elevation: 2,
   },
   roleCardSelected: {
@@ -199,7 +217,7 @@ const styles = StyleSheet.create({
   },
   roleTitle: {
     fontSize: FONT_SIZES.md,
-    fontWeight: '700',
+    fontWeight: "700",
     color: COLORS.textDark,
     marginBottom: 4,
   },
@@ -209,20 +227,20 @@ const styles = StyleSheet.create({
   roleDesc: {
     fontSize: FONT_SIZES.xs,
     color: COLORS.textMuted,
-    textAlign: 'center',
+    textAlign: "center",
   },
   errorText: {
     color: COLORS.alert,
     fontSize: FONT_SIZES.sm,
-    textAlign: 'center',
+    textAlign: "center",
     marginBottom: SPACING.md,
   },
   button: {
     backgroundColor: COLORS.primary,
     borderRadius: RADIUS.button,
     height: 52,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     elevation: 4,
     shadowColor: COLORS.primary,
     shadowOffset: { width: 0, height: 2 },
@@ -236,6 +254,6 @@ const styles = StyleSheet.create({
   buttonText: {
     color: COLORS.white,
     fontSize: FONT_SIZES.md,
-    fontWeight: '700',
+    fontWeight: "700",
   },
 });
