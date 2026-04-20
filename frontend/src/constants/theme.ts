@@ -42,3 +42,14 @@ export const SPACING = {
   lg: 24,
   xl: 32,
 } as const;
+
+export const BORDER_RADIUS = {
+  sm:     8,
+  md:     12,
+  lg:     16,
+  xl:     24,
+  card:   12,
+  button:  8,
+  input:   8,
+  chip:   20,
+} as const;
