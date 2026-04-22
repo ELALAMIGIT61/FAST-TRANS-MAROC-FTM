@@ -201,10 +201,19 @@ export default function RootNavigator() {
             name="OTPVerification"
             component={OTPVerificationScreen}
           />
-          <AuthStack.Screen
-            name="ProfileSetup"
-            component={ProfileSetupScreen}
-          />
+          <AuthStack.Screen name="ProfileSetup">
+            {(props) => (
+              <ProfileSetupScreen
+                {...props}
+                onProfileCreated={(role: string) => {
+                  setInitialRoute(
+                    role === 'client' ? 'ClientHomeStack' :
+                    role === 'driver' ? 'DriverHomeStack' : 'AdminStack'
+                  );
+                }}
+              />
+            )}
+          </AuthStack.Screen>
         </AuthStack.Navigator>
       )}
       {showClient && <ClientNavigator />}

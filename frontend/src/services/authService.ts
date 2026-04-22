@@ -125,7 +125,7 @@ export async function getOrCreateProfile(
   }
  
   console.log('[FTM-DEBUG] Profile - No profile found, needs creation', { userId: authUser.id });
-  return { success: true, profile: null, isNew: true, phone: formattedPhone };
+  return { success: true, profile: null, isNew: true, phone: formattedPhone, user: { id: authUser.id } };
 }
  
 // ─────────────────────────────────────────────

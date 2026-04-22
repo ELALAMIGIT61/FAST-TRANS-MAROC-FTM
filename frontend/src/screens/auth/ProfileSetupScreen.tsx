@@ -23,9 +23,10 @@ type RoleOption = "client" | "driver";
 type Props = {
   navigation: NativeStackNavigationProp<AuthStackParamList, "ProfileSetup">;
   route: RouteProp<AuthStackParamList, "ProfileSetup">;
+  onProfileCreated?: (role: string) => void;
 };
 
-export default function ProfileSetupScreen({ navigation, route }: Props) {
+export default function ProfileSetupScreen({ navigation, route, onProfileCreated }: Props) {
   const { authUserId, formattedPhone } = route.params;
 
   const [fullName, setFullName] = useState("");
@@ -60,11 +61,9 @@ export default function ProfileSetupScreen({ navigation, route }: Props) {
       selectedRole,
     );
 
-    // Navigation forcée selon rôle
-    if (selectedRole === "client") {
-      navigation.reset({ index: 0, routes: [{ name: "ClientHome" as any }] });
-    } else if (selectedRole === "driver") {
-      navigation.reset({ index: 0, routes: [{ name: "DriverHome" as any }] });
+    // Navigation via callback vers RootNavigator
+    if (onProfileCreated) {
+      onProfileCreated(selectedRole);
     }
   }
 
