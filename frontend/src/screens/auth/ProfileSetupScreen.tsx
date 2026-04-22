@@ -63,7 +63,7 @@ export default function ProfileSetupScreen({ navigation, route, onProfileCreated
 
     // Navigation via callback vers RootNavigator
     if (onProfileCreated) {
-      onProfileCreated(selectedRole);
+      onProfileCreated(selectedRole, result.profile?.id ?? '');
     }
   }
 

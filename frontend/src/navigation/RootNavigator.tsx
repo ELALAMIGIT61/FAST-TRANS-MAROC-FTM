@@ -57,12 +57,13 @@ const AdminStack = createNativeStackNavigator<AdminStackParamList>();
 // Stacks par rôle
 // ─────────────────────────────────────────────
 
-function ClientNavigator() {
+function ClientNavigator({ clientProfileId }: { clientProfileId: string }) {
   return (
     <ClientStack.Navigator screenOptions={{ headerShown: false }}>
       <ClientStack.Screen
         name="ClientHome"
         component={CreateMissionScreen as any}
+        initialParams={{ clientProfileId }}
       />
     </ClientStack.Navigator>
   );
@@ -150,6 +151,7 @@ async function initializeApp(): Promise<{ route: AppRoute }> {
 export default function RootNavigator() {
   const [isLoading, setIsLoading] = useState(true);
   const [initialRoute, setInitialRoute] = useState<AppRoute>("AuthStack");
+  const [clientProfileId, setClientProfileId] = useState<string>("");
 
   useEffect(() => {
     initializeApp().then(({ route }) => {
@@ -205,7 +207,8 @@ export default function RootNavigator() {
             {(props) => (
               <ProfileSetupScreen
                 {...props}
-                onProfileCreated={(role: string) => {
+                onProfileCreated={(role: string, profileId: string) => {
+                  setClientProfileId(profileId);
                   setInitialRoute(
                     role === 'client' ? 'ClientHomeStack' :
                     role === 'driver' ? 'DriverHomeStack' : 'AdminStack'
@@ -216,7 +219,7 @@ export default function RootNavigator() {
           </AuthStack.Screen>
         </AuthStack.Navigator>
       )}
-      {showClient && <ClientNavigator />}
+      {showClient && <ClientNavigator clientProfileId={clientProfileId} />}
       {showDriver && <DriverNavigator />}
       {showAdmin && <AdminNavigator />}
     </NavigationContainer>
