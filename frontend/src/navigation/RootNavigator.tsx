@@ -171,6 +171,9 @@ export default function RootNavigator() {
       if (event === "SIGNED_OUT") {
         setInitialRoute("AuthStack");
       }
+      if (event === "SIGNED_IN" && session?.user) {
+        initializeApp().then(({ route }) => setInitialRoute(route));
+      }
 
       if (event === "TOKEN_REFRESHED") {
         console.log("[FTM-DEBUG] Auth - Token refreshed successfully");
