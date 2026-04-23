@@ -2,7 +2,7 @@
 
 # Fast Trans Maroc — Application Mobile Marocaine
 
-# Dernière mise à jour : 21/04/2026
+# Dernière mise à jour : 23/04/2026
 
 ---
 
@@ -23,6 +23,8 @@ Codespaces  : zany-disco-jj95647gqv473pj9
 ✅ Migrations : timestamps uniques obligatoires
 ✅ 1 session Claude = 1 objectif précis
 ✅ Toujours fournir ce fichier en début de session
+✅ Toujours ouvrir console navigateur DevTools
+avant tout test web
 
 ---
 
@@ -40,15 +42,21 @@ CreateMissionScreen
 DriverHomeScreen
 AdminDashboardScreen
 Bundle web        : ✅ 1173ms
-Écran OTP         : ✅ s'affiche correctement
-Navigation auth   : ✅ PhoneInput→OTP→ProfileSetup
+Auth CLIENT       : ✅ confirmé — session 2.3
+Navigation → CreateMissionScreen
+Auth ADMIN        : ✅ confirmé — session 2.3
+Navigation → AdminDashboardScreen
+Auth DRIVER       : ⏳ reporté — onboarding requis
 Connexion Supabase: ✅ .env configuré dans frontend/
 Mode test OTP     : ✅ configuré (MessageBird fictif)
 Numéro test : +212600000000
 Code fixe   : 123456
 Valide jusqu'au : 31/12/2026
-⚠️ Profil +212600000000 existe peut-être en base
-Vérifier Supabase Auth avant test session 2.3
+⚠️ Compte ADMIN test :
+Numéro : +212600000001
+Rôle admin défini via SQL Editor Supabase
+UPDATE profiles SET role='admin'
+WHERE phone_number='+212600000001'
 
 ---
 
@@ -61,6 +69,12 @@ SUPABASE_ANON_KEY      ✅
 ---
 
 ## 5. HISTORIQUE COMMITS CLÉS
+bd7ead0 fix: SIGNED_IN pour utilisateurs existants
+navigation admin et reconnexion ✅ session 2.3
+53725fe fix: clientProfileId transmis à
+CreateMissionScreen ✅ session 2.3
+8a78903 fix: navigation post-profil via callback
+onProfileCreated ✅ session 2.3
 e7beed2 fix: BORDER_RADIUS ajouté theme.ts
 page blanche web résolue ✅ session 2.2
 8951aea fix: expo-notifications installé + guard
@@ -132,7 +146,7 @@ FAST-TRANS-MAROC-FTM/
 │       ├── lib/
 │       │   └── supabaseClient.ts
 │       ├── navigation/
-│       │   └── RootNavigator.tsx
+│       │   └── RootNavigator.tsx ← callback + SIGNED_IN
 │       ├── screens/
 │       │   ├── admin/
 │       │   │   ├── AdminDashboardScreen.tsx
@@ -141,7 +155,7 @@ FAST-TRANS-MAROC-FTM/
 │       │   ├── auth/
 │       │   │   ├── OTPVerificationScreen.tsx
 │       │   │   ├── PhoneInputScreen.tsx
-│       │   │   └── ProfileSetupScreen.tsx
+│       │   │   └── ProfileSetupScreen.tsx ← onProfileCreated
 │       │   ├── client/
 │       │   │   ├── CreateMissionScreen.tsx
 │       │   │   ├── MissionTrackingScreen.tsx
@@ -175,7 +189,7 @@ FAST-TRANS-MAROC-FTM/
 │       ├── services/
 │       │   ├── adminService.ts
 │       │   ├── audioService.ts
-│       │   ├── authService.ts
+│       │   ├── authService.ts  ← user.id dans ProfileResult
 │       │   ├── documentService.ts
 │       │   ├── driverService.ts
 │       │   ├── i18nService.ts
@@ -251,20 +265,28 @@ BORDER_RADIUS manquant dans theme.ts
 Commit e7beed2 pushé sur main
 → Navigation auth confirmée sur web
 → Test auth 3 rôles partiellement effectué
-⚠️ Navigation post-profil non encore
-confirmée — à finaliser en session 2.3
-2.3 ⏳ Finaliser test auth 3 rôles
-→ Vérifier profil +212600000000 en base
-→ Valider navigation vers 3 écrans réels
-client → CreateMissionScreen
-driver → DriverHomeScreen
-admin  → AdminDashboardScreen
-2.4 ⏳ Tester écrans client
-2.5 ⏳ Tester écrans driver
-2.6 ⏳ Tester écrans admin
-2.7 ⏳ Créer buckets Storage
-2.8 ⏳ Configurer CRON reminders
-2.9 ⏳ Activer Realtime tables
+2.3 ✅ Finaliser test auth client et admin
+→ Auth CLIENT confirmé ✅
+Navigation → CreateMissionScreen
+Commits 8a78903 + 53725fe + bd7ead0
+→ Auth ADMIN confirmé ✅
+Navigation → AdminDashboardScreen
+Rôle admin via SQL Editor Supabase
+→ Auth DRIVER reporté ⏳
+Onboarding driver (4 écrans) non connecté
+Session dédiée nécessaire
+2.4 ⏳ Connecter et tester onboarding DRIVER
+→ VehicleInfoScreen
+→ DocumentUploadScreen
+→ LegalDocumentsScreen
+→ PendingVerificationScreen
+→ Tester navigation → DriverHomeScreen
+2.5 ⏳ Tester écrans client
+2.6 ⏳ Tester écrans driver
+2.7 ⏳ Tester écrans admin
+2.8 ⏳ Créer buckets Storage
+2.9 ⏳ Configurer CRON reminders
+2.10 ⏳ Activer Realtime tables
 PHASE 3 — SERVICES EXTERNES
 3.1 ⏳ Twilio SMS
 3.2 ⏳ FCM Android
