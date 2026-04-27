@@ -40,5 +40,7 @@ export type AppRoute =
   | 'ProfileSetupScreen'
   | 'AccountSuspendedScreen'
   | 'ClientHomeStack'
+  | 'DriverOnboardingStack'
+  | 'DriverPendingStack'
   | 'DriverHomeStack'
   | 'AdminStack';
