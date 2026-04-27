@@ -20,6 +20,10 @@ import CreateMissionScreen from "../screens/client/CreateMissionScreen";
 
 // Driver screens
 import DriverHomeScreen from "../screens/driver/DriverHomeScreen";
+import VehicleInfoScreen from "../screens/driver/onboarding/VehicleInfoScreen";
+import LegalDocumentsScreen from "../screens/driver/onboarding/LegalDocumentsScreen";
+import DocumentUploadScreen from "../screens/driver/onboarding/DocumentUploadScreen";
+import PendingVerificationScreen from "../screens/driver/onboarding/PendingVerificationScreen";
 
 // Admin screens
 import AdminDashboardScreen from "../screens/admin/AdminDashboardScreen";
@@ -41,7 +45,18 @@ export type ClientStackParamList = {
 };
 
 export type DriverStackParamList = {
-  DriverHome: undefined;
+  DriverHome: { driverId: string; vehicleCategory: string };
+};
+
+export type DriverOnboardingStackParamList = {
+  VehicleInfo: undefined;
+  LegalDocuments: { driverId: string };
+  DocumentUpload: { driverId: string };
+  PendingVerification: { driverId: string };
+};
+
+export type DriverPendingStackParamList = {
+  PendingVerification: { driverId: string };
 };
 
 export type AdminStackParamList = {
@@ -51,6 +66,8 @@ export type AdminStackParamList = {
 const AuthStack = createNativeStackNavigator<AuthStackParamList>();
 const ClientStack = createNativeStackNavigator<ClientStackParamList>();
 const DriverStack = createNativeStackNavigator<DriverStackParamList>();
+const DriverOnboardingStack = createNativeStackNavigator<DriverOnboardingStackParamList>();
+const DriverPendingStack = createNativeStackNavigator<DriverPendingStackParamList>();
 const AdminStack = createNativeStackNavigator<AdminStackParamList>();
 
 // ─────────────────────────────────────────────
@@ -69,12 +86,36 @@ function ClientNavigator({ clientProfileId }: { clientProfileId: string }) {
   );
 }
 
-function DriverNavigator() {
+function DriverOnboardingNavigator() {
+  return (
+    <DriverOnboardingStack.Navigator screenOptions={{ headerShown: false }}>
+      <DriverOnboardingStack.Screen name="VehicleInfo" component={VehicleInfoScreen as any} />
+      <DriverOnboardingStack.Screen name="LegalDocuments" component={LegalDocumentsScreen as any} />
+      <DriverOnboardingStack.Screen name="DocumentUpload" component={DocumentUploadScreen as any} />
+      <DriverOnboardingStack.Screen name="PendingVerification" component={PendingVerificationScreen as any} />
+    </DriverOnboardingStack.Navigator>
+  );
+}
+
+function DriverPendingNavigator({ driverId }: { driverId: string }) {
+  return (
+    <DriverPendingStack.Navigator screenOptions={{ headerShown: false }}>
+      <DriverPendingStack.Screen
+        name="PendingVerification"
+        component={PendingVerificationScreen as any}
+        initialParams={{ driverId }}
+      />
+    </DriverPendingStack.Navigator>
+  );
+}
+
+function DriverNavigator({ driverId, vehicleCategory }: { driverId: string; vehicleCategory: string }) {
   return (
     <DriverStack.Navigator screenOptions={{ headerShown: false }}>
       <DriverStack.Screen
         name="DriverHome"
         component={DriverHomeScreen as any}
+        initialParams={{ driverId, vehicleCategory }}
       />
     </DriverStack.Navigator>
   );
@@ -95,7 +136,7 @@ function AdminNavigator() {
 // Initialisation de l'app
 // ─────────────────────────────────────────────
 
-async function initializeApp(): Promise<{ route: AppRoute }> {
+async function initializeApp(): Promise<{ route: AppRoute; driverId?: string; vehicleCategory?: string }> {
   console.log("[FTM-DEBUG] App - Initializing", {
     timestamp: new Date().toISOString(),
   });
@@ -135,8 +176,16 @@ async function initializeApp(): Promise<{ route: AppRoute }> {
   switch (profile.role) {
     case "client":
       return { route: "ClientHomeStack" };
-    case "driver":
-      return { route: "DriverHomeStack" };
+    case "driver": {
+        const { data: driver } = await supabase
+          .from("drivers")
+          .select("id, vehicle_category, is_verified")
+          .eq("profile_id", profile.id)
+          .single();
+        if (!driver) return { route: "DriverOnboardingStack" };
+        if (!driver.is_verified) return { route: "DriverPendingStack", driverId: driver.id };
+        return { route: "DriverHomeStack", driverId: driver.id, vehicleCategory: driver.vehicle_category };
+      }
     case "admin":
       return { route: "AdminStack" };
     default:
@@ -152,10 +201,14 @@ export default function RootNavigator() {
   const [isLoading, setIsLoading] = useState(true);
   const [initialRoute, setInitialRoute] = useState<AppRoute>("AuthStack");
   const [clientProfileId, setClientProfileId] = useState<string>("");
+  const [driverProfileId, setDriverProfileId] = useState<string>("");
+  const [driverVehicleCategory, setDriverVehicleCategory] = useState<string>("");
 
   useEffect(() => {
-    initializeApp().then(({ route }) => {
+    initializeApp().then(({ route, driverId, vehicleCategory }) => {
       setInitialRoute(route);
+      if (driverId) setDriverProfileId(driverId);
+      if (vehicleCategory) setDriverVehicleCategory(vehicleCategory);
       setIsLoading(false);
     });
 
@@ -172,7 +225,11 @@ export default function RootNavigator() {
         setInitialRoute("AuthStack");
       }
       if (event === "SIGNED_IN" && session?.user) {
-        initializeApp().then(({ route }) => setInitialRoute(route));
+        initializeApp().then(({ route, driverId, vehicleCategory }) => {
+          setInitialRoute(route);
+          if (driverId) setDriverProfileId(driverId);
+          if (vehicleCategory) setDriverVehicleCategory(vehicleCategory);
+        });
       }
 
       if (event === "TOKEN_REFRESHED") {
@@ -195,6 +252,8 @@ export default function RootNavigator() {
     initialRoute === "AuthStack" || initialRoute === "ProfileSetupScreen";
   const showClient = initialRoute === "ClientHomeStack";
   const showDriver = initialRoute === "DriverHomeStack";
+  const showDriverOnboarding = initialRoute === "DriverOnboardingStack";
+  const showDriverPending = initialRoute === "DriverPendingStack";
   const showAdmin = initialRoute === "AdminStack";
 
   return (
@@ -214,7 +273,7 @@ export default function RootNavigator() {
                   setClientProfileId(profileId);
                   setInitialRoute(
                     role === 'client' ? 'ClientHomeStack' :
-                    role === 'driver' ? 'DriverHomeStack' : 'AdminStack'
+                    role === 'driver' ? 'DriverOnboardingStack' : 'AdminStack'
                   );
                 }}
               />
@@ -223,7 +282,9 @@ export default function RootNavigator() {
         </AuthStack.Navigator>
       )}
       {showClient && <ClientNavigator clientProfileId={clientProfileId} />}
-      {showDriver && <DriverNavigator />}
+      {showDriver && <DriverNavigator driverId={driverProfileId} vehicleCategory={driverVehicleCategory} />}
+      {showDriverOnboarding && <DriverOnboardingNavigator />}
+      {showDriverPending && <DriverPendingNavigator driverId={driverProfileId} />}
       {showAdmin && <AdminNavigator />}
     </NavigationContainer>
   );
