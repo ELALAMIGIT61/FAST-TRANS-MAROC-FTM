@@ -2,7 +2,7 @@
 
 # Fast Trans Maroc — Application Mobile Marocaine
 
-# Dernière mise à jour : 23/04/2026
+# Dernière mise à jour : 29/04/2026
 
 ---
 
@@ -19,21 +19,45 @@ Codespaces  : zany-disco-jj95647gqv473pj9
 ⛔ NE JAMAIS utiliser npm audit fix --force
 (casse la stack SDK 50 → SDK 55 incompatible)
 ✅ Toujours utiliser --legacy-peer-deps si conflit
+✅ Toujours utiliser npx expo install pour packages Expo
 ✅ .env doit être dans frontend/ (pas à la racine)
 ✅ Migrations : timestamps uniques obligatoires
+Prochain timestamp ≥ 20260227000000
+Jamais via SQL Editor directement
 ✅ 1 session Claude = 1 objectif précis
 ✅ Toujours fournir ce fichier en début de session
 ✅ Toujours ouvrir console navigateur DevTools
 avant tout test web
+✅ 1 terminal de travail uniquement
+Ne jamais ouvrir un 3ème terminal
+✅ Vérifier texte exact via sed avant
+tout replace() Python3
+✅ Backup obligatoire avant chaque modification
+✅ Test non-régression CLIENT + ADMIN
+après chaque étape de modification
+✅ 3 workflows GitHub INTOUCHABLES :
+check_supabase.yml
+deploy_supabase.yml
+lint_code.yml
+⛔ NE JAMAIS modifier authService.ts
+⛔ NE JAMAIS modifier ProfileSetupScreen.tsx
 
 ---
 
 ## 3. ÉTAT TECHNIQUE ACTUEL
 SDK Expo          : 50.0.21 ✅ stable
-Vulnerabilities   : 23 (outils dev uniquement)
+Vulnerabilities   : 39 (outils dev uniquement)
 Impact ZÉRO sur app/publication
 NE PAS corriger avec --force
+Passage de 23 à 39 en session 2.4
+Cause : dépendances dev de
+expo-image-picker +
+expo-document-picker
 App démarre       : ✅ Web Bundled confirmé
+Lancement app web : cd frontend &&
+npx expo start --web --no-dev
+URL web           : https://zany-disco-jj95647gqv473pj9
+-8081.app.github.dev
 Page blanche web  : ✅ RÉSOLUE — session 2.2
 Cause : BORDER_RADIUS manquant
 dans theme.ts — commit e7beed2
@@ -46,7 +70,13 @@ Auth CLIENT       : ✅ confirmé — session 2.3
 Navigation → CreateMissionScreen
 Auth ADMIN        : ✅ confirmé — session 2.3
 Navigation → AdminDashboardScreen
-Auth DRIVER       : ⏳ reporté — onboarding requis
+Auth DRIVER       : ⚠️ PARTIEL — session 2.4
+Onboarding connecté ✅
+VehicleInfoScreen affiché ✅
+Flux complet non encore testé ⏳
+Packages ajoutés  : expo-image-picker ~14.7.1 ✅
+expo-document-picker ~11.10.1 ✅
+commit c318a92
 Connexion Supabase: ✅ .env configuré dans frontend/
 Mode test OTP     : ✅ configuré (MessageBird fictif)
 Numéro test : +212600000000
@@ -57,6 +87,7 @@ Numéro : +212600000001
 Rôle admin défini via SQL Editor Supabase
 UPDATE profiles SET role='admin'
 WHERE phone_number='+212600000001'
+NE PAS SUPPRIMER CE PROFIL
 
 ---
 
@@ -69,36 +100,177 @@ SUPABASE_ANON_KEY      ✅
 ---
 
 ## 5. HISTORIQUE COMMITS CLÉS
-bd7ead0 fix: SIGNED_IN pour utilisateurs existants
-navigation admin et reconnexion ✅ session 2.3
+8acc64c feat: connect driver onboarding
+VehicleInfo/LegalDocs/DocumentUpload/
+PendingVerification navigators ✅ session 2.4
+c318a92 feat: add DriverOnboardingStack/DriverPendingStack
+routes + install expo-image-picker
+expo-document-picker ✅ session 2.4
+b669da7 docs: update ROADMAP_FTM session 2.3 ✅
+bd7ead0 fix: SIGNED_IN pour utilisateurs existants ✅
 53725fe fix: clientProfileId transmis à
-CreateMissionScreen ✅ session 2.3
-8a78903 fix: navigation post-profil via callback
-onProfileCreated ✅ session 2.3
-e7beed2 fix: BORDER_RADIUS ajouté theme.ts
-page blanche web résolue ✅ session 2.2
-8951aea fix: expo-notifications installé + guard
-Platform.OS pushNotificationService
-bea9a3d feat: 3 écrans réels connectés
-RootNavigator — client/driver/admin
-5075470 fix: correct infinite recursion in
-profiles_select_admin RLS policy
-ec7d061 fix(security): enable RLS on push_tokens
-d2379c5 fix(P7): drop and recreate
-public_parcel_tracking view
-24ccfbb fix(P7): correct ep.status to m.status
-dbe39f7 feat(P7): admin dashboard, RLS, CI/CD
-0f481b3 feat(P6): add push_tokens migration
-037a2be feat(P6): notifications push, chat audio
-4dda161 feat(P5): wallet revolving, transactions
-8f14560 feat(P4): e-commerce, colisage, tracking
-7d89469 feat(P3): missions, géolocalisation
-0646372 feat(P2): onboarding driver, documents
-8e4508f feat(P1): config, auth OTP, Supabase
+CreateMissionScreen ✅
+8a78903 fix: navigation post-profil via callback ✅
+e7beed2 fix: BORDER_RADIUS ajouté theme.ts ✅
+bea9a3d feat: 3 écrans réels connectés ✅
+5075470 fix: correct infinite recursion RLS ✅
+ec7d061 fix: enable RLS on push_tokens ✅
+d2379c5 fix: drop and recreate parcel_tracking view ✅
+24ccfbb fix: correct ep.status to m.status ✅
+dbe39f7 feat: admin dashboard, RLS, CI/CD ✅
+0f481b3 feat: add push_tokens migration ✅
+037a2be feat: notifications push, chat audio ✅
+4dda161 feat: wallet revolving, transactions ✅
+8f14560 feat: e-commerce, colisage, tracking ✅
+7d89469 feat: missions, géolocalisation ✅
+0646372 feat: onboarding driver, documents ✅
+8e4508f feat: config, auth OTP, Supabase ✅
 
 ---
 
-## 6. MIGRATIONS SUPABASE DÉPLOYÉES
+## 6. MODIFICATIONS COMMITÉES — DÉTAIL SESSION 2.4
+
+### `frontend/src/types/database.ts` — commit c318a92
+Ajout 2 nouvelles routes dans type AppRoute :
+
+'DriverOnboardingStack'
+'DriverPendingStack'
+
+
+### `frontend/package.json` + `package-lock.json` — commit c318a92
+
+expo-image-picker ~14.7.1
+expo-document-picker ~11.10.1
+Commande : npx expo install expo-image-picker
+expo-document-picker
+
+
+### `frontend/src/navigation/RootNavigator.tsx` — commit 8acc64c
+
+Type retour initializeApp() étendu :
+Promise<{ route: AppRoute;
+driverId?: string;
+vehicleCategory?: string }>
+Cas driver dans initializeApp() —
+requête table drivers :
+→ !driver          → DriverOnboardingStack
+→ !driver.is_verified → DriverPendingStack
+→ driver vérifié   → DriverHomeStack
+States ajoutés :
+const [driverProfileId, setDriverProfileId]
+const [driverVehicleCategory, setDriverVehicleCategory]
+useEffect mis à jour :
+capte driverId + vehicleCategory
+SIGNED_IN mis à jour :
+capte driverId + vehicleCategory
+Imports ajoutés :
+VehicleInfoScreen
+LegalDocumentsScreen
+DocumentUploadScreen
+PendingVerificationScreen
+Types de navigation ajoutés :
+DriverOnboardingStackParamList
+DriverPendingStackParamList
+Navigateurs stack créés :
+DriverOnboardingStack
+DriverPendingStack
+Navigateurs créés :
+DriverOnboardingNavigator (4 écrans)
+DriverPendingNavigator (driverId en prop)
+DriverNavigator mis à jour :
+reçoit driverId + vehicleCategory
+transmis via initialParams
+Rendu conditionnel ajouté :
+showDriverOnboarding
+showDriverPending
+
+callback onProfileCreated driver
+→ DriverOnboardingStack
+
+
+
+
+---
+
+## 7. CHAÎNE DE NAVIGATION DRIVER
+ProfileSetupScreen
+→ onProfileCreated(role='driver')
+→ DriverOnboardingStack
+VehicleInfoScreen
+→ appelle createDriverProfile()
+→ navigate('LegalDocuments', { driverId })
+LegalDocumentsScreen  [reçoit driverId]
+→ appelle saveDriverDocuments()
+→ navigate('DocumentUpload', { driverId })
+DocumentUploadScreen  [reçoit driverId]
+→ appelle uploadDocument()
+→ navigate('PendingVerification', { driverId })
+PendingVerificationScreen  [reçoit driverId]
+→ souscrit realtime driver-verification-{driverId}
+→ si is_verified === true
+→ navigation.replace('DriverHome')
+DriverHomeScreen
+→ attend driverId : string — obligatoire
+→ attend vehicleCategory : string — obligatoire
+('vul' | 'n2_medium' | 'n2_large')
+⚠️ is_verified = GENERATED ALWAYS AS
+Devient true quand ces 4 champs sont true :
+
+driver_license_verified
+vehicle_registration_verified
+insurance_verified
+technical_inspection_verified
+Pour tester : modifier les 4 champs manuellement
+dans Supabase Table Editor
+
+
+---
+
+## 8. PROBLÈMES RENCONTRÉS ET RÉSOLUS
+PROBLÈME 1 — Page blanche après ajout navigateurs
+Cause    : expo-image-picker et expo-document-picker
+absents de package.json
+Preuve   : "Unable to resolve expo-image-picker
+from documentService.ts"
+Correctif: npx expo install expo-image-picker
+expo-document-picker
+Statut   : RÉSOLU ✅
+PROBLÈME 2 — Terminal défaillant
+Cause    : 3ème terminal ouvert manuellement
+Symptôme : echo "test" ne retournait rien
+Impact   : confusion sur l'état des fichiers
+Correctif: fermeture terminal défaillant
+reprise dans terminal bash frontend
+Statut   : RÉSOLU ✅
+Règle    : 1 terminal de travail uniquement
+PROBLÈME 3 — replace() Python3 sans effet
+Cause    : texte cible ne correspondait pas
+exactement au contenu du fichier
+Symptôme : OK retourné mais rien modifié
+Correctif: vérification texte exact via sed
+avant chaque commande replace()
+Statut   : RÉSOLU ✅
+
+---
+
+## 9. PISTES DÉFINITIVEMENT ÉCARTÉES
+Ne pas retester pour la page blanche :
+❌ locationService import statique
+❌ expo-haptics / expo-notifications
+❌ expo-location fallback web
+❌ missionService / realtimeService
+❌ react-native-screens sans fallback web
+❌ NativeStackScreenProps sans type
+❌ Dépendance circulaire missionService
+❌ audioService / expo-av
+❌ supabaseClient.ts
+❌ showAuth logique incorrecte
+❌ ErrorBoundary capture l'erreur
+❌ --no-dev résout seul
+
+---
+
+## 10. MIGRATIONS SUPABASE DÉPLOYÉES
 20260220155500_initial_schema.sql                 ✅ P1-P2
 20260221000000_add_rpc_nearby_drivers.sql         ✅ P3
 20260222000000_add_tracking_functions.sql         ✅ P4
@@ -108,7 +280,7 @@ dbe39f7 feat(P7): admin dashboard, RLS, CI/CD
 
 ---
 
-## 7. EDGE FUNCTIONS DÉPLOYÉES
+## 11. EDGE FUNCTIONS DÉPLOYÉES
 send-push-notification   ✅
 register-push-token      ✅
 check-document-reminders ✅
@@ -116,7 +288,7 @@ send-tracking-sms        ✅
 
 ---
 
-## 8. ARBORESCENCE COMPLÈTE DU REPO
+## 12. ARBORESCENCE COMPLÈTE DU REPO
 FAST-TRANS-MAROC-FTM/
 ├── .github/
 │   └── workflows/
@@ -135,7 +307,8 @@ FAST-TRANS-MAROC-FTM/
 │   ├── .env
 │   ├── .env.example
 │   ├── App.tsx
-│   ├── package.json
+│   ├── package.json        ← expo-image-picker ajouté
+│   ├── package-lock.json   ← mis à jour session 2.4
 │   ├── tsconfig.json
 │   └── src/
 │       ├── components/
@@ -146,7 +319,7 @@ FAST-TRANS-MAROC-FTM/
 │       ├── lib/
 │       │   └── supabaseClient.ts
 │       ├── navigation/
-│       │   └── RootNavigator.tsx ← callback + SIGNED_IN
+│       │   └── RootNavigator.tsx ← onboarding driver
 │       ├── screens/
 │       │   ├── admin/
 │       │   │   ├── AdminDashboardScreen.tsx
@@ -155,7 +328,7 @@ FAST-TRANS-MAROC-FTM/
 │       │   ├── auth/
 │       │   │   ├── OTPVerificationScreen.tsx
 │       │   │   ├── PhoneInputScreen.tsx
-│       │   │   └── ProfileSetupScreen.tsx ← onProfileCreated
+│       │   │   └── ProfileSetupScreen.tsx
 │       │   ├── client/
 │       │   │   ├── CreateMissionScreen.tsx
 │       │   │   ├── MissionTrackingScreen.tsx
@@ -189,7 +362,7 @@ FAST-TRANS-MAROC-FTM/
 │       ├── services/
 │       │   ├── adminService.ts
 │       │   ├── audioService.ts
-│       │   ├── authService.ts  ← user.id dans ProfileResult
+│       │   ├── authService.ts      ← INTOUCHABLE
 │       │   ├── documentService.ts
 │       │   ├── driverService.ts
 │       │   ├── i18nService.ts
@@ -202,7 +375,7 @@ FAST-TRANS-MAROC-FTM/
 │       │   ├── reminderService.ts
 │       │   └── walletService.ts
 │       ├── types/
-│       │   └── database.ts
+│       │   └── database.ts ← DriverOnboardingStack ajouté
 │       └── utils/
 │           └── parcelCalculations.ts
 ├── supabase/
@@ -243,7 +416,7 @@ FAST-TRANS-MAROC-FTM/
 
 ---
 
-## 9. SERVICES EXTERNES — ÉTAT
+## 13. SERVICES EXTERNES — ÉTAT
 Twilio SMS       : ⏳ pas encore configuré
 Nécessaire avant production
 FCM Android      : ⏳ pas encore configuré
@@ -253,34 +426,50 @@ CRON reminders   : ⏳ à planifier dans Supabase
 
 ---
 
-## 10. ÉTAPES RESTANTES
+## 14. ÉTAPES RESTANTES
 PHASE 2 — TESTS & DEBUGGING
 2.1 ✅ OTP sans Twilio résolu
 → MessageBird fictif configuré
 → Numéro test +212600000000 / 123456
 → Récursion RLS profiles corrigée
-2.2 ✅ Tester auth complète (client/driver/admin)
-→ Page blanche web rencontrée et résolue
-BORDER_RADIUS manquant dans theme.ts
-Commit e7beed2 pushé sur main
+2.2 ✅ Page blanche web résolue
+→ BORDER_RADIUS manquant dans theme.ts
+→ 3 écrans réels connectés et fonctionnels
 → Navigation auth confirmée sur web
-→ Test auth 3 rôles partiellement effectué
+→ Commit e7beed2 pushé sur main
 2.3 ✅ Finaliser test auth client et admin
 → Auth CLIENT confirmé ✅
 Navigation → CreateMissionScreen
 Commits 8a78903 + 53725fe + bd7ead0
 → Auth ADMIN confirmé ✅
 Navigation → AdminDashboardScreen
-Rôle admin via SQL Editor Supabase
 → Auth DRIVER reporté ⏳
-Onboarding driver (4 écrans) non connecté
-Session dédiée nécessaire
-2.4 ⏳ Connecter et tester onboarding DRIVER
-→ VehicleInfoScreen
-→ DocumentUploadScreen
-→ LegalDocumentsScreen
-→ PendingVerificationScreen
-→ Tester navigation → DriverHomeScreen
+Onboarding driver non connecté
+2.4 ⚠️ PARTIEL — Connecter et tester onboarding DRIVER
+→ Onboarding connecté ✅
+4 navigateurs créés dans RootNavigator
+Commits c318a92 + 8acc64c
+→ VehicleInfoScreen confirmé ✅
+"Étape 1 sur 4" affiché
+→ Flux complet non encore testé ⏳
+À compléter dans l'ordre :
+1. VehicleInfoScreen → remplir + Suivant
+→ vérifier LegalDocumentsScreen
+2. LegalDocumentsScreen → remplir
+→ vérifier DocumentUploadScreen
+3. DocumentUploadScreen → tenter upload
+⚠️ limitations web possibles
+4. PendingVerificationScreen
+→ vérifier affichage écran attente
+5. DriverHomeScreen
+→ simuler is_verified=true via
+4 champs individuels Supabase :
+driver_license_verified
+vehicle_registration_verified
+insurance_verified
+technical_inspection_verified
+→ vérifier driverId + vehicleCategory
+transmis correctement
 2.5 ⏳ Tester écrans client
 2.6 ⏳ Tester écrans driver
 2.7 ⏳ Tester écrans admin
@@ -305,7 +494,7 @@ PHASE 6 — PUBLICATION
 
 ---
 
-## 11. TEMPLATE DÉBUT DE SESSION CLAUDE
+## 15. TEMPLATE DÉBUT DE SESSION CLAUDE
 PROJET : Fast Trans Maroc (FTM)
 STACK : Expo SDK 50 / React Native / TypeScript
 SUPABASE : ustckqnecsilxqlyjute
@@ -313,8 +502,12 @@ GITHUB : ELALAMIGIT61/FAST-TRANS-MAROC-FTM
 RÈGLES CRITIQUES :
 
 NE JAMAIS npm audit fix --force
-SDK 50 stable — 23 vulnerabilities outils dev
+SDK 50 stable — 39 vulnerabilities outils dev
 .env dans frontend/
+1 terminal de travail uniquement
+Vérifier texte exact via sed avant replace()
+NE JAMAIS modifier authService.ts
+NE JAMAIS modifier ProfileSetupScreen.tsx
 
 OBJECTIF SESSION :
 [Décrire précisément]
