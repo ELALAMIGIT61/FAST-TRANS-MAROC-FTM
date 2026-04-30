@@ -45,6 +45,33 @@ interface DateFieldProps {
 function DateField({ label, value, onChange, error }: DateFieldProps) {
   const [show, setShow] = useState(false);
 
+  if (Platform.OS === 'web') {
+    return (
+      <View style={{ marginBottom: 14 }}>
+        <Text style={dfStyles.label}>{label}</Text>
+        <input
+          type="date"
+          min={new Date().toISOString().split('T')[0]}
+          value={value ? value.toISOString().split('T')[0] : ''}
+          onChange={e => {
+            const val = (e.target as any).value;
+            if (val) onChange(new Date(val));
+          }}
+          style={{
+            border: error ? '1px solid #DC3545' : '1px solid #DDD',
+            borderRadius: 10,
+            padding: 14,
+            fontSize: 15,
+            backgroundColor: '#FAFAFA',
+            width: '100%',
+            boxSizing: 'border-box',
+          } as any}
+        />
+        {error ? <Text style={dfStyles.errorText}>{error}</Text> : null}
+      </View>
+    );
+  }
+
   return (
     <View style={{ marginBottom: 14 }}>
       <Text style={dfStyles.label}>{label}</Text>
