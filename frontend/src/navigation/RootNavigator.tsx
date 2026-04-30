@@ -179,10 +179,11 @@ async function initializeApp(): Promise<{ route: AppRoute; driverId?: string; ve
     case "driver": {
         const { data: driver } = await supabase
           .from("drivers")
-          .select("id, vehicle_category, is_verified")
+          .select("id, vehicle_category, is_verified, driver_license_number")
           .eq("profile_id", profile.id)
           .single();
         if (!driver) return { route: "DriverOnboardingStack" };
+        if (!driver.driver_license_number) return { route: "DriverOnboardingStack" };
         if (!driver.is_verified) return { route: "DriverPendingStack", driverId: driver.id };
         return { route: "DriverHomeStack", driverId: driver.id, vehicleCategory: driver.vehicle_category };
       }
