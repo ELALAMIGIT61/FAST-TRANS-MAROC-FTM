@@ -1,6 +1,6 @@
 # ROADMAP FTM — Document de Référence Sessions Claude
 # Fast Trans Maroc — Application Mobile Marocaine
-# Dernière mise à jour : 04/05/2026
+# Dernière mise à jour : 07/05/2026
 
 ---
 
@@ -20,7 +20,7 @@ Codespaces  : zany-disco-jj95647gqv473pj9
 ✅ Toujours utiliser npx expo install pour packages Expo
 ✅ .env doit être dans frontend/ (pas à la racine)
 ✅ Migrations : timestamps uniques obligatoires
-   Prochain timestamp ≥ 20260504000003
+   Prochain timestamp ≥ 20260504000004
    Jamais via SQL Editor directement
    Toujours via GitHub Actions
 ✅ 1 session Claude = 1 objectif précis
@@ -38,7 +38,7 @@ Codespaces  : zany-disco-jj95647gqv473pj9
 ✅ git pull --rebase origin main avant tout push
    (ROADMAP mise à jour directement sur GitHub)
 ✅ Backup obligatoire avant chaque modification
-✅ Test non-régression CLIENT + ADMIN
+✅ Test non-régression CLIENT + ADMIN + DRIVER
    après chaque étape de modification
 ✅ Ne jamais retester ce qui est écarté
 ✅ Ne jamais modifier ce qui fonctionne
@@ -94,6 +94,10 @@ Auth DRIVER       : ✅ COMPLET — session 2.4 suite
                     Étape 4 → PendingVerification  ✅
                     Validation admin → DriverHome  ✅
                     Realtime Supabase              ✅
+Bugs session 2.5  : ✅ 3 bugs corrigés
+                    BUG 1 → SIGNED_IN onboarding ✅
+                    BUG 2 → wallet 404 ✅
+                    BUG 3 → document_reminders ✅
 Packages ajoutés  : expo-image-picker ~14.7.1 ✅
                     expo-document-picker ~11.10.1 ✅
                     commit c318a92
@@ -130,6 +134,14 @@ SUPABASE_URL           ✅
 ---
 
 ## 5. HISTORIQUE COMMITS CLÉS
+9f22d9d fix: add UNIQUE constraint on
+        document_reminders (driver_id, document_type)
+        enables upsert ON CONFLICT ✅ session 2.5
+b4ec2ba fix: correct wallet table name
+        wallets → wallet in DriverHomeScreen ✅ session 2.5
+475274c fix: ignore SIGNED_IN during driver onboarding
+        use ref to prevent spontaneous navigation ✅ session 2.5
+f377534 docs: update ROADMAP session 2.4 ✅
 c39cafb feat: add RLS policies driver-documents bucket ✅
 7222601 feat: create driver-documents storage bucket ✅
 6b9dae8 fix: prevent skip to PendingStack
@@ -263,6 +275,41 @@ Fallback web pour DateTimePicker :
 
 ---
 
+### SESSION 2.5 — commits 475274c → 9f22d9d
+
+#### `frontend/src/navigation/RootNavigator.tsx` — commit 475274c
+Correction BUG 1 — SIGNED_IN interrompt onboarding :
+  Problème : stale closure sur initialRoute
+             SIGNED_IN relançait initializeApp()
+             → PendingStack pendant étape 3
+  Correction — 4 modifications :
+  1. useRef ajouté dans import React
+  2. initialRouteRef = useRef<AppRoute>("AuthStack")
+  3. initialRouteRef.current = route
+     à chaque setInitialRoute
+  4. Condition SIGNED_IN :
+     if (initialRouteRef.current !== "DriverOnboardingStack")
+
+Backup créé : RootNavigator.tsx.bak.fix.signedin
+              (11337 bytes)
+
+#### `frontend/src/screens/driver/DriverHomeScreen.tsx` — commit b4ec2ba
+Correction BUG 2 — GET /wallets → 404 :
+  Problème : .from('wallets') — 's' en trop
+  Correction: .from('wallet') — ligne 36
+  Table en base : wallet (sans 's') ✅
+
+Backup créé : DriverHomeScreen.tsx.bak
+              (6113 bytes)
+
+#### Migrations SQL ajoutées :
+20260504000003 → ADD UNIQUE CONSTRAINT
+                  document_reminders
+                  (driver_id, document_type)
+                  Correction BUG 3 — ON CONFLICT 400
+
+---
+
 ## 7. CHAÎNE DE NAVIGATION DRIVER
 ProfileSetupScreen
   → onProfileCreated(role='driver')
@@ -292,6 +339,7 @@ DriverHomeScreen
   → attend driverId : string — obligatoire
   → attend vehicleCategory : string — obligatoire
     ('vul' | 'n2_medium' | 'n2_large')
+  → affiche solde wallet (table wallet sans 's')
 
 ⚠️ is_verified = GENERATED ALWAYS AS
    Devient true quand ces 4 champs = 'verified' :
@@ -314,22 +362,18 @@ DriverHomeScreen
 
 PROBLÈME 1 — Page blanche après ajout navigateurs
 Cause    : expo-image-picker absent de package.json
-Preuve   : "Unable to resolve expo-image-picker
-           from documentService.ts"
 Correctif: npx expo install expo-image-picker
            expo-document-picker
 Statut   : RÉSOLU ✅ commit c318a92
 
 PROBLÈME 2 — Terminal défaillant
 Cause    : 3ème terminal ouvert manuellement
-Symptôme : echo "test" ne retournait rien
 Correctif: fermeture + reprise terminal bash
 Statut   : RÉSOLU ✅
 Règle    : 1 terminal de travail uniquement
 
 PROBLÈME 3 — replace() Python3 sans effet
 Cause    : texte cible inexact
-Symptôme : OK retourné mais rien modifié
 Correctif: vérification via sed avant replace()
            Si échec → réécrire fichier entier
 Statut   : RÉSOLU ✅
@@ -386,6 +430,34 @@ Correctif: nouveau token FTM_GITHUB_ACTIONS
            Never expires — mis à jour GitHub Secrets
 Statut   : RÉSOLU ✅ 29/04/2026
 
+PROBLÈME 12 — SIGNED_IN interrompt onboarding étape 3
+Cause    : stale closure — initialRoute capturé
+           dans onAuthStateChange gardait
+           l'ancienne valeur
+           → initializeApp() relancé
+           → PendingStack immédiat
+Correctif: useRef<AppRoute> ajouté
+           initialRouteRef.current synchronisé
+           Condition !== "DriverOnboardingStack"
+           dans SIGNED_IN
+Statut   : RÉSOLU ✅ commit 475274c
+
+PROBLÈME 13 — GET /wallets → 404
+Cause    : .from('wallets') — 's' en trop
+           Table en base : wallet (sans 's')
+Correctif: .from('wallet') — ligne 36
+           DriverHomeScreen.tsx
+Statut   : RÉSOLU ✅ commit b4ec2ba
+
+PROBLÈME 14 — document_reminders ON CONFLICT → 400
+Cause    : contrainte UNIQUE manquante sur
+           (driver_id, document_type)
+           upsert impossible sans contrainte
+Correctif: migration SQL
+           ADD CONSTRAINT UNIQUE
+           (driver_id, document_type)
+Statut   : RÉSOLU ✅ commit 9f22d9d
+
 ---
 
 ## 9. PISTES DÉFINITIVEMENT ÉCARTÉES
@@ -406,18 +478,19 @@ Ne pas retester pour la page blanche :
 ---
 
 ## 10. MIGRATIONS SUPABASE DÉPLOYÉES
-20260220155500_initial_schema.sql                   ✅ P1-P2
-20260221000000_add_rpc_nearby_drivers.sql           ✅ P3
-20260222000000_add_tracking_functions.sql           ✅ P4
-20260223000000_add_push_tokens.sql                  ✅ P6
-20260224000000_add_rls_policies.sql                 ✅ P7
-20260226000000_fix_profiles_rls_recursion.sql       ✅ Phase 2.1
-20260429000001_allow_null_driver_license_number.sql ✅ Session 2.4
-20260429000002_allow_null_legal_docs_fields.sql     ✅ Session 2.4
-20260504000001_create_driver_documents_bucket.sql   ✅ Session 2.4
-20260504000002_storage_rls_policies.sql             ✅ Session 2.4
+20260220155500_initial_schema.sql                    ✅ P1-P2
+20260221000000_add_rpc_nearby_drivers.sql            ✅ P3
+20260222000000_add_tracking_functions.sql            ✅ P4
+20260223000000_add_push_tokens.sql                   ✅ P6
+20260224000000_add_rls_policies.sql                  ✅ P7
+20260226000000_fix_profiles_rls_recursion.sql        ✅ Phase 2.1
+20260429000001_allow_null_driver_license_number.sql  ✅ Session 2.4
+20260429000002_allow_null_legal_docs_fields.sql      ✅ Session 2.4
+20260504000001_create_driver_documents_bucket.sql    ✅ Session 2.4
+20260504000002_storage_rls_policies.sql              ✅ Session 2.4
+20260504000003_add_unique_constraint_document_reminders.sql ✅ Session 2.5
 
-Prochain timestamp disponible : 20260504000003
+Prochain timestamp disponible : 20260504000004
 
 ---
 
@@ -460,7 +533,7 @@ FAST-TRANS-MAROC-FTM/
 │       ├── lib/
 │       │   └── supabaseClient.ts
 │       ├── navigation/
-│       │   └── RootNavigator.tsx ← logique driver complète
+│       │   └── RootNavigator.tsx ← useRef fix SIGNED_IN
 │       ├── screens/
 │       │   ├── admin/
 │       │   │   ├── AdminDashboardScreen.tsx
@@ -476,7 +549,7 @@ FAST-TRANS-MAROC-FTM/
 │       │   │   └── RatingScreen.tsx
 │       │   ├── driver/
 │       │   │   ├── DocumentStatusScreen.tsx
-│       │   │   ├── DriverHomeScreen.tsx
+│       │   │   ├── DriverHomeScreen.tsx   ← wallet corrigé
 │       │   │   ├── MissionActiveScreen.tsx
 │       │   │   ├── NewMissionModal.tsx
 │       │   │   ├── ParcelMissionDetailScreen.tsx
@@ -540,7 +613,8 @@ FAST-TRANS-MAROC-FTM/
 │       ├── 20260429000001_allow_null_driver_license_number.sql
 │       ├── 20260429000002_allow_null_legal_docs_fields.sql
 │       ├── 20260504000001_create_driver_documents_bucket.sql
-│       └── 20260504000002_storage_rls_policies.sql
+│       ├── 20260504000002_storage_rls_policies.sql
+│       └── 20260504000003_add_unique_constraint_document_reminders.sql
 ├── .env.example
 ├── .gitignore
 ├── install_P1_files.sh
@@ -573,27 +647,17 @@ CRON reminders   : ⏳ à planifier dans Supabase
 
 ---
 
-## 14. BUGS RÉSIDUELS — À CORRIGER SESSION 2.5
+## 14. BUGS RÉSIDUELS
 
-⚠️ BUG 1 — SIGNED_IN interrompt étape 3 → 4
-   Symptôme : passage automatique vers
-              PendingVerificationScreen sans
-              cliquer "Soumettre ma demande"
-   Cause    : SIGNED_IN relance initializeApp()
-              qui voit 4 URLs remplies → PendingStack
-   Correction: ignorer SIGNED_IN pendant
-               onboarding actif
-
-⚠️ BUG 2 — GET /wallets → 404
-   Symptôme : erreur 404 dans DriverHomeScreen
-   Cause    : requête wallet incorrecte
-   Impact   : non bloquant — écran s'affiche
-
-⚠️ BUG 3 — document_reminders ON CONFLICT
-   Symptôme : POST 400 Bad Request
-   Cause    : contrainte ON CONFLICT manquante
-              sur (driver_id, document_type)
-   Correction: migration index manquante
+⚠️ BUG 4 — SQL UPDATE par phone_number → 0 row
+   Symptôme : UPDATE drivers WHERE profile_id =
+              (SELECT id FROM profiles
+               WHERE phone_number = '+212600000000')
+              retourne 0 row
+   Cause probable : format du numéro différent en base
+   Impact   : non bloquant — validation admin
+              fonctionne via Table Editor
+   À investiguer : session 2.7 (tests écrans admin)
 
 ---
 
@@ -605,9 +669,42 @@ AUTH CLIENT → CreateMissionScreen  ✅
 AUTH DRIVER → Flux complet étapes 1-4 ✅
 Upload Storage → driver-documents ✅
 Realtime Supabase → DriverHomeScreen ✅
+Wallet → 0.00 DH affiché sans erreur 404 ✅
+
+TESTS PARTIELS — CONFIRMÉS SUR WEB ✅ :
+CreateMissionScreen :
+  Formulaire affiché ✅
+  Champs remplissables ✅
+  Véhicule sélectionnable ✅
+  Commission calculée ✅
+  Toggle manutention ✅
+
+TESTS REPORTÉS — Session 4.x ⏳ :
+  (nécessitent GPS + device physique)
+
+TEST 1 — Bouton "Trouver un chauffeur"
+  Fichier  : CreateMissionScreen.tsx
+  Ligne clé: canSubmit = !!pickupCoords &&
+             !!dropoffAddress && !!vehicleCategory
+             && !isLoading
+  Raison   : pickupCoords = null sur web
+             géolocalisation refusée
+
+TEST 2 — MissionTrackingScreen
+  Fichier  : MissionTrackingScreen.tsx
+  Raison   : nécessite mission active
+             créée via "Trouver un chauffeur"
+
+TEST 3 — RatingScreen
+  Fichier  : RatingScreen.tsx
+  Raison   : nécessite mission complétée
+             pour noter le chauffeur
+
+⚠️ Ces 3 tests forment une chaîne indissociable
+   Aucun ne peut être testé sans le précédent
+   Tous nécessitent GPS + device physique
 
 RESTANT À FAIRE ⏳ :
-→ Écrans client complets (session 2.5)
 → Écrans driver complets (session 2.6)
 → Écrans admin complets (session 2.7)
 → Buckets Storage restants (session 2.8)
@@ -648,10 +745,20 @@ PHASE 2 — TESTS & DEBUGGING
      → DriverHomeScreen confirmé ✅
        Realtime Supabase fonctionnel
      → Non-régression CLIENT + ADMIN ✅
-     → 3 bugs résiduels notés (section 14)
-2.5  ⏳ Corriger bugs résiduels + tester écrans client
+2.5  ✅ COMPLET — Bugs corrigés + écrans client
+     → BUG 1 corrigé ✅ (475274c)
+       SIGNED_IN — useRef stale closure
+     → BUG 2 corrigé ✅ (b4ec2ba)
+       wallet table name — wallets → wallet
+     → BUG 3 corrigé ✅ (9f22d9d)
+       document_reminders UNIQUE constraint
+     → CreateMissionScreen testé ✅
+       Formulaire, véhicule, commission OK
+     → Tests reportés session 4.x notés ✅
+       Trouver un chauffeur / Tracking / Rating
+     → BUG 4 noté ⚠️ — session 2.7
 2.6  ⏳ Tester écrans driver
-2.7  ⏳ Tester écrans admin
+2.7  ⏳ Tester écrans admin + investiguer BUG 4
 2.8  ⏳ Créer buckets Storage restants
 2.9  ⏳ Configurer CRON reminders
 2.10 ⏳ Activer Realtime tables
@@ -698,7 +805,7 @@ RÈGLES CRITIQUES :
 - Backup obligatoire avant toute modification
 - Ne jamais retester ce qui est écarté
 - Ne jamais modifier ce qui fonctionne
-- Prochain timestamp migration : 20260504000003
+- Prochain timestamp migration : 20260504000004
 
 OBJECTIF SESSION :
 [Décrire précisément]
