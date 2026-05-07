@@ -33,7 +33,7 @@ export default function DriverHomeScreen({ route, navigation }: Props) {
   useEffect(() => {
     const fetchWallet = async () => {
       const { data } = await supabase
-        .from('wallets')
+        .from('wallet')
         .select('balance')
         .eq('driver_id', driverId)
         .single();
