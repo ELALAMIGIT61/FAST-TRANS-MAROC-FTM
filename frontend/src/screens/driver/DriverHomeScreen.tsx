@@ -19,6 +19,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 type RootStackParamList = {
   DriverHome: { driverId: string; vehicleCategory: VehicleCategory };
   MissionActive: { mission: Record<string, unknown> };
+  WalletDashboard: { driverId: string };
 };
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DriverHome'>;
@@ -106,12 +107,15 @@ export default function DriverHomeScreen({ route, navigation }: Props) {
       </View>
 
       {walletBalance !== null && (
-        <View style={[styles.walletCard, { borderColor: walletColor }]}>
+        <TouchableOpacity
+          style={[styles.walletCard, { borderColor: walletColor }]}
+          onPress={() => navigation.navigate('WalletDashboard', { driverId })}
+        >
           <Text style={styles.walletLabel}>💰 Wallet</Text>
           <Text style={[styles.walletAmount, { color: walletColor }]}>
             {walletBalance.toFixed(2)} DH
           </Text>
-        </View>
+        </TouchableOpacity>
       )}
 
       <View style={styles.toggleCard}>

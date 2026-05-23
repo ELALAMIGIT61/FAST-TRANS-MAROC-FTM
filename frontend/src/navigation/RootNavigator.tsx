@@ -20,6 +20,9 @@ import CreateMissionScreen from "../screens/client/CreateMissionScreen";
 
 // Driver screens
 import DriverHomeScreen from "../screens/driver/DriverHomeScreen";
+import WalletDashboardScreen from "../screens/driver/WalletDashboardScreen";
+import WalletTopupScreen from "../screens/driver/WalletTopupScreen";
+import TransactionHistoryScreen from "../screens/driver/TransactionHistoryScreen";
 import VehicleInfoScreen from "../screens/driver/onboarding/VehicleInfoScreen";
 import LegalDocumentsScreen from "../screens/driver/onboarding/LegalDocumentsScreen";
 import DocumentUploadScreen from "../screens/driver/onboarding/DocumentUploadScreen";
@@ -42,6 +45,9 @@ export type ClientStackParamList = {
 
 export type DriverStackParamList = {
   DriverHome: { driverId: string; vehicleCategory: string };
+  WalletDashboard: { driverId: string };
+  WalletTopup: { walletId: string; currentBalance: number; minimumBalance: number };
+  TransactionHistory: { walletId: string };
 };
 
 export type DriverOnboardingStackParamList = {
@@ -108,6 +114,18 @@ function DriverNavigator({ driverId, vehicleCategory }: { driverId: string; vehi
         name="DriverHome"
         component={DriverHomeScreen as any}
         initialParams={{ driverId, vehicleCategory }}
+      />
+      <DriverStack.Screen
+        name="WalletDashboard"
+        component={WalletDashboardScreen as any}
+      />
+      <DriverStack.Screen
+        name="WalletTopup"
+        component={WalletTopupScreen as any}
+      />
+      <DriverStack.Screen
+        name="TransactionHistory"
+        component={TransactionHistoryScreen as any}
       />
     </DriverStack.Navigator>
   );

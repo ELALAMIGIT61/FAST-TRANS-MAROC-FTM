@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { NativeStackNavigationProp, NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { COLORS } from '../../constants/theme';
 import {
@@ -22,16 +22,12 @@ import {
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type RootStackParamList = {
-  WalletDashboard: undefined;
+  WalletDashboard: { driverId: string };
   WalletTopup: { walletId: string; currentBalance: number; minimumBalance: number };
   TransactionHistory: { walletId: string };
 };
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'WalletDashboard'>;
-
-interface WalletDashboardScreenProps {
-  driverId: string;
-}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -47,7 +43,8 @@ function formatAmount(amount: number): string {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export default function WalletDashboardScreen({ driverId }: WalletDashboardScreenProps) {
+export default function WalletDashboardScreen({ route }: NativeStackScreenProps<RootStackParamList, 'WalletDashboard'>) {
+  const { driverId } = route.params;
   const navigation = useNavigation<NavigationProp>();
   const [dashboard, setDashboard] = useState<DriverDashboard | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -70,7 +67,6 @@ export default function WalletDashboardScreen({ driverId }: WalletDashboardScree
     load().finally(() => setIsLoading(false));
   }, [load]);
 
-  // Realtime subscription
   useEffect(() => {
     if (!dashboard?.wallet_id) return;
     channelRef.current = subscribeToWalletUpdates(
@@ -123,15 +119,12 @@ export default function WalletDashboardScreen({ driverId }: WalletDashboardScree
     >
       <Text style={styles.screenTitle}>💰 Mon Wallet</Text>
 
-      {/* ── Solde Card ── */}
       <View style={styles.balanceCard}>
         <Text style={styles.balanceLabel}>SOLDE ACTUEL</Text>
         <Text style={[styles.balanceAmount, { color: progressColor }]}>
           {formatAmount(balance)} DH
         </Text>
         <Text style={styles.minimumLabel}>Seuil minimum : {formatAmount(minimum)} DH</Text>
-
-        {/* Progress bar */}
         <View style={styles.progressTrack}>
           <View
             style={[
@@ -142,7 +135,6 @@ export default function WalletDashboardScreen({ driverId }: WalletDashboardScree
         </View>
       </View>
 
-      {/* ── Banner blocage ── */}
       {isBlocked && (
         <View style={styles.blockBanner}>
           <Text style={styles.blockBannerTitle}>❌ Wallet insuffisant</Text>
@@ -163,7 +155,6 @@ export default function WalletDashboardScreen({ driverId }: WalletDashboardScree
         </View>
       )}
 
-      {/* ── Statistiques ── */}
       <Text style={styles.sectionTitle}>── STATISTIQUES ──</Text>
       <View style={styles.statsGrid}>
         <View style={styles.statCard}>
@@ -179,7 +170,6 @@ export default function WalletDashboardScreen({ driverId }: WalletDashboardScree
         <View style={styles.statCard}>
           <Text style={styles.statIcon}>🚚</Text>
           <Text style={styles.statValue}>
-            {/* monthly missions not in view — derived from active+pending */}
             {dashboard.active_missions + dashboard.pending_missions}
           </Text>
           <Text style={styles.statLabel}>Ce mois (actives)</Text>
@@ -193,20 +183,17 @@ export default function WalletDashboardScreen({ driverId }: WalletDashboardScree
         </View>
       </View>
 
-      {/* ── Note moyenne ── */}
       <Text style={styles.sectionTitle}>── NOTE MOYENNE ──</Text>
       <Text style={styles.ratingText}>
         ⭐ {dashboard.rating_average?.toFixed(1) ?? '—'} / 5{' '}
         <Text style={styles.ratingSubtext}>({dashboard.total_reviews} avis)</Text>
       </Text>
 
-      {/* ── Revenus mois ── */}
       <Text style={styles.sectionTitle}>── REVENUS CE MOIS ──</Text>
       <Text style={styles.revenueText}>
         {formatAmount(dashboard.revenue_current_month)} DH
       </Text>
 
-      {/* ── CTA Buttons ── */}
       <TouchableOpacity
         style={styles.topupButton}
         onPress={() =>
@@ -239,15 +226,12 @@ const styles = StyleSheet.create({
   content: { padding: 16, paddingBottom: 40 },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   errorText: { color: COLORS.alert ?? '#DC3545', fontSize: 14 },
-
   screenTitle: {
     fontSize: 22,
     fontWeight: '700',
     color: COLORS.text ?? '#1A1A1A',
     marginBottom: 16,
   },
-
-  // Balance card
   balanceCard: {
     backgroundColor: COLORS.white ?? '#FFFFFF',
     borderRadius: 12,
@@ -271,8 +255,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   progressFill: { height: 8, borderRadius: 4 },
-
-  // Block banner
   blockBanner: {
     borderWidth: 1,
     borderColor: COLORS.alert ?? '#DC3545',
@@ -284,8 +266,6 @@ const styles = StyleSheet.create({
   blockBannerTitle: { fontSize: 15, fontWeight: '700', color: COLORS.alert ?? '#DC3545', marginBottom: 4 },
   blockBannerText: { fontSize: 13, color: COLORS.alert ?? '#DC3545', marginBottom: 8 },
   blockBannerCta: { fontSize: 13, fontWeight: '600', color: COLORS.alert ?? '#DC3545', textDecorationLine: 'underline' },
-
-  // Stats
   sectionTitle: {
     fontSize: 12,
     color: COLORS.textSecondary ?? '#777',
@@ -310,15 +290,9 @@ const styles = StyleSheet.create({
   statIcon: { fontSize: 20, marginBottom: 4 },
   statValue: { fontSize: 16, fontWeight: '700', color: COLORS.text ?? '#1A1A1A', marginBottom: 2 },
   statLabel: { fontSize: 11, color: COLORS.textSecondary ?? '#777', textAlign: 'center' },
-
-  // Rating
   ratingText: { fontSize: 18, fontWeight: '600', color: COLORS.text ?? '#1A1A1A', marginBottom: 4 },
   ratingSubtext: { fontSize: 13, color: COLORS.textSecondary ?? '#777', fontWeight: '400' },
-
-  // Revenue
   revenueText: { fontSize: 20, fontWeight: '700', color: COLORS.success ?? '#28A745', marginBottom: 4 },
-
-  // CTA
   topupButton: {
     backgroundColor: COLORS.cta ?? '#FFC107',
     borderRadius: 10,
