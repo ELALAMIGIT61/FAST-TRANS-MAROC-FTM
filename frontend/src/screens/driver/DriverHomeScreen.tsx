@@ -20,6 +20,7 @@ type RootStackParamList = {
   DriverHome: { driverId: string; vehicleCategory: VehicleCategory };
   MissionActive: { mission: Record<string, unknown> };
   WalletDashboard: { driverId: string };
+  DocumentStatus: undefined;
 };
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DriverHome'>;
@@ -133,6 +134,13 @@ export default function DriverHomeScreen({ route, navigation }: Props) {
         </View>
       </View>
 
+      <TouchableOpacity
+        style={styles.documentsButton}
+        onPress={() => navigation.navigate('DocumentStatus')}
+      >
+        <Text style={styles.documentsButtonText}>📄 Mes documents</Text>
+      </TouchableOpacity>
+
       {pendingMission && (
         <NewMissionModal
           mission={pendingMission}
@@ -188,4 +196,18 @@ const styles = StyleSheet.create({
   toggleStatus: { fontSize: 17, fontWeight: '700' },
   statusOn: { color: COLORS.success ?? '#38A169' },
   statusOff: { color: COLORS.textSecondary },
+  documentsButton: {
+    backgroundColor: COLORS.surface,
+    borderRadius: BORDER_RADIUS.md,
+    padding: SPACING.md,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    marginBottom: SPACING.md,
+  },
+  documentsButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: COLORS.text,
+  },
 });

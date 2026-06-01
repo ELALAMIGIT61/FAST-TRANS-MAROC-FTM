@@ -23,6 +23,7 @@ import DriverHomeScreen from "../screens/driver/DriverHomeScreen";
 import WalletDashboardScreen from "../screens/driver/WalletDashboardScreen";
 import WalletTopupScreen from "../screens/driver/WalletTopupScreen";
 import TransactionHistoryScreen from "../screens/driver/TransactionHistoryScreen";
+import DocumentStatusScreen from "../screens/driver/DocumentStatusScreen";
 import VehicleInfoScreen from "../screens/driver/onboarding/VehicleInfoScreen";
 import LegalDocumentsScreen from "../screens/driver/onboarding/LegalDocumentsScreen";
 import DocumentUploadScreen from "../screens/driver/onboarding/DocumentUploadScreen";
@@ -48,6 +49,7 @@ export type DriverStackParamList = {
   WalletDashboard: { driverId: string };
   WalletTopup: { walletId: string; currentBalance: number; minimumBalance: number };
   TransactionHistory: { walletId: string };
+  DocumentStatus: undefined;
 };
 
 export type DriverOnboardingStackParamList = {
@@ -126,6 +128,10 @@ function DriverNavigator({ driverId, vehicleCategory }: { driverId: string; vehi
       <DriverStack.Screen
         name="TransactionHistory"
         component={TransactionHistoryScreen as any}
+      />
+      <DriverStack.Screen
+        name="DocumentStatus"
+        component={DocumentStatusScreen as any}
       />
     </DriverStack.Navigator>
   );
