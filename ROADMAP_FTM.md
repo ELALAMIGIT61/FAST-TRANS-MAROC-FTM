@@ -1,6 +1,6 @@
 # ROADMAP FTM — Document de Référence Sessions Claude
 # Fast Trans Maroc — Application Mobile Marocaine
-# Dernière mise à jour : 07/05/2026
+# Dernière mise à jour : 01/06/2026
 
 ---
 
@@ -20,7 +20,7 @@ Codespaces  : zany-disco-jj95647gqv473pj9
 ✅ Toujours utiliser npx expo install pour packages Expo
 ✅ .env doit être dans frontend/ (pas à la racine)
 ✅ Migrations : timestamps uniques obligatoires
-   Prochain timestamp ≥ 20260504000004
+   Prochain timestamp ≥ 20260504000006
    Jamais via SQL Editor directement
    Toujours via GitHub Actions
 ✅ 1 session Claude = 1 objectif précis
@@ -134,6 +134,13 @@ SUPABASE_URL           ✅
 ---
 
 ## 5. HISTORIQUE COMMITS CLÉS
+0207e97 fix: add DocumentStatusScreen to driver navigation
+        + add Mes documents button ✅ session 2.6
+8c5d8c5 fix: add RLS INSERT policy on transactions table ✅ session 2.6
+cac7f4d fix: drop and recreate driver_dashboard view
+        fix column order error SQLSTATE 42P16 ✅ session 2.6
+884f00e fix: connect wallet screens to driver navigation
+        + fix driver_dashboard view missing columns ✅ session 2.6
 9f22d9d fix: add UNIQUE constraint on
         document_reminders (driver_id, document_type)
         enables upsert ON CONFLICT ✅ session 2.5
@@ -489,8 +496,10 @@ Ne pas retester pour la page blanche :
 20260504000001_create_driver_documents_bucket.sql    ✅ Session 2.4
 20260504000002_storage_rls_policies.sql              ✅ Session 2.4
 20260504000003_add_unique_constraint_document_reminders.sql ✅ Session 2.5
+20260504000004_update_driver_dashboard_view.sql              ✅ Session 2.6
+20260504000005_add_transactions_insert_policy.sql            ✅ Session 2.6
 
-Prochain timestamp disponible : 20260504000004
+Prochain timestamp disponible : 20260504000006
 
 ---
 
@@ -614,7 +623,9 @@ FAST-TRANS-MAROC-FTM/
 │       ├── 20260429000002_allow_null_legal_docs_fields.sql
 │       ├── 20260504000001_create_driver_documents_bucket.sql
 │       ├── 20260504000002_storage_rls_policies.sql
-│       └── 20260504000003_add_unique_constraint_document_reminders.sql
+│       ├── 20260504000003_add_unique_constraint_document_reminders.sql
+│       ├── 20260504000004_update_driver_dashboard_view.sql
+│       └── 20260504000005_add_transactions_insert_policy.sql
 ├── .env.example
 ├── .gitignore
 ├── install_P1_files.sh
@@ -649,6 +660,17 @@ CRON reminders   : ⏳ à planifier dans Supabase
 
 ## 14. BUGS RÉSIDUELS
 
+⚠️ BUG A — wallet_update_admin récursion RLS probable
+   Symptôme : Admin ne peut pas mettre à jour le solde wallet
+   Cause probable : politique wallet_update_admin utilise
+              ancienne syntaxe EXISTS (SELECT FROM profiles)
+              → récursion RLS infinie
+   Solution : utiliser get_my_role() = admin
+              Fonction get_my_role() disponible en base
+   Migration prévue : 20260504000006
+   Impact : adminTopupDriverWallet échoue silencieusement
+   À confirmer : session 2.7 avant migration
+
 ⚠️ BUG 4 — SQL UPDATE par phone_number → 0 row
    Symptôme : UPDATE drivers WHERE profile_id =
               (SELECT id FROM profiles
@@ -658,6 +680,22 @@ CRON reminders   : ⏳ à planifier dans Supabase
    Impact   : non bloquant — validation admin
               fonctionne via Table Editor
    À investiguer : session 2.7 (tests écrans admin)
+
+⚠️ NOTES IMPORTANTES WALLET — CONTINUITÉ
+   Logique métier : seul admin peut créditer le solde wallet
+   Commissions : déduites via trigger PostgreSQL côté serveur
+   revenue_current_month : revenus cash chauffeur hors app
+   WalletTopupScreen : transaction enregistrée mais
+                       solde non mis à jour — comportement voulu
+   get_my_role() : fonction disponible en base
+   Wallets Transactions : menu visible dans AdminDashboard
+   Bouton retour web : window.history.back()
+   DocumentStatusScreen : chargement via auth.getUser()
+   Driver test en base :
+     driverId : 52f76d45-0f5a-4cbc-9564-80368522f5c4
+     is_verified = true
+     license_plate : 12345-A-1
+     NE PAS SUPPRIMER
 
 ---
 
@@ -705,7 +743,7 @@ TEST 3 — RatingScreen
    Tous nécessitent GPS + device physique
 
 RESTANT À FAIRE ⏳ :
-→ Écrans driver complets (session 2.6)
+→ Écrans driver complets (session 2.6) ✅ FAIT
 → Écrans admin complets (session 2.7)
 → Buckets Storage restants (session 2.8)
 → CRON reminders (session 2.9)
@@ -757,8 +795,20 @@ PHASE 2 — TESTS & DEBUGGING
      → Tests reportés session 4.x notés ✅
        Trouver un chauffeur / Tracking / Rating
      → BUG 4 noté ⚠️ — session 2.7
-2.6  ⏳ Tester écrans driver
+2.6  ✅ COMPLET — Tests écrans driver réalisés
 2.7  ⏳ Tester écrans admin + investiguer BUG 4
+     PRIORITÉS SESSION 2.7 :
+     → Explorer écran admin "Wallets & Transactions"
+       Confirmer si adminTopupDriverWallet connecté
+     → Confirmer BUG A récursion RLS wallet_update_admin
+       Tester adminTopupDriverWallet — observer erreur
+     → Créer migration 20260504000006 si confirmé
+       DROP POLICY wallet_update_admin
+       CREATE POLICY avec get_my_role() = admin
+     → Tester tous les écrans admin
+       Documents en attente, Toutes missions
+       Gestion utilisateurs, Wallets & Transactions
+     → Investiguer BUG 4 — UPDATE par phone_number
 2.8  ⏳ Créer buckets Storage restants
 2.9  ⏳ Configurer CRON reminders
 2.10 ⏳ Activer Realtime tables
@@ -777,6 +827,17 @@ PHASE 5 — BUILD EAS
 5.1 ⏳ Configurer app.json + eas.json
 5.2 ⏳ Build Android (.aab)
 5.3 ⏳ Build iOS (.ipa)
+
+PHASE 7 — AMÉLIORATIONS POST-TESTS
+7.1 ⏳ Modes de paiement multiples wallet
+    virement bancaire, agences transfert, paiement en ligne
+7.2 ⏳ Workflow validation recharge par admin
+    chauffeur soumet demande + pièce justificative
+    admin valide — solde crédité après validation
+7.3 ⏳ Remboursements — flux dédié
+7.4 ⏳ Bouton déconnexion CLIENT + DRIVER + ADMIN
+7.5 ⏳ Refonte WalletTopupScreen
+    soumettre demande au lieu de créditer directement
 
 PHASE 6 — PUBLICATION
 6.1 ⏳ Google Play Store (25$)
@@ -805,7 +866,7 @@ RÈGLES CRITIQUES :
 - Backup obligatoire avant toute modification
 - Ne jamais retester ce qui est écarté
 - Ne jamais modifier ce qui fonctionne
-- Prochain timestamp migration : 20260504000004
+- Prochain timestamp migration : 20260504000006
 
 OBJECTIF SESSION :
 [Décrire précisément]
