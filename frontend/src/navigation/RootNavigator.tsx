@@ -31,6 +31,8 @@ import PendingVerificationScreen from "../screens/driver/onboarding/PendingVerif
 
 // Admin screens
 import AdminDashboardScreen from "../screens/admin/AdminDashboardScreen";
+import DocumentReviewScreen from "../screens/admin/DocumentReviewScreen";
+import WalletManagementScreen from "../screens/admin/WalletManagementScreen";
 
 import type { AppRoute } from "../types/database";
 
@@ -65,6 +67,8 @@ export type DriverPendingStackParamList = {
 
 export type AdminStackParamList = {
   AdminHome: undefined;
+  DocumentReview: undefined;
+  WalletManagement: undefined;
 };
 
 const AuthStack = createNativeStackNavigator<AuthStackParamList>();
@@ -143,6 +147,14 @@ function AdminNavigator() {
       <AdminStack.Screen
         name="AdminHome"
         component={AdminDashboardScreen as any}
+      />
+      <AdminStack.Screen
+        name="DocumentReview"
+        component={DocumentReviewScreen as any}
+      />
+      <AdminStack.Screen
+        name="WalletManagement"
+        component={WalletManagementScreen as any}
       />
     </AdminStack.Navigator>
   );
