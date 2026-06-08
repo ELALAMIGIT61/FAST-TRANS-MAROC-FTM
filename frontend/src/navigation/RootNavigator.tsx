@@ -241,7 +241,10 @@ export default function RootNavigator() {
         initialRouteRef.current = "AuthStack";
       }
       if (event === "SIGNED_IN" && session?.user) {
-        if (initialRouteRef.current !== "DriverOnboardingStack") {
+        if (
+          initialRouteRef.current !== "DriverOnboardingStack" &&
+          initialRouteRef.current !== "AdminStack"
+        ) {
           initializeApp().then(({ route, driverId, vehicleCategory }) => {
             setInitialRoute(route);
             initialRouteRef.current = route;
