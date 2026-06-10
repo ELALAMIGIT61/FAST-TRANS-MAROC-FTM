@@ -36,16 +36,18 @@ const STATUS_LABELS: Record<string, string> = {
   accepted: '✅ Acceptée',
   in_progress: '🚛 En cours',
   completed: '🏁 Terminée',
-  cancelled: '❌ Annulée',
+  cancelled_client: '❌ Annulée (client)',
+  cancelled_driver: '❌ Annulée (chauffeur)',
 };
 
-const STATUS_FILTERS = ['all', 'pending', 'in_progress', 'completed', 'cancelled'];
+const STATUS_FILTERS = ['all', 'pending', 'in_progress', 'completed', 'cancelled_client', 'cancelled_driver'];
 const FILTER_LABELS: Record<string, string> = {
   all: 'Toutes',
   pending: 'En attente',
   in_progress: 'En cours',
   completed: 'Terminées',
-  cancelled: 'Annulées',
+  cancelled_client: 'Annulées (client)',
+  cancelled_driver: 'Annulées (chauffeur)',
 };
 
 export default function AdminMissionsScreen() {
