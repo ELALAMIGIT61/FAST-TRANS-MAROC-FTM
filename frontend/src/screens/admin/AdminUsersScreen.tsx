@@ -35,16 +35,13 @@ export default function AdminUsersScreen() {
   const handleToggleActive = async (driver: DriverUser) => {
     const newStatus = driver.profiles.is_active === false;
     const action = newStatus ? 'activer' : 'suspendre';
-    Alert.alert('Confirmation', 'Voulez-vous ' + action + ' le compte de ' + driver.profiles.full_name + ' ?', [
-      { text: 'Annuler', style: 'cancel' },
-      { text: 'Confirmer', style: newStatus ? 'default' : 'destructive', onPress: async () => {
-        setProcessing(driver.id);
-        const result = await toggleUserActive(driver.profiles.id, newStatus);
-        if (result.success) { await loadUsers(); }
-        else { Alert.alert('Erreur', result.error ?? 'Une erreur est survenue'); }
-        setProcessing(null);
-      }},
-    ]);
+    const confirmed = window.confirm('Voulez-vous ' + action + ' le compte de ' + driver.profiles.full_name + ' ?');
+    if (confirmed === false) return;
+    setProcessing(driver.id);
+    const result = await toggleUserActive(driver.profiles.id, newStatus);
+    if (result.success) { await loadUsers(); }
+    else { window.alert('Erreur : ' + (result.error ?? 'Une erreur est survenue')); }
+    setProcessing(null);
   };
   const renderUserCard = ({ item }: { item: DriverUser }) => (
     <View style={styles.card}>
