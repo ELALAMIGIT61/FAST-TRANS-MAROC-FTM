@@ -1,6 +1,6 @@
 # ROADMAP FTM — Document de Référence Sessions Claude
 # Fast Trans Maroc — Application Mobile Marocaine
-# Dernière mise à jour : 10/06/2026
+# Dernière mise à jour : 13/06/2026
 
 ---
 
@@ -20,7 +20,7 @@ Codespaces  : zany-disco-jj95647gqv473pj9
 ✅ Toujours utiliser npx expo install pour packages Expo
 ✅ .env doit être dans frontend/ (pas à la racine)
 ✅ Migrations : timestamps uniques obligatoires
-   Prochain timestamp ≥ 20260504000009
+   Prochain timestamp ≥ 20260504000011
    Jamais via SQL Editor directement
    Toujours via GitHub Actions
 ✅ 1 session Claude = 1 objectif précis
@@ -57,9 +57,21 @@ Codespaces  : zany-disco-jj95647gqv473pj9
 ⚠️ COMPTE ADMIN +212600000001
    NE JAMAIS SUPPRIMER CE PROFIL
    Même entre les tests
-⚠️ COMPTE DRIVER +212600000000
-   NE JAMAIS SUPPRIMER CE PROFIL
-   Profil en base lié au driver test
+⚠️ NUMÉRO PARTAGÉ +212600000000 — CLIENT OU DRIVER (exclusif)
+   Le même numéro ne peut avoir qu'UN profil actif à la fois
+   (recherche par user_id, suppression Auth = cascade profil/driver)
+
+   Session 2.8 : profil DRIVER (1b6e684e-..., wallet 200 DH,
+   vérifié) → SUPPRIMÉ pour tester CLIENT (ordre DRIVER→ADMIN→CLIENT)
+   Profil CLIENT actuel : 86c76d5f-... (role='client')
+
+   Si un test DRIVER est à nouveau nécessaire :
+   1. Supprimer +212600000000 dans Supabase Auth
+   2. Reconnexion → ProfileSetupScreen → sélectionner "Driver"
+   3. Remplir à nouveau les 4 pages onboarding :
+      VehicleInfo → LegalDocuments → DocumentUpload → PendingVerification
+   4. Validation admin requise pour is_verified=true
+   5. Wallet 200 DH à recréditer manuellement si besoin
 ⚠️ window.history.back() ne fonctionne pas
    toujours sur web
    Utiliser le bouton "← Retour" (navigation.goBack())
@@ -120,6 +132,13 @@ Storage           : ✅ Bucket driver-documents créé
                     5 MB max — jpeg/png/pdf
                     RLS policies configurées
                     commits 7222601 + c39cafb
+                    ✅ Bucket voice-messages créé — session 2.8
+                    5 MB max — audio/m4a, mp4, mpeg, wav, x-m4a
+                    RLS policies configurées (4)
+                    commit 5ee383e
+                    ⚠️ Infrastructure créée mais NON testée
+                    fonctionnellement (audioService.ts non
+                    référencé dans aucun screen — voir item 4.4)
 Connexion Supabase: ✅ .env configuré dans frontend/
 Token Supabase    : ✅ Renouvelé le 29/04/2026
                     Nom : FTM_GITHUB_ACTIONS
@@ -134,12 +153,14 @@ Mode test OTP     : ✅ configuré (MessageBird fictif)
    UPDATE profiles SET role='admin'
    WHERE phone_number='+212600000001'
    NE PAS SUPPRIMER CE PROFIL
-⚠️ DRIVER TEST EN BASE :
-   driverId : 1b6e684e-08cb-4a97-9675-f3e94f677c96
-   is_verified = true
-   license_plate : 12345-A-1
-   wallet : 200 DH (rechargé session 2.7)
-   NE PAS SUPPRIMER CE DRIVER
+⚠️ DRIVER TEST — SUPPRIMÉ session 2.8 :
+   driverId : 1b6e684e-08cb-4a97-9675-f3e94f677c96 (SUPPRIMÉ ❌)
+   Cascade Auth lors suppression +212600000000 pour test CLIENT
+   Voir §2 "NUMÉRO PARTAGÉ +212600000000" pour procédure de recréation
+
+⚠️ CLIENT TEST EN BASE — session 2.8 :
+   profileId : 86c76d5f-8772-48d3-bdf0-0a4ebb2ec4ae
+   role : 'client', isActive : true
 ⚠️ SIGNED_IN répétés en console admin :
    Comportement normal Supabase web
    via refresh token périodique
@@ -159,6 +180,11 @@ SUPABASE_URL           ✅
 ---
 
 ## 5. HISTORIQUE COMMITS CLÉS
+5ee383e feat: create voice-messages storage bucket
+        and RLS policies ✅ session 2.8
+aed0bee fix: replace Alert.alert with window.confirm
+        in AdminUsersScreen for web compatibility
+        ✅ session 2.8
 750db88 fix: correct mission_status enum values
         in AdminMissionsScreen ✅ session 2.7
 626e851 feat: add AdminMissions and AdminUsers
@@ -379,6 +405,55 @@ Correction enum mission_status :
 
 ---
 
+### SESSION 2.8 — commits aed0bee → 5ee383e
+
+#### `frontend/src/screens/admin/AdminUsersScreen.tsx` — commit aed0bee
+Correction bug "Suspendre" non fonctionnel sur web :
+  Cause : Alert.alert() (React Native) ne s'affiche pas sur web
+          → clic silencieux, aucun appel réseau
+  Correctif handleToggleActive() :
+    Alert.alert(...) → window.confirm(...)
+    if (confirmed === false) return;
+    Erreurs → window.alert() au lieu de Alert.alert()
+  Backup : AdminUsersScreen.tsx.bak.session2.8 (6585 bytes)
+  Tests confirmés :
+    "Annuler" ×2 → aucune action ✅
+    "Suspendre"+OK → badge "Suspendu", isActive:false,
+      driver availability reset ✅
+    "Activer"+OK → badge "Actif", isActive:true ✅
+
+#### Migrations `20260504000009` + `20260504000010` — commit 5ee383e
+Création bucket voice-messages + RLS policies :
+  20260504000009 : INSERT storage.buckets
+    id/name: voice-messages, privé, 5MB,
+    types: audio/m4a, mp4, mpeg, wav, x-m4a
+  20260504000010 : 4 policies storage.objects
+    (INSERT/SELECT/UPDATE/DELETE, bucket_id='voice-messages',
+    authenticated) — même modèle que driver-documents
+  Justification : audioService.ts (uploadVoiceMessage,
+    loadVoiceMessages) référence ce bucket — confirmé
+    par grep exhaustif (screens + services + edge functions)
+  Vérifié en base : storage.buckets (2 lignes),
+    pg_policies storage.objects (8/8)
+  ⚠️ Non testé fonctionnellement — audioService.ts non
+    intégré dans l'UI (aucun screen ne l'appelle)
+
+#### Test CLIENT — `CreateMissionScreen` (session 2.8)
+Procédure :
+  Suppression +212600000000 Auth → cascade suppression
+  profil/driver 1b6e684e-... → reconnexion → ProfileSetupScreen
+  → "Client" → nouveau profil 86c76d5f-...
+Formulaire rempli et fonctionnel (Avenue Mohammed V/RABAT/
+  VUL/1000 DH/commission 25 DH) ✅
+Bouton "Trouver un chauffeur" — CONFIRMÉ désactivé :
+  [FTM-DEBUG] GPS - Client location permission denied
+  pickupCoords === null → bouton grisé
+Tentative déblocage permission navigateur (Bloqué→Demander)
+  → permission denied persiste → limitation environnement
+  Codespaces/iframe confirmée (pas un bug applicatif)
+
+---
+
 ## 7. CHAÎNE DE NAVIGATION DRIVER
 ProfileSetupScreen
   → onProfileCreated(role='driver')
@@ -585,7 +660,9 @@ Ne pas retester :
 ❌ react-native-screens sans fallback web
 ❌ NativeStackScreenProps sans type
 ❌ Dépendance circulaire missionService
-❌ audioService / expo-av
+❌ audioService / expo-av (contexte : débogage page blanche
+   session 2.x — N'IMPLIQUE PAS l'abandon de la fonctionnalité
+   messages vocaux, voir item 4.4)
 ❌ supabaseClient.ts
 ❌ showAuth logique incorrecte
 ❌ ErrorBoundary capture l'erreur
@@ -613,8 +690,10 @@ Ne pas retester :
 20260504000006_fix_wallet_update_admin_rls.sql       ✅ Session 2.7
 20260504000007_fix_notifications_insert_rls.sql      ✅ Session 2.7
 20260504000008_fix_notifications_select_admin.sql    ✅ Session 2.7
+20260504000009_create_voice_messages_bucket.sql      ✅ Session 2.8
+20260504000010_voice_messages_storage_rls_policies.sql ✅ Session 2.8
 
-Prochain timestamp disponible : 20260504000009
+Prochain timestamp disponible : 20260504000011
 
 ---
 
@@ -743,7 +822,9 @@ FAST-TRANS-MAROC-FTM/
 │       ├── 20260504000005_add_transactions_insert_policy.sql
 │       ├── 20260504000006_fix_wallet_update_admin_rls.sql
 │       ├── 20260504000007_fix_notifications_insert_rls.sql
-│       └── 20260504000008_fix_notifications_select_admin.sql
+│       ├── 20260504000008_fix_notifications_select_admin.sql
+│       ├── 20260504000009_create_voice_messages_bucket.sql
+│       └── 20260504000010_voice_messages_storage_rls_policies.sql
 ├── .env.example
 ├── .gitignore
 ├── ROADMAP_FTM.md
@@ -759,12 +840,14 @@ FCM Android      : ⏳ pas encore configuré
                    sur device physique uniquement
 APNs iOS         : ⏳ pas encore configuré
 Storage buckets  : ✅ driver-documents créé
-                   ⏳ autres buckets à créer session 2.8
+                   ✅ voice-messages créé — session 2.8
+                   ⚠️ voice-messages non testé fonctionnellement
+                   (audioService.ts non intégré UI — item 4.4)
 CRON reminders   : ⏳ à planifier dans Supabase
 
 ---
 
-## 15. BUGS RÉSIDUELS — SESSION 2.8
+## 15. BUGS RÉSIDUELS — SESSION 2.9
 
 ⚠️ CORS send-push-notification
    Edge Function bloquée par CORS policy sur web
@@ -772,13 +855,11 @@ CRON reminders   : ⏳ à planifier dans Supabase
    Fonctionnel sur device physique
    À corriger pour production
 
-⚠️ Bouton "Suspendre" AdminUsersScreen
-   Affiché ✅ mais action non testée
-   fonctionnellement (aucun test de suspension)
-
 ⚠️ Filtres AdminMissionsScreen
    Affichés ✅ mais aucune mission en base
-   pour tester les résultats filtrés
+   Cause CONFIRMÉE (session 2.8) : pickupCoords=null,
+   géolocalisation bloquée en environnement web/Codespaces
+   → reporté phase 4.x avec TEST 1/2/3
 
 ⚠️ Realtime driver end-to-end
    Navigation directe DriverHomeScreen ✅
@@ -787,11 +868,27 @@ CRON reminders   : ⏳ à planifier dans Supabase
 
 ⚠️ AdminMissions pagination
    Non testée — 0 missions en base
+   (même cause que ci-dessus)
 
 ⚠️ WalletTopupScreen
    Transaction enregistrée ✅
    Solde non mis à jour — comportement voulu
-   Refonte prévue Phase 7.2
+   Refonte prévue Phase 6.5
+
+⚠️ NOUVEAU — Point sécurité 6.6 (session 2.8)
+   RLS Storage permissif sur driver-documents +
+   voice-messages : tout utilisateur authenticated peut
+   lire/écrire/modifier/supprimer N'IMPORTE QUEL fichier
+   (pas de vérification auth.uid()/propriété/mission)
+   À traiter avant production — voir item 6.6
+
+⚠️ NOUVEAU — voice-messages non testé fonctionnellement
+   (session 2.8) — audioService.ts non intégré UI,
+   voir item 4.4
+
+⚠️ NOUVEAU — Driver test supprimé (session 2.8)
+   1b6e684e-... supprimé (cascade Auth, test client)
+   Si test DRIVER nécessaire → voir §2 procédure recréation
 
 ---
 
@@ -830,6 +927,20 @@ TEST 1 — Bouton "Trouver un chauffeur"
 TEST 2 — MissionTrackingScreen
 TEST 3 — RatingScreen
 ⚠️ Ces 3 tests forment une chaîne indissociable
+⚠️ Session 2.8 : TEST 1 — cause CONFIRMÉE par logs directs
+   [FTM-DEBUG] GPS - Client location permission denied
+   Bouton désactivé tant que pickupCoords===null
+   Persiste même après changement permission navigateur
+   → limitation environnement Codespaces/iframe confirmée
+
+TESTS EFFECTUÉS ET CONFIRMÉS ✅ — SESSION 2.8 :
+AdminUsersScreen — bouton Suspendre/Activer :
+  "Annuler" ×2 → aucune action ✅
+  "Suspendre"+OK → badge "Suspendu" ✅
+  "Activer"+OK → badge "Actif" ✅
+CreateMissionScreen — formulaire complet rempli
+  et fonctionnel ✅ (bouton soumission bloqué par
+  limitation GPS — voir ci-dessus)
 
 ---
 
@@ -852,10 +963,15 @@ PHASE 2 — TESTS & DEBUGGING
      → adminTopupDriverWallet confirmé ✅
      → Non-régression CLIENT + DRIVER + ADMIN ✅
      → BUG 4 INFIRMÉ ✅
-2.8  ⏳ Bugs résiduels section 15
-     + Créer buckets Storage restants
-     + Tester bouton Suspendre AdminUsers
-     + Tester avec missions réelles
+2.8  ✅ COMPLET — Bugs résiduels session 2.7
+     → Bug "Suspendre" AdminUsers corrigé et testé ✅
+       (Alert.alert → window.confirm, commit aed0bee)
+     → Bucket voice-messages créé + RLS ✅ (commit 5ee383e)
+     → Test AdminMissions avec missions réelles : cause
+       GPS confirmée par logs, reporté phase 4.x ✅
+     → Point sécurité 6.6 identifié (RLS Storage permissif)
+     → Driver test supprimé (cascade, test client) —
+       voir §2 procédure recréation
 2.9  ⏳ Configurer CRON reminders
 2.10 ⏳ Activer Realtime tables
 
@@ -868,6 +984,11 @@ PHASE 4 — TESTS DEVICE PHYSIQUE
 4.1 ⏳ Tests Expo Go Android
 4.2 ⏳ Tests Expo Go iOS
 4.3 ⏳ Tests utilisateurs réels
+4.4 ⏳ Intégrer messages vocaux dans MissionTrackingScreen
+    (audioService.ts + bucket voice-messages prêts —
+    session 2.8) — UI à construire : bouton enregistrement,
+    liste lecture — à traiter avec TEST 2 (nécessite
+    device physique + mission active)
 
 PHASE 5 — BUILD EAS
 5.1 ⏳ Configurer app.json + eas.json
@@ -883,6 +1004,12 @@ PHASE 6 — AMÉLIORATIONS POST-TESTS
 6.4 ⏳ Bouton déconnexion CLIENT + DRIVER + ADMIN
 6.5 ⏳ Refonte WalletTopupScreen
     soumettre demande au lieu de créditer directement
+6.6 ⏳ SÉCURITÉ — Renforcer RLS Storage
+    (driver-documents + voice-messages) — session 2.8
+    Actuellement : tout utilisateur authenticated peut
+    lire/écrire/supprimer N'IMPORTE QUEL fichier (pas de
+    vérification auth.uid()/propriété/mission)
+    À traiter avant mise en production réelle
 
 PHASE 7 — PUBLICATION
 7.1 ⏳ Google Play Store (25$)
@@ -911,7 +1038,7 @@ RÈGLES CRITIQUES :
 - Backup obligatoire avant toute modification
 - Ne jamais retester ce qui est écarté
 - Ne jamais modifier ce qui fonctionne
-- Prochain timestamp migration : 20260504000009
+- Prochain timestamp migration : 20260504000011
 
 OBJECTIF SESSION :
 [Décrire précisément]
