@@ -1,6 +1,6 @@
-# ROADMAP FTM — Document de Référence Sessions Claude
+# ROADMAP-DOCUMENT DE REFERENCE SESSION CLAUDE — FAST TRANS MAROC — VERSION 23/06/2026
 # Fast Trans Maroc — Application Mobile Marocaine
-# Dernière mise à jour : 13/06/2026
+# Dernière mise à jour : 23/06/2026
 
 ---
 
@@ -20,7 +20,7 @@ Codespaces  : zany-disco-jj95647gqv473pj9
 ✅ Toujours utiliser npx expo install pour packages Expo
 ✅ .env doit être dans frontend/ (pas à la racine)
 ✅ Migrations : timestamps uniques obligatoires
-   Prochain timestamp ≥ 20260504000011
+   Prochain timestamp ≥ 20260504000012
    Jamais via SQL Editor directement
    Toujours via GitHub Actions
 ✅ 1 session Claude = 1 objectif précis
@@ -35,6 +35,9 @@ Codespaces  : zany-disco-jj95647gqv473pj9
    tout replace() Python3
 ✅ Si replace() échoue → réécrire le fichier entier
    Ne jamais tâtonner avec replace() successifs
+✅ Vérifier contenu exact d'un fichier via repr() Python
+   Ne jamais se fier à cat pour les lignes longues
+   (cat tronque les lignes — trompeur)
 ✅ git pull --rebase origin main avant tout push
    (ROADMAP mise à jour directement sur GitHub)
 ✅ Backup obligatoire avant chaque modification
@@ -63,9 +66,17 @@ Codespaces  : zany-disco-jj95647gqv473pj9
 
    Session 2.8 : profil DRIVER (1b6e684e-..., wallet 200 DH,
    vérifié) → SUPPRIMÉ pour tester CLIENT (ordre DRIVER→ADMIN→CLIENT)
-   Profil CLIENT actuel : 86c76d5f-... (role='client')
+   Session 2.9 : +212600000000 recréé en mode DRIVER
+   driverId : 29849a0a-5017-4eda-99d4-2c4f5c75a6c3
+   is_verified = true (validé admin session 2.9)
+   État actuel : mode DRIVER actif
 
-   Si un test DRIVER est à nouveau nécessaire :
+   Si un test CLIENT est à nouveau nécessaire :
+   1. Supprimer +212600000000 dans Supabase Auth
+   2. Reconnexion → ProfileSetupScreen → sélectionner "Client"
+
+   Si un test DRIVER est à nouveau nécessaire
+   (depuis un état CLIENT) :
    1. Supprimer +212600000000 dans Supabase Auth
    2. Reconnexion → ProfileSetupScreen → sélectionner "Driver"
    3. Remplir à nouveau les 4 pages onboarding :
@@ -75,6 +86,29 @@ Codespaces  : zany-disco-jj95647gqv473pj9
 ⚠️ window.history.back() ne fonctionne pas
    toujours sur web
    Utiliser le bouton "← Retour" (navigation.goBack())
+✅ vault.create_secret(valeur, nom, description)
+   Ordre exact : valeur en PREMIER, nom en SECOND
+   Toujours vérifier avec SELECT name FROM vault.secrets
+   immédiatement après création
+✅ timeout_milliseconds := 30000 pour net.http_post
+   Le timeout par défaut 5000 ms est insuffisant
+   en cas de cold start Edge Function Supabase
+✅ cron.unschedule() WHERE EXISTS
+   Pattern obligatoire dans toute migration
+   qui recrée un CRON job — évite les erreurs de doublon
+✅ Diagnostic structuré obligatoire
+   Établir un plan d'investigation complet et priorisé
+   avant tout test — tester maillon par maillon dans l'ordre
+✅ net.http_post → 401 persistant
+   Première hypothèse : vérifier la clé Vault
+   (longueur et comparaison directe avec Dashboard)
+   pas uniquement le nom
+✅ cron.job_run_details
+   Table pg_cron contenant l'historique des exécutions
+   avec statut et timestamps — consulter pour vérifier
+   le fonctionnement réel du CRON
+✅ Vérification git obligatoire
+   Avant et après chaque pause, avant tout commit
 
 ---
 
@@ -147,20 +181,31 @@ Mode test OTP     : ✅ configuré (MessageBird fictif)
                     Numéro test : +212600000000
                     Code fixe   : 123456
                     Valide jusqu'au : 31/12/2026
+Extensions Supabase : ✅ pg_cron 1.6.4 — installée session 2.9
+                      ✅ pg_net 0.19.5 — installée session 2.9
+CRON reminders    : ✅ OPÉRATIONNEL — session 2.9
+                    jobid=2, 0 8 * * *, active=true
+                    timeout_milliseconds := 30000
+                    5 exécutions succeeded : 18→22/06/2026
+                    check-document-reminders appelée quotidiennement
+Vault Supabase    : ✅ Secret supabase_service_role_key
+                    219 caractères — identique Dashboard
+                    Créé session 2.9 (correction ancien secret
+                    incorrect 244 caractères)
 ⚠️ Compte ADMIN test :
    Numéro : +212600000001
    Rôle admin défini via SQL Editor Supabase
    UPDATE profiles SET role='admin'
    WHERE phone_number='+212600000001'
    NE PAS SUPPRIMER CE PROFIL
-⚠️ DRIVER TEST — SUPPRIMÉ session 2.8 :
-   driverId : 1b6e684e-08cb-4a97-9675-f3e94f677c96 (SUPPRIMÉ ❌)
-   Cascade Auth lors suppression +212600000000 pour test CLIENT
-   Voir §2 "NUMÉRO PARTAGÉ +212600000000" pour procédure de recréation
+⚠️ DRIVER TEST ACTIF — session 2.9 :
+   driverId : 29849a0a-5017-4eda-99d4-2c4f5c75a6c3
+   Numéro : +212600000000
+   role : 'driver', is_verified : true
+   (Remplace 1b6e684e-... supprimé en session 2.8)
+   document_reminders : vidées après tests session 2.9
+   notifications document_expiry : supprimées après tests
 
-⚠️ CLIENT TEST EN BASE — session 2.8 :
-   profileId : 86c76d5f-8772-48d3-bdf0-0a4ebb2ec4ae
-   role : 'client', isActive : true
 ⚠️ SIGNED_IN répétés en console admin :
    Comportement normal Supabase web
    via refresh token périodique
@@ -180,6 +225,8 @@ SUPABASE_URL           ✅
 ---
 
 ## 5. HISTORIQUE COMMITS CLÉS
+34b32c1 feat: configure CRON job for document expiry
+        reminders - session 2.9 ✅
 5ee383e feat: create voice-messages storage bucket
         and RLS policies ✅ session 2.8
 aed0bee fix: replace Alert.alert with window.confirm
@@ -454,6 +501,44 @@ Tentative déblocage permission navigateur (Bloqué→Demander)
 
 ---
 
+### SESSION 2.9 — commit 34b32c1
+
+#### Migration `20260504000011` — commit 34b32c1
+Configuration CRON job document expiry reminders :
+  Activation extensions :
+    CREATE EXTENSION IF NOT EXISTS pg_net  → 0.19.5 ✅
+    CREATE EXTENSION IF NOT EXISTS pg_cron → 1.6.4 ✅
+  Secret Vault :
+    vault.create_secret(service_role_key,
+      'supabase_service_role_key',
+      'Service role key for CRON job - FTM')
+    219 caractères — identique Dashboard ✅
+  CRON job :
+    cron.unschedule() WHERE EXISTS (pattern anti-doublon)
+    cron.schedule('check-document-reminders',
+      '0 8 * * *', net.http_post(...,
+      timeout_milliseconds := 30000))
+    jobid=2, active=true ✅
+  Résultat Edge Function :
+    {sent: 3, errors: 0} ✅ (test avec driver 29849a0a-...)
+    Flags reminder_30/15/7_days_sent → true ✅
+    3 notifications document_expiry créées ✅
+  5 exécutions succeeded confirmées : 18→22/06/2026 ✅
+  Nettoyage post-test :
+    notifications document_expiry supprimées
+    document_reminders driver test supprimées
+
+#### Driver test recréé — session 2.9
+  Procédure :
+    +212600000000 supprimé de Auth (était CLIENT 86c76d5f-...)
+    Recréé via app → mode DRIVER — 4 pages onboarding
+    driverId : 29849a0a-5017-4eda-99d4-2c4f5c75a6c3
+    Validation admin +212600000001 → is_verified=true ✅
+    document_reminders créées automatiquement par l'app ✅
+  État actuel : +212600000000 → DRIVER actif
+
+---
+
 ## 7. CHAÎNE DE NAVIGATION DRIVER
 ProfileSetupScreen
   → onProfileCreated(role='driver')
@@ -535,119 +620,300 @@ AdminUsersScreen
 
 ## 9. PROBLÈMES RENCONTRÉS ET RÉSOLUS
 
-PROBLÈME 1 — Page blanche après ajout navigateurs
-Cause    : expo-image-picker absent de package.json
+RÉSOLU 1 — Page blanche web (session 2.2)
+Cause    : BORDER_RADIUS manquant theme.ts
+Correctif: export BORDER_RADIUS ajouté
+Commit   : e7beed2
+
+RÉSOLU 2 — Navigation post-profil (session 2.3)
+Cause    : SIGNED_IN déclenché avant création
+           profil — closure JavaScript —
+           initialRoute figé
+Correctif: callback onProfileCreated depuis
+           ProfileSetupScreen → RootNavigator
+Commits  : 8a78903 + 53725fe + bd7ead0
+
+RÉSOLU 3 — Page blanche après packages (2.4)
+Cause    : expo-image-picker absent package.json
 Correctif: npx expo install expo-image-picker
            expo-document-picker
-Statut   : RÉSOLU ✅ commit c318a92
+Commit   : c318a92
 
-PROBLÈME 2 — Terminal défaillant
+RÉSOLU 4 — Terminal défaillant (session 2.4)
 Cause    : 3ème terminal ouvert manuellement
-Correctif: fermeture + reprise terminal bash
-Statut   : RÉSOLU ✅
+Correctif: fermeture + reprise terminal frontend
 Règle    : 1 terminal de travail uniquement
 
-PROBLÈME 3 — replace() Python3 sans effet
+RÉSOLU 5 — replace() Python3 sans effet
 Cause    : texte cible inexact
 Correctif: vérification via sed avant replace()
-           Si échec → réécrire fichier entier
-Statut   : RÉSOLU ✅
+           Si échec → réécrire le fichier entier
 
-PROBLÈME 4 — driver_license_number NOT NULL
+RÉSOLU 6 — driver_license_number NOT NULL
 Cause    : champ collecté étape 2
            mais contrainte dès étape 1
 Correctif: migration DROP NOT NULL
-Statut   : RÉSOLU ✅ commit 6f7ed8c
+Commit   : 6f7ed8c
 
-PROBLÈME 5 — Champs légaux NOT NULL (5 champs)
+RÉSOLU 7 — Champs légaux NOT NULL (5 champs)
+Cause    : même architecture étape 1 / étape 2
 Correctif: migration DROP NOT NULL × 5
-Statut   : RÉSOLU ✅ commit 1c9af9c
+Commit   : 1c9af9c
 
-PROBLÈME 6 — Passage spontané étape 2 → étape 4
+RÉSOLU 8 — Passage spontané étape 2 → étape 4
+Cause    : SIGNED_IN relançait initializeApp()
+           driver sans license_number
+           → PendingStack immédiatement
 Correctif: condition !driver_license_number
            → OnboardingStack
-Statut   : RÉSOLU ✅ commit a23df8b
+Commit   : a23df8b
 
-PROBLÈME 7 — Passage spontané étape 3 → étape 4
-Correctif: condition !toutes 4 URLs → OnboardingStack
-Statut   : RÉSOLU ✅ commit 6b9dae8
+RÉSOLU 9 — Passage spontané étape 3 → étape 4
+Cause    : SIGNED_IN relançait initializeApp()
+           driver avec license_number
+           mais sans vérifier URLs documents
+Correctif: condition !toutes 4 URLs
+           → OnboardingStack
+Commit   : 6b9dae8
 
-PROBLÈME 8 — DateTimePicker non supporté web
+RÉSOLU 10 — DateTimePicker non supporté web
+Cause    : composant natif mobile uniquement
 Correctif: fallback Platform.OS === 'web'
            → input type="date" HTML natif
-Statut   : RÉSOLU ✅ commit 6b9dae8
+Commit   : 6b9dae8
 
-PROBLÈME 9 — Bucket not found (Storage)
+RÉSOLU 11 — Bucket not found (Storage)
+Cause    : bucket driver-documents non créé
 Correctif: migration SQL CREATE bucket
-Statut   : RÉSOLU ✅ commit 7222601
+Commit   : 7222601
 
-PROBLÈME 10 — RLS Storage bloque upload
+RÉSOLU 12 — RLS Storage bloque upload
+Cause    : bucket sans politique d'accès
 Correctif: migration RLS policies × 4
-Statut   : RÉSOLU ✅ commit c39cafb
+Commit   : c39cafb
 
-PROBLÈME 11 — Token Supabase expiré
+RÉSOLU 13 — Token Supabase expiré
+Cause    : SUPABASE_ACCESS_TOKEN expiré
+           GitHub Actions rejeté "Unauthorized"
 Correctif: nouveau token FTM_GITHUB_ACTIONS
-           Never expires
+           Never expires — mis à jour GitHub Secrets
 Statut   : RÉSOLU ✅ 29/04/2026
 
-PROBLÈME 12 — SIGNED_IN interrompt onboarding étape 3
-Correctif: useRef<AppRoute> + condition
-           !== "DriverOnboardingStack"
-Statut   : RÉSOLU ✅ commit 475274c
+RÉSOLU 14 — SIGNED_IN interrompt onboarding
+           étape 3 (BUG 1 session 2.5)
+Cause    : stale closure — initialRoute capturé
+           dans onAuthStateChange gardait
+           l'ancienne valeur
+           → initializeApp() relancé
+           → PendingStack immédiat
+Correctif: useRef<AppRoute> ajouté
+           initialRouteRef.current synchronisé
+           Condition !== "DriverOnboardingStack"
+           dans SIGNED_IN
+Commit   : 475274c
 
-PROBLÈME 13 — GET /wallets → 404
+RÉSOLU 15 — GET /wallets → 404
+           (BUG 2 session 2.5)
+Cause    : .from('wallets') — 's' en trop
+           Table en base : wallet (sans 's')
 Correctif: .from('wallet') — ligne 36
-Statut   : RÉSOLU ✅ commit b4ec2ba
+           DriverHomeScreen.tsx
+Commit   : b4ec2ba
 
-PROBLÈME 14 — document_reminders ON CONFLICT → 400
-Correctif: migration UNIQUE constraint
-Statut   : RÉSOLU ✅ commit 9f22d9d
+RÉSOLU 16 — document_reminders ON CONFLICT → 400
+           (BUG 3 session 2.5)
+Cause    : contrainte UNIQUE manquante sur
+           (driver_id, document_type)
+           upsert impossible sans contrainte
+Correctif: migration SQL
+           ADD CONSTRAINT UNIQUE
+           (driver_id, document_type)
+Commit   : 9f22d9d
 
-PROBLÈME 15 — BUG A wallet_update_admin RLS récursion
-Cause    : EXISTS (SELECT FROM profiles) → récursion
+RÉSOLU 17 — Écrans wallet non connectés
+           navigation (session 2.6)
+Cause    : WalletDashboard, WalletTopup,
+           TransactionHistory, DocumentStatus
+           absents de DriverStackParamList
+           et DriverNavigator
+Correctif: 4 écrans ajoutés dans RootNavigator
+           imports + params + navigateurs
+Commit   : 884f00e
+
+RÉSOLU 18 — driverId undefined WalletDashboard
+           (session 2.6)
+Cause    : driverId non transmis via route.params
+           NativeStackScreenProps manquant
+Correctif: NativeStackScreenProps ajouté
+           lecture driverId depuis route.params
+Commit   : 884f00e
+
+RÉSOLU 19 — Vue driver_dashboard incomplète
+           SQLSTATE 42P16 (session 2.6)
+Cause    : colonnes manquantes :
+           wallet_id, minimum_balance,
+           is_wallet_blocked,
+           commissions_current_month,
+           revenue_current_month
+Correctif: DROP + CREATE VIEW driver_dashboard
+           5 colonnes ajoutées
+Commit   : cac7f4d
+
+RÉSOLU 20 — Erreur 403 RLS INSERT transactions
+           (session 2.6)
+Cause    : politique RLS manquante pour INSERT
+           sur table transactions
+           pour utilisateurs authenticated
+Correctif: migration RLS INSERT policy
+           pour authenticated
+Commit   : 8c5d8c5
+
+RÉSOLU 21 — DocumentStatusScreen non accessible
+           (session 2.6)
+Cause    : écran absent de la navigation driver
+           bouton manquant dans DriverHomeScreen
+Correctif: ajout dans DriverStackParamList
+           + DriverNavigator
+           + bouton "📄 Mes documents"
+             dans DriverHomeScreen
+Commit   : 0207e97
+
+RÉSOLU 22 — BUG 4 SQL UPDATE phone_number
+           → 0 row — INFIRMÉ (session 2.7)
+Cause    : numéro format +212600000000
+           présent tel quel en base
+           UPDATE fonctionne correctement
+Statut   : INFIRMÉ ✅ — non reproduit
+
+RÉSOLU 23 — BUG A wallet_update_admin
+           récursion RLS (session 2.7)
+Cause    : EXISTS (SELECT FROM profiles)
+           → récursion RLS infinie
 Correctif: get_my_role() = 'admin'
-Statut   : RÉSOLU ✅ commit d420007
-           Confirmé : balanceBefore: 0, balanceAfter: 200
+           Fonction SECURITY DEFINER
+Commit   : d420007
+Confirmé : balanceBefore: 0
+           balanceAfter: 200 DH ✅
 
-PROBLÈME 16 — Navigation admin 4 menus silencieuse
-Cause    : AdminNavigator ne contenait qu'AdminHome
-           4 routes inexistantes dans le stack
-Correctif: Déclarer tous les écrans dans AdminNavigator
-Statut   : RÉSOLU ✅ commits 4ff3499 + 626e851
+RÉSOLU 24 — Navigation admin 4 menus
+           silencieuse (session 2.7)
+Cause    : AdminNavigator ne contenait
+           qu'AdminHome — 4 routes absentes
+Correctif: Déclarer tous les écrans
+           dans AdminNavigator
+Commits  : 4ff3499 + 626e851
 
-PROBLÈME 17 — SIGNED_IN loop admin
+RÉSOLU 25 — SIGNED_IN loop admin
+           (session 2.7)
 Cause    : Condition !== "DriverOnboardingStack"
            ne couvrait pas AdminStack
-           Supabase envoie SIGNED_IN périodiques
-           via refresh token sur web
 Correctif: Ajouter && !== "AdminStack"
-Statut   : RÉSOLU ✅ commit 6ee89b1
+Commit   : 6ee89b1
 
-PROBLÈME 18 — 403 Forbidden notifications
+RÉSOLU 26 — 403 Forbidden notifications
+           (session 2.7)
 Cause    : 2 couches :
-           1. INSERT — politique {public} seulement
-           2. SELECT — .select().single() après INSERT
-              admin ne peut pas lire notif du driver
+           1. INSERT — politique {public}
+           2. SELECT — admin ne peut pas lire
+              notif du driver
 Correctif: Migration 007 INSERT authenticated
-           Migration 008 SELECT admin get_my_role()
-Statut   : RÉSOLU ✅ commits 2351bf3 + 445bdcb
+           Migration 008 SELECT admin
+           get_my_role()
+Commits  : 2351bf3 + 445bdcb
 
-PROBLÈME 19 — enum mission_status incorrect
+RÉSOLU 27 — Enum mission_status incorrect
+           (session 2.7)
 Cause    : 'cancelled' inexistant dans l'enum
-           Valeurs correctes : cancelled_client
-                               + cancelled_driver
 Correctif: STATUS_FILTERS + STATUS_LABELS
            + FILTER_LABELS mis à jour
-Statut   : RÉSOLU ✅ commit 750db88
+           cancelled_client + cancelled_driver
+Commit   : 750db88
 
-PROBLÈME 20 — Création fichier long via Python
+RÉSOLU 28 — Création fichier long via Python
+           (session 2.7)
 Cause    : heredoc et -c posent problème
            avec caractère ! et longueur
 Correctif: Écriture en 7 étapes séquentielles
-           python3 -c "f=open(...,'a');f.write(...)"
-Statut   : RÉSOLU ✅ session 2.7
-Règle    : Utiliser cette méthode pour tout
-           fichier > 100 lignes
+           python3 -c "f=open(...,'a');
+           f.write(...)"
+Règle    : Utiliser pour tout fichier
+           > 100 lignes
+
+RÉSOLU 29 — Bug "Suspendre" AdminUsersScreen
+           non fonctionnel sur web (session 2.8)
+Cause    : Alert.alert() (React Native)
+           ne s'affiche pas sur web
+           → clic silencieux, aucun appel réseau
+Correctif: window.confirm() à la place
+           if (confirmed === false) return;
+           Erreurs → window.alert()
+Commit   : aed0bee
+Confirmé : "Annuler" ×2 → aucune action ✅
+           "Suspendre"+OK → isActive:false ✅
+           "Activer"+OK → isActive:true ✅
+
+RÉSOLU 30 — Bucket voice-messages + RLS
+           (session 2.8)
+Cause    : audioService.ts référençait
+           un bucket inexistant
+Correctif: Migrations 009 + 010
+           Bucket créé + 4 RLS policies
+Commit   : 5ee383e
+⚠️ Non testé fonctionnellement —
+   audioService.ts non intégré UI
+   Voir item 4.4
+
+RÉSOLU 31 — Cause GPS AdminMissions
+           confirmée (session 2.8)
+Cause    : pickupCoords=null —
+           permission GPS refusée
+           environnement Codespaces/iframe
+Statut   : Confirmé par logs directs —
+           [FTM-DEBUG] GPS - Client location
+           permission denied
+           Pas un bug applicatif
+           Reporté phase 4.x avec TEST 1/2/3
+
+RÉSOLU 32 — vault.create_secret() arguments inversés
+Cause    : Supabase a stocké la description comme nom
+           → secret stocké avec name =
+           'Service role key for CRON job - FTM'
+           au lieu de 'supabase_service_role_key'
+           → clé Vault incorrecte (244 vs 219 caractères)
+Certitude: 100% confirmé — comparaison directe
+           cles_identiques = false
+Correctif: DELETE FROM vault.secrets WHERE name =
+           'Service role key for CRON job - FTM'
+           + vault.create_secret(valeur, nom, desc)
+           avec ordre correct (valeur en PREMIER)
+           + SELECT name FROM vault.secrets
+           pour vérification immédiate
+Statut   : RÉSOLU ✅ session 2.9
+
+RÉSOLU 33 — net.http_post → 401 persistant
+Cause    : Clé Vault incorrecte (244 vs 219 car.)
+           + timeout 5000 ms insuffisant
+           (cold start Edge Function dépasse 5s)
+Diagnostic: Plan en 10 maillons — maillon par maillon :
+           Maillon 1 (Vault retourne clé) ✅
+           Maillon 2 (Header construit) ✅
+           Maillon 3 (DNS+TCP/SSL) ✅
+           Maillon 4 (Timeout) → timeout_ms := 30000
+           Test httpbin.org → 200 → pg_net OK général
+           Comparaison longueur clé → 244 vs 219 ❌
+Correctif: Correction Vault (voir RÉSOLU 32)
+           + timeout_milliseconds := 30000
+Statut   : RÉSOLU ✅ session 2.9
+           status_code = 200, timed_out = false ✅
+
+RÉSOLU 34 — pg_cron non activé au démarrage
+Cause    : SELECT * FROM cron.job → erreur 42P01
+           pg_cron et pg_net disponibles mais
+           non installées
+Correctif: CREATE EXTENSION IF NOT EXISTS pg_net
+           CREATE EXTENSION IF NOT EXISTS pg_cron
+           inclus dans migration 20260504000011
+Statut   : RÉSOLU ✅ session 2.9
 
 ---
 
@@ -670,6 +936,8 @@ Ne pas retester :
 ❌ 'cancelled' comme valeur enum mission_status
    Valeurs correctes : cancelled_client
                        + cancelled_driver
+❌ cron.run_job(integer)
+   pg_cron 1.6.4 ne supporte pas cette fonction
 
 ---
 
@@ -692,8 +960,9 @@ Ne pas retester :
 20260504000008_fix_notifications_select_admin.sql    ✅ Session 2.7
 20260504000009_create_voice_messages_bucket.sql      ✅ Session 2.8
 20260504000010_voice_messages_storage_rls_policies.sql ✅ Session 2.8
+20260504000011_configure_cron_document_reminders.sql ✅ Session 2.9
 
-Prochain timestamp disponible : 20260504000011
+Prochain timestamp disponible : 20260504000012
 
 ---
 
@@ -701,7 +970,8 @@ Prochain timestamp disponible : 20260504000011
 send-push-notification   ✅ (CORS bloqué sur web —
                             fonctionnel sur device)
 register-push-token      ✅
-check-document-reminders ✅
+check-document-reminders ✅ (CRON opérationnel — session 2.9
+                            5 exécutions succeeded 18→22/06/2026)
 send-tracking-sms        ✅
 
 ---
@@ -824,7 +1094,8 @@ FAST-TRANS-MAROC-FTM/
 │       ├── 20260504000007_fix_notifications_insert_rls.sql
 │       ├── 20260504000008_fix_notifications_select_admin.sql
 │       ├── 20260504000009_create_voice_messages_bucket.sql
-│       └── 20260504000010_voice_messages_storage_rls_policies.sql
+│       ├── 20260504000010_voice_messages_storage_rls_policies.sql
+│       └── 20260504000011_configure_cron_document_reminders.sql ← session 2.9
 ├── .env.example
 ├── .gitignore
 ├── ROADMAP_FTM.md
@@ -843,11 +1114,14 @@ Storage buckets  : ✅ driver-documents créé
                    ✅ voice-messages créé — session 2.8
                    ⚠️ voice-messages non testé fonctionnellement
                    (audioService.ts non intégré UI — item 4.4)
-CRON reminders   : ⏳ à planifier dans Supabase
+CRON reminders   : ✅ OPÉRATIONNEL — session 2.9
+                   check-document-reminders — 0 8 * * *
+                   5 exécutions succeeded : 18→22/06/2026
+                   timeout_milliseconds := 30000
 
 ---
 
-## 15. BUGS RÉSIDUELS — SESSION 2.9
+## 15. BUGS RÉSIDUELS — SESSION 2.10
 
 ⚠️ CORS send-push-notification
    Edge Function bloquée par CORS policy sur web
@@ -875,20 +1149,33 @@ CRON reminders   : ⏳ à planifier dans Supabase
    Solde non mis à jour — comportement voulu
    Refonte prévue Phase 6.5
 
-⚠️ NOUVEAU — Point sécurité 6.6 (session 2.8)
+⚠️ Point sécurité 6.6 (session 2.8)
    RLS Storage permissif sur driver-documents +
    voice-messages : tout utilisateur authenticated peut
    lire/écrire/modifier/supprimer N'IMPORTE QUEL fichier
    (pas de vérification auth.uid()/propriété/mission)
    À traiter avant production — voir item 6.6
 
-⚠️ NOUVEAU — voice-messages non testé fonctionnellement
+⚠️ voice-messages non testé fonctionnellement
    (session 2.8) — audioService.ts non intégré UI,
    voir item 4.4
 
-⚠️ NOUVEAU — Driver test supprimé (session 2.8)
-   1b6e684e-... supprimé (cascade Auth, test client)
-   Si test DRIVER nécessaire → voir §2 procédure recréation
+⚠️ Driver test supprimé et recréé (session 2.9)
+   Nouveau driverId : 29849a0a-5017-4eda-99d4-2c4f5c75a6c3
+   +212600000000 → DRIVER actif — is_verified = true
+   document_reminders et notifications nettoyées
+
+⚠️ COMPORTEMENT NON EXPLIQUÉ — repr() vs terminal
+   (session 2.9) — statut INCONNU
+   Plusieurs vérifications via repr() affichaient
+   'CRONjob' collé alors que VS Code montrait
+   'CRON job' avec espace
+   Hypothèse : décalage entre exécutions successives
+   Cause exacte inconnue
+   Fichier final validé correct par repr() frais
+   et Ctrl+F VS Code
+   Règle : toujours valider avec repr() frais
+   après chaque modification
 
 ---
 
@@ -942,6 +1229,22 @@ CreateMissionScreen — formulaire complet rempli
   et fonctionnel ✅ (bouton soumission bloqué par
   limitation GPS — voir ci-dessus)
 
+TESTS EFFECTUÉS ET CONFIRMÉS ✅ — SESSION 2.9 :
+Edge Function check-document-reminders :
+  Appel via bouton "Test" Dashboard ✅
+  {sent: 3, errors: 0} ✅
+  Flags reminder_30/15/7_days_sent → true ✅
+  3 notifications document_expiry créées ✅
+CRON job jobid=2 :
+  5 exécutions succeeded : 18→22/06/2026 ✅
+  active = true, timeout_milliseconds := 30000 ✅
+net.http_post avec bonne clé Vault :
+  status_code = 200, timed_out = false ✅
+Driver onboarding complet :
+  +212600000000 → 4 pages onboarding ✅
+  Validation admin → is_verified = true ✅
+  document_reminders créées automatiquement ✅
+
 ---
 
 ## 17. ÉTAPES RESTANTES
@@ -972,7 +1275,16 @@ PHASE 2 — TESTS & DEBUGGING
      → Point sécurité 6.6 identifié (RLS Storage permissif)
      → Driver test supprimé (cascade, test client) —
        voir §2 procédure recréation
-2.9  ⏳ Configurer CRON reminders
+2.9  ✅ COMPLET — CRON reminders opérationnel
+     → Extensions pg_cron 1.6.4 + pg_net 0.19.5 activées ✅
+     → Secret Vault supabase_service_role_key corrigé ✅
+       (244 → 219 caractères, ordre args vault.create_secret)
+     → CRON job jobid=2, 0 8 * * *, active=true ✅
+       timeout_milliseconds := 30000
+     → Migration 20260504000011 déployée ✅ (commit 34b32c1)
+     → 5 exécutions succeeded confirmées (18→22/06/2026) ✅
+     → Driver test recréé 29849a0a-... is_verified=true ✅
+     → Base nettoyée (reminders + notifications test) ✅
 2.10 ⏳ Activer Realtime tables
 
 PHASE 3 — SERVICES EXTERNES
@@ -1030,6 +1342,7 @@ RÈGLES CRITIQUES :
 - 1 terminal de travail uniquement
 - Vérifier texte exact via sed avant replace()
 - Si replace() échoue → réécrire fichier entier
+- Vérifier contenu exact via repr() Python (jamais cat)
 - git pull --rebase avant tout push
 - Migrations via GitHub uniquement
 - NE JAMAIS modifier authService.ts
@@ -1038,7 +1351,10 @@ RÈGLES CRITIQUES :
 - Backup obligatoire avant toute modification
 - Ne jamais retester ce qui est écarté
 - Ne jamais modifier ce qui fonctionne
-- Prochain timestamp migration : 20260504000011
+- vault.create_secret(valeur, nom, desc) — valeur EN PREMIER
+- timeout_milliseconds := 30000 pour net.http_post
+- cron.unschedule() WHERE EXISTS avant tout cron.schedule()
+- Prochain timestamp migration : 20260504000012
 
 OBJECTIF SESSION :
 [Décrire précisément]
