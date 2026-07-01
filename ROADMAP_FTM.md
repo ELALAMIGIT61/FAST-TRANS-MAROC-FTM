@@ -1,6 +1,6 @@
-# ROADMAP-DOCUMENT DE REFERENCE SESSION CLAUDE — FAST TRANS MAROC — VERSION 23/06/2026
+# ROADMAP-DOCUMENT DE REFERENCE SESSION CLAUDE — FAST TRANS MAROC — VERSION 01/07/2026
 # Fast Trans Maroc — Application Mobile Marocaine
-# Dernière mise à jour : 23/06/2026
+# Dernière mise à jour : 01/07/2026
 
 ---
 
@@ -20,7 +20,7 @@ Codespaces  : zany-disco-jj95647gqv473pj9
 ✅ Toujours utiliser npx expo install pour packages Expo
 ✅ .env doit être dans frontend/ (pas à la racine)
 ✅ Migrations : timestamps uniques obligatoires
-   Prochain timestamp ≥ 20260504000012
+   Prochain timestamp ≥ 20260504000013
    Jamais via SQL Editor directement
    Toujours via GitHub Actions
 ✅ 1 session Claude = 1 objectif précis
@@ -69,6 +69,9 @@ Codespaces  : zany-disco-jj95647gqv473pj9
    Session 2.9 : +212600000000 recréé en mode DRIVER
    driverId : 29849a0a-5017-4eda-99d4-2c4f5c75a6c3
    is_verified = true (validé admin session 2.9)
+   Session 2.10 : profil DRIVER recréé
+   driverId : eadc9d5e-0db9-4983-b0a3-b69ca46c0b60
+   is_verified = true — wallet_balance : 200 DH
    État actuel : mode DRIVER actif
 
    Si un test CLIENT est à nouveau nécessaire :
@@ -192,19 +195,28 @@ Vault Supabase    : ✅ Secret supabase_service_role_key
                     219 caractères — identique Dashboard
                     Créé session 2.9 (correction ancien secret
                     incorrect 244 caractères)
+Realtime Supabase : ✅ OPÉRATIONNEL — session 2.10
+                    5 tables activées :
+                    drivers, missions, wallet,
+                    transactions, notifications
+                    Migration 20260504000012 déployée
+                    WalletDashboardScreen SUBSCRIBED ✅
+                    Effets ⏳ probables (2 fenêtres/device)
+                    transactions + notifications :
+                    Realtime actif — non branché UI ⚠️
 ⚠️ Compte ADMIN test :
    Numéro : +212600000001
    Rôle admin défini via SQL Editor Supabase
    UPDATE profiles SET role='admin'
    WHERE phone_number='+212600000001'
    NE PAS SUPPRIMER CE PROFIL
-⚠️ DRIVER TEST ACTIF — session 2.9 :
-   driverId : 29849a0a-5017-4eda-99d4-2c4f5c75a6c3
+⚠️ DRIVER TEST ACTIF — session 2.10 :
+   driverId : eadc9d5e-0db9-4983-b0a3-b69ca46c0b60
    Numéro : +212600000000
    role : 'driver', is_verified : true
-   (Remplace 1b6e684e-... supprimé en session 2.8)
-   document_reminders : vidées après tests session 2.9
-   notifications document_expiry : supprimées après tests
+   wallet_balance : 200 DH
+   vehicle_category : vul
+   (Remplace 29849a0a-... de session 2.9)
 
 ⚠️ SIGNED_IN répétés en console admin :
    Comportement normal Supabase web
@@ -225,6 +237,9 @@ SUPABASE_URL           ✅
 ---
 
 ## 5. HISTORIQUE COMMITS CLÉS
+b65eb9d feat: enable Realtime on 5 tables
+        (drivers, missions, wallet, transactions,
+        notifications) — session 2.10 ✅
 34b32c1 feat: configure CRON job for document expiry
         reminders - session 2.9 ✅
 5ee383e feat: create voice-messages storage bucket
@@ -535,7 +550,46 @@ Configuration CRON job document expiry reminders :
     driverId : 29849a0a-5017-4eda-99d4-2c4f5c75a6c3
     Validation admin +212600000001 → is_verified=true ✅
     document_reminders créées automatiquement par l'app ✅
-  État actuel : +212600000000 → DRIVER actif
+  État : remplacé par eadc9d5e-... en session 2.10
+
+---
+
+### SESSION 2.10 — commit b65eb9d
+
+#### Migration `20260504000012` — commit b65eb9d
+Activation Realtime sur 5 tables :
+  ALTER PUBLICATION supabase_realtime
+  ADD TABLE drivers, missions, wallet,
+  transactions, notifications;
+  Taille : 152 bytes ✅
+  Déploiement : Deploy Supabase FTM #42
+    Run 1 ❌ Lint SQL — rate limit exceeded (transitoire)
+    Run 2 ✅ Success — 2m 25s
+  Vérification : 5 rows dans supabase_realtime ✅
+    public | drivers       ✅
+    public | missions      ✅
+    public | notifications ✅
+    public | transactions  ✅
+    public | wallet        ✅
+
+#### Constats identifiés — session 2.10
+  Navigation cross-stack :
+    navigation.replace('DriverHome') dans
+    PendingVerificationScreen cible écran absent
+    du stack DriverPendingStack ⚠️
+    Navigation actuelle via onAuthStateChange/
+    initializeApp() — pas via Realtime
+  revenue_current_month : nommage trompeur
+    Calcule total topup du mois (transaction_type='topup')
+    Libellé UI "REVENUS CE MOIS" à corriger
+    en "RECHARGES CE MOIS" ⚠️
+  NotificationBell : composant prêt
+    Jamais monté dans l'app ⚠️
+  subscribeToNewTransactions : défini
+    dans walletService.ts — jamais appelé ⚠️
+  TrackingDetailScreen : souscription définie
+    mais commentée — manque requête
+    mission_id depuis tracking_number ⚠️
 
 ---
 
@@ -915,6 +969,20 @@ Correctif: CREATE EXTENSION IF NOT EXISTS pg_net
            inclus dans migration 20260504000011
 Statut   : RÉSOLU ✅ session 2.9
 
+RÉSOLU 35 — Realtime inactif sur tables FTM
+           (session 2.10)
+Cause    : puballtables = false — aucune table
+           dans supabase_realtime avant session
+           0 tables activées — souscriptions
+           existantes sans effet
+Correctif: ALTER PUBLICATION supabase_realtime
+           ADD TABLE drivers, missions, wallet,
+           transactions, notifications
+           Migration 20260504000012
+Commit   : b65eb9d
+Confirmé : 5 rows supabase_realtime ✅
+           WalletDashboardScreen SUBSCRIBED ✅
+
 ---
 
 ## 10. PISTES DÉFINITIVEMENT ÉCARTÉES
@@ -961,8 +1029,9 @@ Ne pas retester :
 20260504000009_create_voice_messages_bucket.sql      ✅ Session 2.8
 20260504000010_voice_messages_storage_rls_policies.sql ✅ Session 2.8
 20260504000011_configure_cron_document_reminders.sql ✅ Session 2.9
+20260504000012_enable_realtime_tables.sql            ✅ Session 2.10
 
-Prochain timestamp disponible : 20260504000012
+Prochain timestamp disponible : 20260504000013
 
 ---
 
@@ -1095,7 +1164,8 @@ FAST-TRANS-MAROC-FTM/
 │       ├── 20260504000008_fix_notifications_select_admin.sql
 │       ├── 20260504000009_create_voice_messages_bucket.sql
 │       ├── 20260504000010_voice_messages_storage_rls_policies.sql
-│       └── 20260504000011_configure_cron_document_reminders.sql ← session 2.9
+│       ├── 20260504000011_configure_cron_document_reminders.sql ← session 2.9
+│       └── 20260504000012_enable_realtime_tables.sql            ← session 2.10
 ├── .env.example
 ├── .gitignore
 ├── ROADMAP_FTM.md
@@ -1160,10 +1230,13 @@ CRON reminders   : ✅ OPÉRATIONNEL — session 2.9
    (session 2.8) — audioService.ts non intégré UI,
    voir item 4.4
 
-⚠️ Driver test supprimé et recréé (session 2.9)
-   Nouveau driverId : 29849a0a-5017-4eda-99d4-2c4f5c75a6c3
+⚠️ Driver test recréé (session 2.10)
+   driverId : eadc9d5e-0db9-4983-b0a3-b69ca46c0b60
    +212600000000 → DRIVER actif — is_verified = true
-   document_reminders et notifications nettoyées
+   wallet_balance : 200 DH — vehicle_category : vul
+   document_reminders : créées automatiquement
+   à l'onboarding — non nettoyées après session 2.10
+   (Remplace 29849a0a-... de session 2.9)
 
 ⚠️ COMPORTEMENT NON EXPLIQUÉ — repr() vs terminal
    (session 2.9) — statut INCONNU
@@ -1176,6 +1249,33 @@ CRON reminders   : ✅ OPÉRATIONNEL — session 2.9
    et Ctrl+F VS Code
    Règle : toujours valider avec repr() frais
    après chaque modification
+
+⚠️ Navigation cross-stack PendingVerification → DriverHome
+   navigation.replace('DriverHome') cible écran absent
+   du stack DriverPendingStack
+   Navigation actuelle via onAuthStateChange/initializeApp()
+   — pas via Realtime
+   À corriger — session 2.11 à planifier
+
+⚠️ revenue_current_month — nommage trompeur
+   Libellé UI "REVENUS CE MOIS" incorrect
+   Calcule total topup du mois — pas revenus missions
+   Calcul correct — libellé à corriger
+   À traiter — session 2.11 à planifier
+
+⚠️ NotificationBell — jamais monté dans l'app
+   Composant prêt — NotificationCenter absent
+   de RootNavigator
+   À intégrer — décision porteur (session 2.11)
+
+⚠️ subscribeToNewTransactions — jamais appelé
+   Défini dans walletService.ts
+   À brancher dans TransactionHistoryScreen
+   À intégrer — décision porteur (session 2.11)
+
+⚠️ TrackingDetailScreen — souscription commentée
+   Manque requête mission_id depuis tracking_number
+   À compléter — décision porteur (session 2.11)
 
 ---
 
@@ -1245,6 +1345,35 @@ Driver onboarding complet :
   Validation admin → is_verified = true ✅
   document_reminders créées automatiquement ✅
 
+TESTS EFFECTUÉS ET CONFIRMÉS ✅ — SESSION 2.10 :
+Migration 20260504000012 déployée ✅
+5 tables supabase_realtime activées ✅
+WalletDashboardScreen — SUBSCRIBED confirmé
+  en console DevTools ✅
+Flux onboarding driver complet — 4 pages ✅
+Flux validation admin via DocumentReviewScreen ✅
+DriverHomeScreen direct si is_verified=true
+  via initializeApp() ✅
+Solde wallet 200 DH affiché après recharge admin ✅
+Non-régression driver ✅
+Non-régression admin ✅
+CORS send-push-notification — comportement
+  attendu — non bloquant ✅
+
+TESTS PROBABLES ⏳ — non observés directement (session 2.10) :
+PendingVerificationScreen — navigation automatique
+  via Realtime drivers
+  → nécessite 2 fenêtres ou device physique
+WalletDashboardScreen — mise à jour solde
+  en temps réel
+  → nécessite 2 fenêtres ou device physique
+
+TESTS NON TESTABLES — limitation web/GPS (session 2.10) :
+DriverHomeScreen — réception nouvelles missions
+  → GPS bloqué Codespaces
+MissionTrackingScreen — suivi mission temps réel
+  → nécessite mission active + GPS
+
 ---
 
 ## 17. ÉTAPES RESTANTES
@@ -1285,7 +1414,38 @@ PHASE 2 — TESTS & DEBUGGING
      → 5 exécutions succeeded confirmées (18→22/06/2026) ✅
      → Driver test recréé 29849a0a-... is_verified=true ✅
      → Base nettoyée (reminders + notifications test) ✅
-2.10 ⏳ Activer Realtime tables
+2.10 ✅ COMPLET — Realtime tables activé
+     → Migration 20260504000012 déployée ✅ (commit b65eb9d)
+     → 5 tables activées : drivers, missions,
+       wallet, transactions, notifications ✅
+     → WalletDashboardScreen SUBSCRIBED ✅
+     → Constats identifiés : navigation cross-stack,
+       revenue_current_month, NotificationBell,
+       subscribeToNewTransactions,
+       TrackingDetailScreen ⚠️
+     → Non-régression CLIENT + DRIVER + ADMIN ✅
+2.11 ⏳ Planification sessions complémentaires
+        avant Phase 3
+     → Sur la base des points identifiés en 2.10
+       sans investigation code supplémentaire
+     → Trancher pour chaque point :
+       session dédiée / reporté Phase 3+ /
+       scope à préciser
+     → Produire liste sessions 2.12, 2.13…
+       avec objectif précis + contenu +
+       ordre logique + complexité estimée
+     → Points à couvrir :
+       1. RLS Storage 6.6 — bloquant production
+       2. Bouton déconnexion 3 rôles — 6.4
+       3. Refonte WalletTopupScreen — 6.5
+       4. Renommage revenue_current_month
+       5. subscribeToNewTransactions
+       6. Navigation cross-stack driver
+       7. NotificationBell + NotificationCenter
+       8. TrackingDetailScreen souscription
+       9. Workflow validation recharge admin — 6.2
+       10. Remboursements flux dédié — 6.3
+       11. Modes de paiement multiples — 6.1
 
 PHASE 3 — SERVICES EXTERNES
 3.1 ⏳ Twilio SMS
@@ -1354,7 +1514,7 @@ RÈGLES CRITIQUES :
 - vault.create_secret(valeur, nom, desc) — valeur EN PREMIER
 - timeout_milliseconds := 30000 pour net.http_post
 - cron.unschedule() WHERE EXISTS avant tout cron.schedule()
-- Prochain timestamp migration : 20260504000012
+- Prochain timestamp migration : 20260504000013
 
 OBJECTIF SESSION :
 [Décrire précisément]
