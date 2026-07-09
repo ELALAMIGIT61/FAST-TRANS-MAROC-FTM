@@ -591,6 +591,159 @@ Activation Realtime sur 5 tables :
     mais commentée — manque requête
     mission_id depuis tracking_number ⚠️
 
+### SESSION 2.11 — Planification (Partie 1 : investigation des 11 points, Partie 2 : sessions futures 2.12-2.17)
+Session de planification pure — aucune modification de code,
+aucune migration SQL. 11 points investigués en profondeur
+(lecture réelle du code, vérification RLS en base, tests
+d'hypothèses) — pas une reprise du prompt de passation.
+RÉSULTATS SESSION 2.11 :
+Points 1 à 11 — tous investigués, fiches complètes rédigées
+et validées. Découvertes majeures non anticipées par le
+prompt de passation initial :
+→ Cause racine commune identifiée entre les Points 3, 4,
+  Bug B du Point 6, et Point 9 : échec RLS silencieux sur
+  topupWallet()/refundWallet() (UPDATE bloqué pour un rôle
+  non-admin, 0 ligne affectée, aucune erreur retournée) —
+  transactions insérées avec status: 'completed' malgré
+  échec réel, faussant revenue_current_month et l'affichage
+  "Rechargé" de TransactionHistoryScreen.tsx.
+→ Point 7 (NotificationBell) : portée élargie — seules 2 des
+  8 fonctions de notification par événement sont vivantes
+  (notifyDocumentVerified, notifyDocumentRejected). Les 6
+  autres, notamment toutes liées aux missions, sont mortes.
+  Nuance importante : un mécanisme Realtime indépendant
+  (subscribeToNewMissions, DriverHomeScreen.tsx) permet déjà
+  à un chauffeur disponible et connecté de recevoir une
+  nouvelle mission sans dépendre des notifications — le
+  service fonctionne pour l'usage actif, les notifications
+  comblent un manque de portée pour les chauffeurs
+  déconnectés. Décision porteur : traiter montage UI et
+  génération des 6 notifications manquantes ensemble.
+→ Point 8 (TrackingDetailScreen) : bug fonctionnel ACTIF
+  découvert (pas seulement un défaut Realtime comme
+  documenté initialement) — la vue public_parcel_tracking
+  n'expose que 9 colonnes sur une quinzaine utilisées par
+  l'écran ; contenu colis, poids, volume, fragilité,
+  expéditeur complet et infos chauffeur s'affichent vides
+  dès aujourd'hui. Origine des champs manquants confirmée
+  dans ecommerce_parcels (élargissement de vue simple) sauf
+  infos chauffeur (jointure drivers/profiles à ajouter,
+  zone d'ombre assumée sur le champ de jointure exact).
+→ Points 9, 10, 11 : reclassés et regroupés en un seul
+  chantier stratégique. Décisions de principe actées par le
+  porteur : déclenchement des demandes (recharge/
+  remboursement) par le chauffeur avec pièce justificative
+  uploadée (pas de rôle "agent" intermédiaire) ; réforme du
+  timing de prélèvement de la commission — anticipé à 24h
+  avant la mission programmée, ou immédiat si délai court
+  (< 24h) — plutôt qu'à la complétion comme aujourd'hui,
+  pour couvrir le risque de non-déclaration de fin de
+  mission par le chauffeur (paiement direct client-chauffeur
+  hors app, non modifié) ; réutilisation de cancelMission()
+  existant ; workflow générique unique demande → justificatif
+  → validation admin → crédit, réutilisable pour recharge,
+  remboursement et modes de paiement multiples (Point 11,
+  reclassé de Phase 3+ vers session dédiée : simples
+  opérations bancaires courantes au Maroc, pas d'intégration
+  de service de paiement tiers — confirmé par absence totale
+  dans package.json).
+→ Découverte de sécurité complémentaire : policy RLS
+  transactions_insert_own (INSERT) avec with_check: true —
+  aucune restriction, tout utilisateur authentifié peut
+  insérer n'importe quelle transaction. À corriger avec le
+  Point 1 (session 2.12).
+
+PLANIFICATION DES SESSIONS FUTURES (validée porteur) :
+2.12 ⏳ RLS Storage (Point 1) + RLS transactions_insert_own
+       (Point 10) — bloquant sécurité, priorité maximale
+2.13 ⏳ Cause racine RLS wallet (Points 3, 4, Bug B du 6)
+       — détection échec silencieux topupWallet(),
+       correction revenue_current_month, correction
+       TransactionHistoryScreen.tsx, correction navigation
+       Bug B
+2.14 ⏳ Realtime + Notifications (Points 5, 7) — branchement
+       subscribeToNewTransactions, montage NotificationBell/
+       NotificationCenterScreen (3 rôles), implémentation
+       des 6 fonctions notify* manquantes (missions)
+2.15 ⏳ TrackingDetailScreen (Point 8) — élargissement vue
+       public_parcel_tracking, jointure drivers/profiles,
+       branchement subscribeToParcelStatus() — peut être
+       traité en parallèle des autres sessions
+2.16 ⏳ Bouton déconnexion 3 rôles (Point 2) — correctif
+       isolé, glissable à tout moment dans le calendrier
+2.17 ⏳ Réforme timing commission + Workflow financier
+       générique (Points 9, 10, 11) — session la plus vaste,
+       dépend de 2.13 (fonctions wallet corrigées) et 2.14
+       (notifications/Realtime opérationnels)
+
+Ordre logique : 2.12 → 2.13 → 2.14 → 2.15 (parallélisable)
+→ 2.16 (glissable) → 2.17 (dernière)
+
+LISTE DE SUIVI — ANOMALIES/OBSERVATIONS DOCUMENTAIRES
+(à corriger dans le présent document) :
+1. ID driver test : 4983 → 4903 (coquille sur un chiffre,
+   3e groupe de l'UUID) — ID exact :
+   eadc9d5e-0db9-4903-b0a3-b69ca46c0b60
+2. Chemin LegalDocumentsScreen.tsx → en réalité sous
+   frontend/src/screens/driver/onboarding/
+3. Chemin PendingVerificationScreen.tsx → en réalité sous
+   frontend/src/screens/driver/onboarding/
+4. Bug WalletRecharge non documenté : PendingVerification-
+   Screen.tsx (ligne 131) navigue vers 'WalletRecharge',
+   écran inexistant — nom réel : 'WalletTopup' (Point 6,
+   Bug B, corrigé en session 2.13)
+5. Filtrage géographique absent du matching mission-
+   chauffeur : subscribeToNewMissions filtre uniquement par
+   vehicle_category, paramètre _driverLocation présent mais
+   inutilisé — amélioration produit possible, hors périmètre
+   2.11, dépend du GPS (bloqué Codespaces/iframe, Phase 4.x)
+6. Convention de chemins non documentée : plusieurs écrans
+   dans des sous-dossiers thématiques (onboarding/,
+   notifications/, tracking/) non mentionnés dans les
+   versions précédentes de ce document
+7. RLS transactions INSERT sans restriction — voir ci-dessus,
+   à corriger session 2.12
+Prochain timestamp migration disponible : 20260504000013
+(inchangé depuis session 2.10 — aucune migration en 2.11)
+
+REQUALIFICATION PHASE 6 — AMÉLIORATIONS POST-TESTS
+(historique conservé, items repris par anticipation dans
+les sessions 2.12-2.17 issues de la session 2.11) :
+6.1 ⏳ → Modes de paiement multiples wallet
+       REPRIS PAR ANTICIPATION — voir session 2.17
+       (regroupé avec 6.2/6.3, reclassé de Phase 6 vers
+       session dédiée proche : simples opérations
+       bancaires courantes, pas d'intégration tierce)
+6.2 ⏳ → Workflow validation recharge admin
+       REPRIS PAR ANTICIPATION — voir session 2.17
+6.3 ⏳ → Remboursements flux dédié
+       REPRIS PAR ANTICIPATION — voir session 2.17
+6.4 ⏳ → Bouton déconnexion 3 rôles
+       REPRIS PAR ANTICIPATION — voir session 2.16
+6.5 ⏳ → Refonte WalletTopupScreen
+       REPRIS PAR ANTICIPATION — voir session 2.13
+       (soumettre demande au lieu de créditer directement
+       → nuancé : bug actif détecté en 2.11, correctif
+       prioritaire avant la refonte du workflow elle-même)
+6.6 ⏳ → SÉCURITÉ — Renforcer RLS Storage
+       REPRIS PAR ANTICIPATION — voir session 2.12
+       (bloquant avant production — traité en priorité,
+       pas laissé jusqu'à la Phase 6)
+⚠️ DÉPENDANCE CROISÉE À NOTER — Phase 3 / Session 2.14 :
+L'implémentation des 6 fonctions notify* manquantes
+(Point 7, session 2.14) rebranchera dispatchPushNotification()
+et l'Edge Function send-push-notification, dont le
+fonctionnement réel dépend de l'infrastructure FCM Android
+(3.2) et APNs iOS (3.3) — non réalisée à ce jour. Conséquence :
+la session 2.14 peut implémenter les appels applicatifs aux
+fonctions notify*, mais les notifications push mobiles
+réelles ne seront pleinement opérationnelles qu'une fois la
+Phase 3 complétée. CORS sur web reste un comportement
+attendu, non bloquant (cf. RÉSOLU antérieurs).
+Aucun autre chevauchement identifié avec les Phases 3, 4, 5
+et 7 à ce stade.
+
+
 ---
 
 ## 7. CHAÎNE DE NAVIGATION DRIVER
