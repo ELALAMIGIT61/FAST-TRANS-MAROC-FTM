@@ -1,6 +1,6 @@
-# ROADMAP-DOCUMENT DE REFERENCE SESSION CLAUDE — FAST TRANS MAROC — VERSION 01/07/2026
+ROADMAP-DOCUMENT DE REFERENCE SESSION CLAUDE — FAST TRANS MAROC — VERSION 15/07/2026
 # Fast Trans Maroc — Application Mobile Marocaine
-# Dernière mise à jour : 01/07/2026
+# Dernière mise à jour : 15/07/2026
 
 ---
 
@@ -20,7 +20,7 @@ Codespaces  : zany-disco-jj95647gqv473pj9
 ✅ Toujours utiliser npx expo install pour packages Expo
 ✅ .env doit être dans frontend/ (pas à la racine)
 ✅ Migrations : timestamps uniques obligatoires
-   Prochain timestamp ≥ 20260504000013
+   Prochain timestamp ≥ 20260504000014
    Jamais via SQL Editor directement
    Toujours via GitHub Actions
 ✅ 1 session Claude = 1 objectif précis
@@ -38,6 +38,13 @@ Codespaces  : zany-disco-jj95647gqv473pj9
 ✅ Vérifier contenu exact d'un fichier via repr() Python
    Ne jamais se fier à cat pour les lignes longues
    (cat tronque les lignes — trompeur)
+   ⚠️ Fusions de caractères silencieuses possibles au
+   copier-coller lors de la rédaction de migrations SQL
+   (ex. "ONp.id", "IFEXISTS", "driversd") — invisibles au
+   simple cat, révélées uniquement par repr() — session 2.12.
+   Méthode stabilisée : blocs courts, repr() systématique
+   après chaque ajout ; renommer un alias (ex. d → dr) si
+   un bug de fusion récurrent persiste sur une ligne donnée.
 ✅ git pull --rebase origin main avant tout push
    (ROADMAP mise à jour directement sur GitHub)
 ✅ Backup obligatoire avant chaque modification
@@ -70,9 +77,12 @@ Codespaces  : zany-disco-jj95647gqv473pj9
    driverId : 29849a0a-5017-4eda-99d4-2c4f5c75a6c3
    is_verified = true (validé admin session 2.9)
    Session 2.10 : profil DRIVER recréé
-   driverId : eadc9d5e-0db9-4983-b0a3-b69ca46c0b60
+   driverId : eadc9d5e-0db9-4903-b0a3-b69ca46c0b60
    is_verified = true — wallet_balance : 200 DH
-   État actuel : mode DRIVER actif
+   Session 2.12 : profil supprimé puis recréé plusieurs fois
+   (test onboarding driver, puis test client, puis second
+   driver pour test transactions_insert_own)
+   État actuel : DRIVER actif — voir bloc dédié ci-dessous
 
    Si un test CLIENT est à nouveau nécessaire :
    1. Supprimer +212600000000 dans Supabase Auth
@@ -112,6 +122,23 @@ Codespaces  : zany-disco-jj95647gqv473pj9
    le fonctionnement réel du CRON
 ✅ Vérification git obligatoire
    Avant et après chaque pause, avant tout commit
+✅ RLS Storage / conception ownership
+   Privilégier la chaîne de propriété complète
+   (storage.foldername(name)[1]::uuid = drivers.id →
+   drivers.profile_id = profiles.id →
+   profiles.user_id = auth.uid()) plutôt qu'un raccourci
+   type owner = auth.uid() — session 2.12
+✅ Fichier de rollback obligatoire pour toute migration RLS
+   sensible : à placer dans supabase/rollbacks/
+   (hors du dossier migrations/, pour éviter toute exécution
+   automatique non désirée) — convention introduite session 2.12
+⚠️ Isoler une clause RLS via fetch() authentifié direct
+   (sans passer par le code applicatif, ex. topupWallet())
+   peut produire des valeurs déclaratives trompeuses
+   (ex. balance_after renseigné manuellement dans une ligne
+   de test) — toujours vérifier la valeur réelle en base
+   (ex. wallet.balance) plutôt que de se fier au contenu
+   de la ligne insérée manuellement — session 2.12
 
 ---
 
@@ -169,6 +196,9 @@ Storage           : ✅ Bucket driver-documents créé
                     5 MB max — jpeg/png/pdf
                     RLS policies configurées
                     commits 7222601 + c39cafb
+                    ✅ RLS ownership chain corrigée —
+                    session 2.12 (commit 67e9e65) —
+                    voir item 6.6
                     ✅ Bucket voice-messages créé — session 2.8
                     5 MB max — audio/m4a, mp4, mpeg, wav, x-m4a
                     RLS policies configurées (4)
@@ -176,6 +206,12 @@ Storage           : ✅ Bucket driver-documents créé
                     ⚠️ Infrastructure créée mais NON testée
                     fonctionnellement (audioService.ts non
                     référencé dans aucun screen — voir item 4.4)
+                    ⚠️ RLS voice-messages toujours permissive —
+                    exclue du périmètre session 2.12 (convention
+                    de chemin différente : missions/{missionId}/
+                    {senderProfileId}_{timestamp}.ext) — clause
+                    dédiée prévue session 2.18 (brouillon SQL
+                    documenté, sans déploiement avant Phase 4.4)
 Connexion Supabase: ✅ .env configuré dans frontend/
 Token Supabase    : ✅ Renouvelé le 29/04/2026
                     Nom : FTM_GITHUB_ACTIONS
@@ -204,19 +240,32 @@ Realtime Supabase : ✅ OPÉRATIONNEL — session 2.10
                     Effets ⏳ probables (2 fenêtres/device)
                     transactions + notifications :
                     Realtime actif — non branché UI ⚠️
+RLS transactions  : ✅ transactions_insert_own corrigée —
+                    session 2.12 (commit 67e9e65) — ownership
+                    chain via wallet (transactions.wallet_id →
+                    wallet.driver_id = drivers.id →
+                    drivers.profile_id → profiles.user_id =
+                    auth.uid()) — voir item 6.6 / RÉSOLU 37
 ⚠️ Compte ADMIN test :
    Numéro : +212600000001
    Rôle admin défini via SQL Editor Supabase
    UPDATE profiles SET role='admin'
    WHERE phone_number='+212600000001'
    NE PAS SUPPRIMER CE PROFIL
-⚠️ DRIVER TEST ACTIF — session 2.10 :
-   driverId : eadc9d5e-0db9-4983-b0a3-b69ca46c0b60
+⚠️ DRIVER TEST ACTIF — session 2.12 :
+   driverId : 2ec2b439-fcdb-443d-8de0-5bee268d30f6
    Numéro : +212600000000
-   role : 'driver', is_verified : true
-   wallet_balance : 200 DH
-   vehicle_category : vul
-   (Remplace 29849a0a-... de session 2.9)
+   role : 'driver', is_verified : false (jamais validé
+   par l'admin durant cette session)
+   wallet_id : 58b2b8e7-190a-4cbb-8f09-8340feecf498
+   wallet_balance : 0 DH (réel, vérifié en base) — une ligne
+   de test existe dans transactions avec balance_after: 50,
+   valeur déclarative uniquement (topupWallet() non appelé
+   durant ce test, code applicatif non impliqué) — sans lien
+   avec le bug topupWallet documenté pour la session 2.13
+   (Remplace eadc9d5e-... de session 2.10, via plusieurs
+   suppressions/recréations du numéro partagé durant la
+   session 2.12 : driver onboarding → client → driver final)
 
 ⚠️ SIGNED_IN répétés en console admin :
    Comportement normal Supabase web
@@ -237,6 +286,9 @@ SUPABASE_URL           ✅
 ---
 
 ## 5. HISTORIQUE COMMITS CLÉS
+67e9e65 fix: RLS ownership chain Storage
+        (driver-documents) + transactions_insert_own
+        — session 2.12 ✅
 b65eb9d feat: enable Realtime on 5 tables
         (drivers, missions, wallet, transactions,
         notifications) — session 2.10 ✅
@@ -654,8 +706,9 @@ prompt de passation initial :
   Point 1 (session 2.12).
 
 PLANIFICATION DES SESSIONS FUTURES (validée porteur) :
-2.12 ⏳ RLS Storage (Point 1) + RLS transactions_insert_own
+2.12 ✅ RLS Storage (Point 1) + RLS transactions_insert_own
        (Point 10) — bloquant sécurité, priorité maximale
+       COMPLET — voir détail ci-dessous
 2.13 ⏳ Cause racine RLS wallet (Points 3, 4, Bug B du 6)
        — détection échec silencieux topupWallet(),
        correction revenue_current_month, correction
@@ -675,15 +728,25 @@ PLANIFICATION DES SESSIONS FUTURES (validée porteur) :
        générique (Points 9, 10, 11) — session la plus vaste,
        dépend de 2.13 (fonctions wallet corrigées) et 2.14
        (notifications/Realtime opérationnels)
+2.18 ⏳ RLS voice-messages (bucket) — session ajoutée à
+       l'issue de la session 2.12, décidée par le porteur
+       (ajout postérieur à la planification 2.11, pas une
+       correction rétroactive de celle-ci) — conception de
+       la clause RLS (lecture schéma missions, brouillon SQL
+       documenté), sans déploiement à ce stade ; déploiement
+       ET test immédiat prévus ensemble en Phase 4.4 (device
+       physique + mission active requis)
 
 Ordre logique : 2.12 → 2.13 → 2.14 → 2.15 (parallélisable)
-→ 2.16 (glissable) → 2.17 (dernière)
+→ 2.16 (glissable) → 2.17 (dernière) → 2.18 (glissable,
+liée à Phase 4.4)
 
 LISTE DE SUIVI — ANOMALIES/OBSERVATIONS DOCUMENTAIRES
 (à corriger dans le présent document) :
-1. ID driver test : 4983 → 4903 (coquille sur un chiffre,
+~~1. ID driver test : 4983 → 4903 (coquille sur un chiffre,
    3e groupe de l'UUID) — ID exact :
-   eadc9d5e-0db9-4903-b0a3-b69ca46c0b60
+   eadc9d5e-0db9-4903-b0a3-b69ca46c0b60~~
+   → CORRIGÉ session 2.12 (voir Sections 3 et 15)
 2. Chemin LegalDocumentsScreen.tsx → en réalité sous
    frontend/src/screens/driver/onboarding/
 3. Chemin PendingVerificationScreen.tsx → en réalité sous
@@ -701,10 +764,11 @@ LISTE DE SUIVI — ANOMALIES/OBSERVATIONS DOCUMENTAIRES
    dans des sous-dossiers thématiques (onboarding/,
    notifications/, tracking/) non mentionnés dans les
    versions précédentes de ce document
-7. RLS transactions INSERT sans restriction — voir ci-dessus,
-   à corriger session 2.12
-Prochain timestamp migration disponible : 20260504000013
-(inchangé depuis session 2.10 — aucune migration en 2.11)
+~~7. RLS transactions INSERT sans restriction — voir ci-dessus,
+   à corriger session 2.12~~
+   → CORRIGÉ session 2.12 (voir Sections 3 et 15)
+Prochain timestamp migration disponible : 20260504000014
+(20260504000013 déployé en session 2.12)
 
 REQUALIFICATION PHASE 6 — AMÉLIORATIONS POST-TESTS
 (historique conservé, items repris par anticipation dans
@@ -725,10 +789,11 @@ les sessions 2.12-2.17 issues de la session 2.11) :
        (soumettre demande au lieu de créditer directement
        → nuancé : bug actif détecté en 2.11, correctif
        prioritaire avant la refonte du workflow elle-même)
-6.6 ⏳ → SÉCURITÉ — Renforcer RLS Storage
-       REPRIS PAR ANTICIPATION — voir session 2.12
-       (bloquant avant production — traité en priorité,
-       pas laissé jusqu'à la Phase 6)
+6.6 ✅/⏳ → SÉCURITÉ — Renforcer RLS Storage
+       driver-documents ✅ traité session 2.12
+       (ownership chain, commit 67e9e65)
+       voice-messages ⏳ session 2.18 (conception seule
+       en 2.18, déploiement + test en Phase 4.4)
 ⚠️ DÉPENDANCE CROISÉE À NOTER — Phase 3 / Session 2.14 :
 L'implémentation des 6 fonctions notify* manquantes
 (Point 7, session 2.14) rebranchera dispatchPushNotification()
@@ -743,6 +808,161 @@ attendu, non bloquant (cf. RÉSOLU antérieurs).
 Aucun autre chevauchement identifié avec les Phases 3, 4, 5
 et 7 à ce stade.
 
+---
+
+### SESSION 2.12 — commit 67e9e65
+**Correction RLS Storage (driver-documents) & transactions_insert_own**
+
+#### Partie 1 — Investigation (lecture seule)
+- 8 policies Storage confirmées sans clause de propriété
+  (4 sur driver-documents, 4 sur voice-messages)
+- Convention `{driver_id}/{docType}.ext` confirmée ;
+  6 dossiers orphelins identifiés sur 7 dossiers au départ
+  (1 driver actif à l'époque : eadc9d5e-0db9-4903-...)
+- Chaîne de propriété établie et validée par jointure réelle :
+  storage.foldername(name)[1]::uuid = drivers.id →
+  drivers.profile_id = profiles.id →
+  profiles.user_id = auth.uid()
+  (chaîne complète retenue plutôt que le raccourci
+  owner = auth.uid(), pour robustesse)
+- transactions_insert_own confirmée WITH CHECK (true)
+  (migration 20260504000005) ; chaîne de propriété établie
+  via wallet : transactions.wallet_id → wallet.driver_id =
+  drivers.id → drivers.profile_id → profiles.user_id =
+  auth.uid() ; enum transaction_status (pending/completed/
+  failed) sans restriction nécessaire
+- Compatibilité vérifiée : driver (upload direct côté client,
+  documentService.ts), admin (get_my_role() = 'admin'
+  strictement nécessaire pour topupWallet/refundWallet, qui
+  insèrent au nom de l'admin connecté), infrastructure
+  (check-document-reminders utilise service_role, non affecté)
+- RLS de drivers vérifiée à la demande du porteur — déjà
+  saine, sert de référence de conception
+- voice-messages : convention de chemin différente découverte
+  (missions/{missionId}/{senderProfileId}_{timestamp}.ext) —
+  a motivé son exclusion du périmètre de cette session
+- Exactement 2 buckets confirmés (tous deux privés) ; RLS
+  activée confirmée sur les 4 tables (objects, transactions,
+  wallet, drivers) ; get_my_role() lu et jugé robuste
+  (retourne NULL proprement en cas limite)
+- Rapport de synthèse rédigé et validé avant Partie 2,
+  incluant analyse de risques (5 mitigations actées) et
+  vigilance transmise à la session 2.17
+
+#### Partie 2 — Implémentation
+**Migration** : `20260504000013_fix_storage_transactions_rls_ownership.sql`
+  Difficultés rencontrées : erreurs de fusion de caractères
+  silencieuses au copier-coller (ex. "ONp.id", "IFEXISTS",
+  "driversd") — invisibles au cat, révélées par repr().
+  Méthode stabilisée : blocs courts, repr() systématique
+  après chaque ajout, alias renommé (d → dr) pour contourner
+  un bug de fusion récurrent sur une ligne spécifique.
+  Fichier vérifié intégralement, sans erreur résiduelle.
+
+**Rollback** : `supabase/rollbacks/rollback_20260504000013.sql`
+  (nouveau dossier rollbacks/, hors migrations/, pour éviter
+  toute exécution automatique non désirée) — vérifié
+  intégralement, fidèle à l'état RLS originel
+
+**Déploiement** : commit 67e9e65 (git add ciblé, 2 fichiers),
+  git pull --rebase propre, push réussi. Confirmé via
+  GitHub Actions : Check Supabase Connection #97,
+  Vérification Qualité Code #101, Deploy Supabase FTM #43 —
+  tous en succès
+
+**Tests fonctionnels** (menés directement porteur + Assistant
+Général FTM, hors canal session 2.12, intégrés ici comme
+faits vérifiés) :
+
+| Test | Résultat |
+|---|---|
+| DRIVER — création, upload, ré-upload | ✅ |
+| ADMIN — dashboard, validation | ✅ |
+| Accès croisé Storage (doit échouer) | ✅ 400 |
+| CLIENT — connexion basique | ✅ |
+| transactions_insert_own légitime | ✅ 201 |
+| transactions_insert_own illégitime (doit échouer) | ✅ 403 |
+
+Détail :
+- Driver test `3514fa86-7cab-4303-a59d-25d83dc40087` créé via
+  onboarding complet : profil ✅, premier upload 4 documents
+  (INSERT) ✅, ré-upload d'un document existant (UPDATE/
+  upsert) ✅ réussi — point de risque le plus critique de la
+  conception, confirmé fonctionnel
+- Connexion admin (+212600000001) : dashboard, stats,
+  validation des 4 documents — tous ✅
+- Test d'accès croisé : depuis la session du driver
+  3514fa86-..., tentative de fetch() authentifié vers
+  driver-documents/eadc9d5e-.../driver_license.jpg (dossier
+  orphelin d'un autre chauffeur) → STATUS 400 (Bad Request).
+  Faille originelle confirmée corrigée ✅
+- Driver 3514fa86-... supprimé pour libérer le numéro
+  partagé (+212600000000) → test client : profil role=client,
+  navigation vers "Nouvelle mission" ✅
+- Compte client (cf260b9f-...) supprimé à son tour pour
+  recréer un second driver nécessaire au test
+  transactions_insert_own (défaut de séquençage des tests
+  reconnu, non anticipé initialement)
+- Driver `2ec2b439-fcdb-443d-8de0-5bee268d30f6` créé,
+  wallet_id : 58b2b8e7-190a-4cbb-8f09-8340feecf498. Une seule
+  ligne wallet en base à ce moment (pas d'orphelin) — cohérent
+  avec une cascade de suppression sur wallet/drivers lors de
+  la suppression Auth, contrairement à Storage qui ne connaît
+  aucune relation de clé étrangère (observation factuelle,
+  non vérifiée par une contrainte ON DELETE CASCADE explicite)
+- Test légitime : insertion transaction (wallet_id propre,
+  status: 'pending') via fetch() authentifié → STATUS 201
+  (confirme aussi la compatibilité avec le statut 'pending',
+  vigilance transmise à la session 2.13)
+- Test illégitime : insertion vers wallet_id fictif
+  (00000000-0000-0000-0000-000000000099) → STATUS 403,
+  {"code":"42501", "message":"new row violates row-level
+  security policy for table \"transactions\""} — refus
+  confirmé, message RLS explicite
+
+**Anomalie mineure découverte** (non bloquante, sans lien
+avec la RLS) : bug d'affichage `DocumentReviewScreen.tsx` —
+après validation du dernier document en attente d'un
+chauffeur (4/4), le modal ne se rafraîchit pas visuellement
+(reste "En attente") car getPendingDrivers() ne retourne plus
+ce chauffeur une fois tous documents validés, et drivers.find()
+ne le retrouve donc plus dans la liste rafraîchie par
+loadDrivers(). Donnée en base confirmée correcte (dashboard
+admin : verifiedDrivers bien incrémenté) — bug d'état React
+côté client, pas un problème RLS. Vérifié : ne correspond à
+aucun bug déjà documenté en sections 9/15 (notamment distinct
+des limitations web GPS/pickupCoords et de l'ancien bug
+"Suspendre" déjà résolu en session 2.8). **Session de
+correction : INCONNUE** — non assignée par le porteur à ce
+stade.
+
+**État final réel constaté à l'issue de la session** :
+- +212600000000 : compte CLIENT supprimé (aucun compte client
+  actif au terme de la session 2.12)
+- Driver 2ec2b439-fcdb-443d-8de0-5bee268d30f6 reste actif en
+  base — is_verified: false (jamais validé par l'admin),
+  wallet_id: 58b2b8e7-..., wallet.balance réel = 0 DH (la
+  valeur 50 DH visible dans transactions.balance_after de la
+  ligne de test est déclarative uniquement — topupWallet()
+  n'a jamais été appelé durant ce test, sans lien avec le bug
+  topupWallet documenté pour la session 2.13)
+- Dossiers Storage driver-documents : 8 dossiers orphelins +
+  1 dossier actif (2ec2b439-...) = 9 dossiers au total —
+  signalé pour information, aucune session de nettoyage
+  planifiée à ce stade (à réévaluer si le nombre continue de
+  croître significativement ou si une politique de rétention
+  devient nécessaire avant mise en production)
+
+**Décision actée par le porteur** : conception RLS
+voice-messages différée à la session 2.18 (voir planification
+ci-dessus), sans déploiement à ce stade.
+
+**Fichiers créés** :
+  supabase/migrations/20260504000013_fix_storage_transactions_rls_ownership.sql
+  supabase/rollbacks/rollback_20260504000013.sql (nouveau
+  dossier rollbacks/)
+
+**Prochain timestamp de migration disponible** : 20260504000014
 
 ---
 
@@ -807,6 +1027,12 @@ DocumentReviewScreen
   → Valider/Rejeter documents driver
   → Notification driver via insertNotification()
   → Driver fully verified → DriverHomeScreen (realtime)
+  ⚠️ Bug d'affichage identifié session 2.12 : modal ne se
+     rafraîchit pas visuellement après validation du 4e/dernier
+     document (getPendingDrivers() ne retourne plus le
+     chauffeur, drivers.find() ne le retrouve plus dans la
+     liste rafraîchie) — donnée en base correcte, bug d'état
+     React côté client — session de correction INCONNUE
 
 WalletManagementScreen
   → Liste drivers vérifiés avec solde
@@ -1136,6 +1362,41 @@ Commit   : b65eb9d
 Confirmé : 5 rows supabase_realtime ✅
            WalletDashboardScreen SUBSCRIBED ✅
 
+RÉSOLU 36 — RLS Storage permissif driver-documents
+           (session 2.12)
+Cause    : 4 policies storage.objects sans clause
+           de propriété — tout utilisateur
+           authenticated pouvait lire/écrire/
+           modifier/supprimer n'importe quel fichier
+           (aucune vérification auth.uid()/propriété)
+Correctif: Ownership chain complète :
+           storage.foldername(name)[1]::uuid =
+           drivers.id → drivers.profile_id =
+           profiles.id → profiles.user_id = auth.uid()
+Migration: 20260504000013
+Commit   : 67e9e65
+Confirmé : Test accès croisé → STATUS 400 ✅
+           Upload/ré-upload driver légitime → ✅
+⚠️ voice-messages non couvert par cette correction —
+   voir session 2.18
+
+RÉSOLU 37 — RLS transactions_insert_own sans
+           restriction (session 2.12)
+Cause    : policy INSERT WITH CHECK (true) —
+           aucune restriction, tout utilisateur
+           authentifié pouvait insérer n'importe
+           quelle transaction (découverte session 2.11)
+Correctif: Ownership chain via wallet :
+           transactions.wallet_id → wallet.driver_id
+           = drivers.id → drivers.profile_id →
+           profiles.user_id = auth.uid()
+Migration: 20260504000013
+Commit   : 67e9e65
+Confirmé : Insertion légitime (wallet_id propre) →
+           STATUS 201 ✅
+           Insertion illégitime (wallet_id fictif) →
+           STATUS 403, code 42501 ✅
+
 ---
 
 ## 10. PISTES DÉFINITIVEMENT ÉCARTÉES
@@ -1159,6 +1420,9 @@ Ne pas retester :
                        + cancelled_driver
 ❌ cron.run_job(integer)
    pg_cron 1.6.4 ne supporte pas cette fonction
+❌ owner = auth.uid() comme clause RLS Storage simple
+   (raccourci écarté au profit de la chaîne de propriété
+   complète — voir RÉSOLU 36, session 2.12)
 
 ---
 
@@ -1183,8 +1447,9 @@ Ne pas retester :
 20260504000010_voice_messages_storage_rls_policies.sql ✅ Session 2.8
 20260504000011_configure_cron_document_reminders.sql ✅ Session 2.9
 20260504000012_enable_realtime_tables.sql            ✅ Session 2.10
+20260504000013_fix_storage_transactions_rls_ownership.sql ✅ Session 2.12
 
-Prochain timestamp disponible : 20260504000013
+Prochain timestamp disponible : 20260504000014
 
 ---
 
@@ -1297,28 +1562,31 @@ FAST-TRANS-MAROC-FTM/
 │   │   ├── register-push-token/
 │   │   ├── send-push-notification/
 │   │   └── send-tracking-sms/
-│   └── migrations/
-│       ├── 20260220155500_initial_schema.sql
-│       ├── 20260221000000_add_rpc_nearby_drivers.sql
-│       ├── 20260222000000_add_tracking_functions.sql
-│       ├── 20260223000000_add_push_tokens.sql
-│       ├── 20260224000000_add_rls_policies.sql
-│       ├── 20260225000000_enable_rls_push_tokens.sql
-│       ├── 20260226000000_fix_profiles_rls_recursion.sql
-│       ├── 20260429000001_allow_null_driver_license_number.sql
-│       ├── 20260429000002_allow_null_legal_docs_fields.sql
-│       ├── 20260504000001_create_driver_documents_bucket.sql
-│       ├── 20260504000002_storage_rls_policies.sql
-│       ├── 20260504000003_add_unique_constraint_document_reminders.sql
-│       ├── 20260504000004_update_driver_dashboard_view.sql
-│       ├── 20260504000005_add_transactions_insert_policy.sql
-│       ├── 20260504000006_fix_wallet_update_admin_rls.sql
-│       ├── 20260504000007_fix_notifications_insert_rls.sql
-│       ├── 20260504000008_fix_notifications_select_admin.sql
-│       ├── 20260504000009_create_voice_messages_bucket.sql
-│       ├── 20260504000010_voice_messages_storage_rls_policies.sql
-│       ├── 20260504000011_configure_cron_document_reminders.sql ← session 2.9
-│       └── 20260504000012_enable_realtime_tables.sql            ← session 2.10
+│   ├── migrations/
+│   │   ├── 20260220155500_initial_schema.sql
+│   │   ├── 20260221000000_add_rpc_nearby_drivers.sql
+│   │   ├── 20260222000000_add_tracking_functions.sql
+│   │   ├── 20260223000000_add_push_tokens.sql
+│   │   ├── 20260224000000_add_rls_policies.sql
+│   │   ├── 20260225000000_enable_rls_push_tokens.sql
+│   │   ├── 20260226000000_fix_profiles_rls_recursion.sql
+│   │   ├── 20260429000001_allow_null_driver_license_number.sql
+│   │   ├── 20260429000002_allow_null_legal_docs_fields.sql
+│   │   ├── 20260504000001_create_driver_documents_bucket.sql
+│   │   ├── 20260504000002_storage_rls_policies.sql
+│   │   ├── 20260504000003_add_unique_constraint_document_reminders.sql
+│   │   ├── 20260504000004_update_driver_dashboard_view.sql
+│   │   ├── 20260504000005_add_transactions_insert_policy.sql
+│   │   ├── 20260504000006_fix_wallet_update_admin_rls.sql
+│   │   ├── 20260504000007_fix_notifications_insert_rls.sql
+│   │   ├── 20260504000008_fix_notifications_select_admin.sql
+│   │   ├── 20260504000009_create_voice_messages_bucket.sql
+│   │   ├── 20260504000010_voice_messages_storage_rls_policies.sql
+│   │   ├── 20260504000011_configure_cron_document_reminders.sql ← session 2.9
+│   │   ├── 20260504000012_enable_realtime_tables.sql            ← session 2.10
+│   │   └── 20260504000013_fix_storage_transactions_rls_ownership.sql ← session 2.12
+│   └── rollbacks/
+│       └── rollback_20260504000013.sql ← nouveau dossier, session 2.12
 ├── .env.example
 ├── .gitignore
 ├── ROADMAP_FTM.md
@@ -1334,9 +1602,12 @@ FCM Android      : ⏳ pas encore configuré
                    sur device physique uniquement
 APNs iOS         : ⏳ pas encore configuré
 Storage buckets  : ✅ driver-documents créé
+                   ✅ RLS ownership chain — session 2.12
                    ✅ voice-messages créé — session 2.8
                    ⚠️ voice-messages non testé fonctionnellement
                    (audioService.ts non intégré UI — item 4.4)
+                   ⚠️ voice-messages RLS toujours permissive —
+                   conception session 2.18, déploiement Phase 4.4
 CRON reminders   : ✅ OPÉRATIONNEL — session 2.9
                    check-document-reminders — 0 8 * * *
                    5 exécutions succeeded : 18→22/06/2026
@@ -1344,7 +1615,7 @@ CRON reminders   : ✅ OPÉRATIONNEL — session 2.9
 
 ---
 
-## 15. BUGS RÉSIDUELS — SESSION 2.10
+## 15. BUGS RÉSIDUELS
 
 ⚠️ CORS send-push-notification
    Edge Function bloquée par CORS policy sur web
@@ -1370,26 +1641,39 @@ CRON reminders   : ✅ OPÉRATIONNEL — session 2.9
 ⚠️ WalletTopupScreen
    Transaction enregistrée ✅
    Solde non mis à jour — comportement voulu
-   Refonte prévue Phase 6.5
-
-⚠️ Point sécurité 6.6 (session 2.8)
-   RLS Storage permissif sur driver-documents +
-   voice-messages : tout utilisateur authenticated peut
-   lire/écrire/modifier/supprimer N'IMPORTE QUEL fichier
-   (pas de vérification auth.uid()/propriété/mission)
-   À traiter avant production — voir item 6.6
+   Refonte prévue Phase 6.5 / session 2.13
 
 ⚠️ voice-messages non testé fonctionnellement
    (session 2.8) — audioService.ts non intégré UI,
    voir item 4.4
+   RLS voice-messages toujours permissive — conception
+   prévue session 2.18, déploiement et test en Phase 4.4
 
-⚠️ Driver test recréé (session 2.10)
-   driverId : eadc9d5e-0db9-4983-b0a3-b69ca46c0b60
-   +212600000000 → DRIVER actif — is_verified = true
-   wallet_balance : 200 DH — vehicle_category : vul
-   document_reminders : créées automatiquement
-   à l'onboarding — non nettoyées après session 2.10
-   (Remplace 29849a0a-... de session 2.9)
+⚠️ DocumentReviewScreen.tsx — rafraîchissement modal
+   (découvert session 2.12) : après validation du 4e/dernier
+   document en attente d'un chauffeur, le modal ne se
+   rafraîchit pas visuellement (reste "En attente") — cause :
+   getPendingDrivers() ne retourne plus ce chauffeur une fois
+   tous documents validés, drivers.find() ne le retrouve donc
+   plus dans la liste rafraîchie par loadDrivers(). Donnée en
+   base correcte (verifiedDrivers bien incrémenté) — bug
+   d'état React côté client, distinct des limitations web
+   déjà documentées (GPS, ancien bug "Suspendre"). Session de
+   correction : INCONNUE — non assignée à ce stade.
+
+⚠️ Driver test actif (session 2.12)
+   driverId : 2ec2b439-fcdb-443d-8de0-5bee268d30f6
+   +212600000000 → DRIVER — is_verified : false
+   wallet_id : 58b2b8e7-190a-4cbb-8f09-8340feecf498
+   wallet_balance réel : 0 DH (voir Section 3 pour le détail
+   de l'artefact de test balance_after: 50 dans transactions)
+
+⚠️ Dossiers Storage orphelins (session 2.12)
+   driver-documents : 8 dossiers orphelins + 1 actif
+   (2ec2b439-...) = 9 au total
+   Signalé pour information — aucune session de nettoyage
+   planifiée ; à réévaluer si croissance significative ou
+   politique de rétention nécessaire avant production
 
 ⚠️ COMPORTEMENT NON EXPLIQUÉ — repr() vs terminal
    (session 2.9) — statut INCONNU
@@ -1408,27 +1692,27 @@ CRON reminders   : ✅ OPÉRATIONNEL — session 2.9
    du stack DriverPendingStack
    Navigation actuelle via onAuthStateChange/initializeApp()
    — pas via Realtime
-   À corriger — session 2.11 à planifier
+   À corriger — session 2.13 (voir planification 2.11)
 
 ⚠️ revenue_current_month — nommage trompeur
    Libellé UI "REVENUS CE MOIS" incorrect
    Calcule total topup du mois — pas revenus missions
    Calcul correct — libellé à corriger
-   À traiter — session 2.11 à planifier
+   À traiter — session 2.13
 
 ⚠️ NotificationBell — jamais monté dans l'app
    Composant prêt — NotificationCenter absent
    de RootNavigator
-   À intégrer — décision porteur (session 2.11)
+   À intégrer — session 2.14
 
 ⚠️ subscribeToNewTransactions — jamais appelé
    Défini dans walletService.ts
    À brancher dans TransactionHistoryScreen
-   À intégrer — décision porteur (session 2.11)
+   À intégrer — session 2.14
 
 ⚠️ TrackingDetailScreen — souscription commentée
    Manque requête mission_id depuis tracking_number
-   À compléter — décision porteur (session 2.11)
+   À compléter — session 2.15
 
 ---
 
@@ -1527,6 +1811,20 @@ DriverHomeScreen — réception nouvelles missions
 MissionTrackingScreen — suivi mission temps réel
   → nécessite mission active + GPS
 
+TESTS EFFECTUÉS ET CONFIRMÉS ✅ — SESSION 2.12 :
+DRIVER — création profil, upload 4 documents (INSERT),
+  ré-upload d'un document existant (UPDATE/upsert) ✅
+ADMIN — dashboard, validation des 4 documents ✅
+Accès croisé Storage (fetch() vers dossier orphelin
+  d'un autre chauffeur, doit échouer) → STATUS 400 ✅
+CLIENT — connexion basique, navigation "Nouvelle
+  mission" ✅
+transactions_insert_own — insertion légitime
+  (wallet_id propre) → STATUS 201 ✅
+transactions_insert_own — insertion illégitime
+  (wallet_id fictif) → STATUS 403, code 42501 ✅
+Aucune régression détectée ✅
+
 ---
 
 ## 17. ÉTAPES RESTANTES
@@ -1577,28 +1875,26 @@ PHASE 2 — TESTS & DEBUGGING
        subscribeToNewTransactions,
        TrackingDetailScreen ⚠️
      → Non-régression CLIENT + DRIVER + ADMIN ✅
-2.11 ⏳ Planification sessions complémentaires
-        avant Phase 3
-     → Sur la base des points identifiés en 2.10
-       sans investigation code supplémentaire
-     → Trancher pour chaque point :
-       session dédiée / reporté Phase 3+ /
-       scope à préciser
-     → Produire liste sessions 2.12, 2.13…
-       avec objectif précis + contenu +
-       ordre logique + complexité estimée
-     → Points à couvrir :
-       1. RLS Storage 6.6 — bloquant production
-       2. Bouton déconnexion 3 rôles — 6.4
-       3. Refonte WalletTopupScreen — 6.5
-       4. Renommage revenue_current_month
-       5. subscribeToNewTransactions
-       6. Navigation cross-stack driver
-       7. NotificationBell + NotificationCenter
-       8. TrackingDetailScreen souscription
-       9. Workflow validation recharge admin — 6.2
-       10. Remboursements flux dédié — 6.3
-       11. Modes de paiement multiples — 6.1
+2.11 ✅ COMPLET — Planification sessions complémentaires
+     → 11 points investigués en profondeur, fiches validées
+     → Sessions 2.12 à 2.17 planifiées avec objectif précis
+     → Découverte sécurité RLS transactions_insert_own
+       ajoutée au périmètre 2.12
+2.12 ✅ COMPLET — RLS Storage (driver-documents) +
+     transactions_insert_own
+     → Migration 20260504000013 déployée ✅ (commit 67e9e65)
+     → Ownership chain Storage : STATUS 400 sur accès
+       croisé confirmé ✅
+     → Ownership chain transactions : STATUS 201 (légitime)
+       + STATUS 403 (illégitime) confirmés ✅
+     → Fichier de rollback créé (supabase/rollbacks/) ✅
+     → voice-messages exclu du périmètre — session 2.18
+       décidée pour sa conception RLS
+     → Anomalie mineure découverte : DocumentReviewScreen.tsx
+       rafraîchissement modal — session INCONNUE
+     → Dossiers orphelins Storage signalés (9 au total) —
+       aucun nettoyage planifié
+     → Non-régression CLIENT + DRIVER + ADMIN ✅
 
 PHASE 3 — SERVICES EXTERNES
 3.1 ⏳ Twilio SMS
@@ -1614,6 +1910,8 @@ PHASE 4 — TESTS DEVICE PHYSIQUE
     session 2.8) — UI à construire : bouton enregistrement,
     liste lecture — à traiter avec TEST 2 (nécessite
     device physique + mission active)
+    → Inclut également le déploiement ET le test immédiat
+    de la clause RLS voice-messages conçue en session 2.18
 
 PHASE 5 — BUILD EAS
 5.1 ⏳ Configurer app.json + eas.json
@@ -1622,19 +1920,22 @@ PHASE 5 — BUILD EAS
 
 PHASE 6 — AMÉLIORATIONS POST-TESTS
 6.1 ⏳ Modes de paiement multiples wallet
+    REPRIS PAR ANTICIPATION — voir session 2.17
 6.2 ⏳ Workflow validation recharge admin
     chauffeur soumet demande + pièce justificative
     admin valide — solde crédité après validation
+    REPRIS PAR ANTICIPATION — voir session 2.17
 6.3 ⏳ Remboursements — flux dédié
+    REPRIS PAR ANTICIPATION — voir session 2.17
 6.4 ⏳ Bouton déconnexion CLIENT + DRIVER + ADMIN
+    REPRIS PAR ANTICIPATION — voir session 2.16
 6.5 ⏳ Refonte WalletTopupScreen
     soumettre demande au lieu de créditer directement
-6.6 ⏳ SÉCURITÉ — Renforcer RLS Storage
-    (driver-documents + voice-messages) — session 2.8
-    Actuellement : tout utilisateur authenticated peut
-    lire/écrire/supprimer N'IMPORTE QUEL fichier (pas de
-    vérification auth.uid()/propriété/mission)
-    À traiter avant mise en production réelle
+    REPRIS PAR ANTICIPATION — voir session 2.13
+6.6 ✅/⏳ SÉCURITÉ — Renforcer RLS Storage
+    driver-documents ✅ traité session 2.12 (commit 67e9e65)
+    voice-messages ⏳ conception session 2.18, déploiement
+    et test en Phase 4.4
 
 PHASE 7 — PUBLICATION
 7.1 ⏳ Google Play Store (25$)
@@ -1667,7 +1968,7 @@ RÈGLES CRITIQUES :
 - vault.create_secret(valeur, nom, desc) — valeur EN PREMIER
 - timeout_milliseconds := 30000 pour net.http_post
 - cron.unschedule() WHERE EXISTS avant tout cron.schedule()
-- Prochain timestamp migration : 20260504000013
+- Prochain timestamp migration : 20260504000014
 
 OBJECTIF SESSION :
 [Décrire précisément]
