@@ -15,7 +15,7 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { COLORS } from '../../constants/theme';
-import { topupWallet } from '../../services/walletService';
+import { requestWalletTopup } from '../../services/walletService';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -39,11 +39,10 @@ export default function WalletTopupScreen() {
 
   const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
   const [customAmount, setCustomAmount] = useState('');
-  const [agentRef, setAgentRef] = useState('');
+  const [note, setNote] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const finalAmount = selectedAmount ?? (customAmount ? parseFloat(customAmount) : 0);
-  const newBalance = currentBalance + finalAmount;
   const isValid = finalAmount >= 100;
   const deficit = Math.max(minimumBalance - currentBalance, 0);
 
@@ -60,7 +59,7 @@ export default function WalletTopupScreen() {
   const handleConfirm = async () => {
     if (!isValid) return;
     setIsLoading(true);
-    const result = await topupWallet(walletId, finalAmount, agentRef);
+    const result = await requestWalletTopup(walletId, finalAmount, note);
     setIsLoading(false);
 
     if (result.error) {
@@ -69,8 +68,8 @@ export default function WalletTopupScreen() {
     }
 
     Alert.alert(
-      '✅ Recharge effectuée',
-      `Nouveau solde : ${result.balanceAfter?.toFixed(2)} DH`,
+      '📨 Demande transmise',
+      "Votre demande de recharge a ete transmise. Elle sera traitee par l'administrateur.",
       [{ text: 'OK', onPress: () => navigation.goBack() }]
     );
   };
@@ -139,13 +138,13 @@ export default function WalletTopupScreen() {
         />
 
         {/* Agent ref */}
-        <Text style={styles.sectionTitle}>── RÉFÉRENCE DE PAIEMENT ──</Text>
+        <Text style={styles.sectionTitle}>── NOTE ──</Text>
         <TextInput
           style={styles.input}
-          placeholder="Réf. reçu / code agent (optionnel)"
+          placeholder="Note (optionnel)"
           placeholderTextColor={COLORS.textSecondary ?? '#999'}
-          value={agentRef}
-          onChangeText={setAgentRef}
+          value={note}
+          onChangeText={setNote}
         />
 
         {/* Summary */}
@@ -161,25 +160,14 @@ export default function WalletTopupScreen() {
                 +{finalAmount.toFixed(2)} DH
               </Text>
             </Text>
-            <Text style={styles.summaryRow}>
-              Nouveau solde :{' '}
-              <Text
-                style={{
-                  color: newBalance >= minimumBalance ? (COLORS.success ?? '#28A745') : (COLORS.alert ?? '#DC3545'),
-                  fontWeight: '700',
-                }}
-              >
-                {newBalance.toFixed(2)} DH {newBalance >= minimumBalance ? '✅' : '⚠️'}
-              </Text>
-            </Text>
           </View>
         )}
 
         {/* Info note */}
         <View style={styles.noteBox}>
           <Text style={styles.noteText}>
-            ℹ️ Le paiement s'effectue en espèces auprès d'un agent FTM.
-            Présentez votre numéro de téléphone à l'agent.
+            ℹ️ Votre demande sera examinée par l'équipe FTM. Le paiement s'effectue en espèces
+            auprès d'un agent FTM ; le solde sera crédité après validation.
           </Text>
         </View>
 

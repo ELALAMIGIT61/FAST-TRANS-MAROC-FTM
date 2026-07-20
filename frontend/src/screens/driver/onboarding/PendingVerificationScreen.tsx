@@ -122,16 +122,10 @@ export default function PendingVerificationScreen({ navigation, route }: Props) 
 
       <View style={styles.walletBox}>
         <Text style={styles.walletText}>
-          💰 Pensez à recharger votre wallet (min. 100 DH) pour commencer à accepter des missions.
+          💰 Une fois votre dossier validé, vous pourrez recharger votre wallet (min. 100 DH) pour commencer à accepter des missions.
         </Text>
       </View>
 
-      <TouchableOpacity
-        style={styles.walletButton}
-        onPress={() => navigation.navigate('WalletRecharge')}
-      >
-        <Text style={styles.walletButtonText}>Recharger mon wallet</Text>
-      </TouchableOpacity>
     </ScrollView>
   );
 }
@@ -161,9 +155,4 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF8E7', width: '100%',
   },
   walletText:   { fontSize: 13, color: '#856404', lineHeight: 20 },
-  walletButton: {
-    marginTop: 20, backgroundColor: '#F39C12', borderRadius: 12,
-    padding: 16, alignItems: 'center', width: '100%',
-  },
-  walletButtonText: { color: '#fff', fontWeight: '700', fontSize: 16 },
 });

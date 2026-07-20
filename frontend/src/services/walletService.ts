@@ -20,7 +20,7 @@ export interface DriverDashboard {
   is_verified: boolean;
   pending_missions: number;
   active_missions: number;
-  revenue_current_month: number;
+  recharges_current_month: number;
   commissions_current_month: number;
 }
 
@@ -85,7 +85,7 @@ export async function getDriverDashboard(
     isWalletBlocked: dashboard.is_wallet_blocked,
     totalCommissions: dashboard.total_commissions,
     totalMissions: dashboard.total_missions,
-    revenueThisMonth: dashboard.revenue_current_month,
+    rechargesThisMonth: dashboard.recharges_current_month,
     commissionsThisMonth: dashboard.commissions_current_month,
   });
 
@@ -216,6 +216,75 @@ export async function topupWallet(
     success: true,
     balanceBefore,
     balanceAfter,
+    transaction: transaction as Transaction,
+  };
+}
+
+// ─── requestWalletTopup ─────────────────────────────────────────────────────────
+// Insere une DEMANDE de recharge (statut 'pending'), SANS tenter de modifier
+// wallet.balance directement -- le credit reel reste un privilege admin exclusif
+// via adminTopupDriverWallet (inchange). Concue en session 2.13 (Point 1 du
+// correctif) pour remplacer l'appel a topupWallet() cote chauffeur uniquement.
+
+export async function requestWalletTopup(
+  walletId: string,
+  amount: number,
+  note: string
+): Promise<{
+  success?: true;
+  transaction?: Transaction;
+  error?: string;
+}> {
+  console.log('[FTM-DEBUG] Wallet - Topup request initiated', { walletId, amount, note });
+
+  if (parseFloat(String(amount)) < 100) {
+    console.log('[FTM-DEBUG] Wallet - Topup request amount too low', { amount });
+    return { error: 'Recharge minimum : 100 DH' };
+  }
+
+  const { data: currentWallet, error: fetchError } = await supabase
+    .from('wallet')
+    .select('balance')
+    .eq('id', walletId)
+    .single();
+
+  if (fetchError) {
+    console.log('[FTM-DEBUG] Wallet - Topup request fetch error', { error: fetchError.message });
+    return { error: fetchError.message };
+  }
+
+  const balanceBefore = parseFloat(String((currentWallet as { balance: number }).balance));
+
+  const { data: transaction, error: txError } = await supabase
+    .from('transactions')
+    .insert({
+      wallet_id: walletId,
+      mission_id: null,
+      transaction_type: 'topup',
+      amount: parseFloat(String(amount)),
+      balance_before: balanceBefore,
+      balance_after: balanceBefore,
+      status: 'pending',
+      description: note ? `Demande de recharge -- Note: ${note}` : 'Demande de recharge',
+      metadata: { requested_by: 'driver', note: note || null },
+      processed_at: null,
+    })
+    .select()
+    .single();
+
+  if (txError) {
+    console.log('[FTM-DEBUG] Wallet - Topup request insertion error', { error: txError.message });
+    return { error: txError.message };
+  }
+
+  console.log('[FTM-DEBUG] Wallet - Topup request created', {
+    walletId,
+    amount,
+    transactionId: (transaction as Transaction | null)?.id,
+  });
+
+  return {
+    success: true,
     transaction: transaction as Transaction,
   };
 }

@@ -189,9 +189,9 @@ export default function WalletDashboardScreen({ route }: NativeStackScreenProps<
         <Text style={styles.ratingSubtext}>({dashboard.total_reviews} avis)</Text>
       </Text>
 
-      <Text style={styles.sectionTitle}>── REVENUS CE MOIS ──</Text>
-      <Text style={styles.revenueText}>
-        {formatAmount(dashboard.revenue_current_month)} DH
+      <Text style={styles.sectionTitle}>── RECHARGES CE MOIS ──</Text>
+      <Text style={styles.rechargeText}>
+        {formatAmount(dashboard.recharges_current_month)} DH
       </Text>
 
       <TouchableOpacity
@@ -292,7 +292,7 @@ const styles = StyleSheet.create({
   statLabel: { fontSize: 11, color: COLORS.textSecondary ?? '#777', textAlign: 'center' },
   ratingText: { fontSize: 18, fontWeight: '600', color: COLORS.text ?? '#1A1A1A', marginBottom: 4 },
   ratingSubtext: { fontSize: 13, color: COLORS.textSecondary ?? '#777', fontWeight: '400' },
-  revenueText: { fontSize: 20, fontWeight: '700', color: COLORS.success ?? '#28A745', marginBottom: 4 },
+  rechargeText: { fontSize: 20, fontWeight: '700', color: COLORS.success ?? '#28A745', marginBottom: 4 },
   topupButton: {
     backgroundColor: COLORS.cta ?? '#FFC107',
     borderRadius: 10,
