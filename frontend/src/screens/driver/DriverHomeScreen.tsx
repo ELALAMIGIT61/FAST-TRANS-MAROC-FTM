@@ -13,6 +13,7 @@ import { startBackgroundTracking, stopBackgroundTracking } from '../../services/
 import { subscribeToNewMissions, unsubscribeChannel } from '../../services/realtimeService';
 import { supabase } from '../../lib/supabaseClient';
 import NewMissionModal from './NewMissionModal';
+import NotificationBell from '../../components/NotificationBell';
 import type { Mission, VehicleCategory } from '../../services/missionService';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
@@ -105,6 +106,7 @@ export default function DriverHomeScreen({ route, navigation }: Props) {
           <Text style={styles.greeting}>Bonjour, Chauffeur</Text>
           <Text style={styles.vehicleInfo}>{vehicleCategory.toUpperCase()}</Text>
         </View>
+        <NotificationBell />
       </View>
 
       {walletBalance !== null && (

@@ -9,19 +9,22 @@ import * as Haptics from 'expo-haptics';
 import { useNavigation } from '@react-navigation/native';
 import { COLORS } from '../constants/theme';
 import {
+  getCurrentProfileId,
   getNotifications,
   subscribeToNotifications,
 } from '../services/pushNotificationService';
 
-interface Props {
-  profileId: string;
-}
-
-export default function NotificationBell({ profileId }: Props) {
+export default function NotificationBell() {
+  const [profileId, setProfileId] = useState<string | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
   const navigation = useNavigation<{ navigate: (screen: string) => void }>();
 
+  useEffect(() => {
+    getCurrentProfileId().then(setProfileId);
+  }, []);
+
   const fetchUnread = useCallback(async () => {
+    if (!profileId) return;
     const result = await getNotifications(profileId, 0, true);
     if (result.success) {
       setUnreadCount(result.unreadCount ?? 0);
@@ -29,6 +32,7 @@ export default function NotificationBell({ profileId }: Props) {
   }, [profileId]);
 
   useEffect(() => {
+    if (!profileId) return;
     fetchUnread();
 
     const channel = subscribeToNotifications(profileId, () => {
@@ -40,6 +44,8 @@ export default function NotificationBell({ profileId }: Props) {
       channel.unsubscribe();
     };
   }, [profileId, fetchUnread]);
+
+  if (!profileId) return null;
 
   return (
     <TouchableOpacity

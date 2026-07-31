@@ -389,3 +389,22 @@ export function handleNotificationTap(
     });
   }
 }
+
+// ─── getCurrentProfileId ───────────────────────────────────────────────────────
+export async function getCurrentProfileId(): Promise<string | null> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.user?.id) {
+    console.log('[FTM-DEBUG] Push - No active session for profile lookup');
+    return null;
+  }
+  const { data: profile, error } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('user_id', session.user.id)
+    .single();
+  if (error || !profile) {
+    console.log('[FTM-DEBUG] Push - Profile lookup error', { error: error?.message });
+    return null;
+  }
+  return profile.id;
+}

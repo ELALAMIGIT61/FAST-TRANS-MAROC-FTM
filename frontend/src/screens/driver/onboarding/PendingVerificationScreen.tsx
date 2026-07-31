@@ -4,7 +4,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   View, Text, TouchableOpacity, ScrollView,
-  StyleSheet, Alert,
+  StyleSheet, Alert, Platform,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
@@ -77,9 +77,14 @@ export default function PendingVerificationScreen({ navigation, route }: Props) 
           ]);
 
           if (n.is_verified === true) {
-            Alert.alert('✅ Dossier validé !', 'Votre compte chauffeur est actif.', [
-              { text: 'Commencer', onPress: () => navigation.replace('DriverHome') },
-            ]);
+            if (Platform.OS === 'web') {
+              window.alert('✅ Dossier validé !\n\nVotre compte chauffeur est actif.');
+              navigation.replace('DriverHome');
+            } else {
+              Alert.alert('✅ Dossier validé !', 'Votre compte chauffeur est actif.', [
+                { text: 'Commencer', onPress: () => navigation.replace('DriverHome') },
+              ]);
+            }
           }
         }
       )

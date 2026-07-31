@@ -11,6 +11,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { COLORS } from '../../constants/theme';
 import { getAdminStats } from '../../services/adminService';
+import NotificationBell from '../../components/NotificationBell';
 
 interface AdminStats {
   totalMissions: number | null;
@@ -60,7 +61,10 @@ export default function AdminDashboardScreen() {
       style={styles.container}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
     >
-      <Text style={styles.title}>🛡️ Admin FTM — Dashboard</Text>
+      <View style={styles.headerRow}>
+        <Text style={styles.title}>🛡️ Admin FTM — Dashboard</Text>
+        <NotificationBell />
+      </View>
 
       <Text style={styles.sectionTitle}>── KPIs ──</Text>
       <View style={styles.kpiGrid}>
@@ -143,11 +147,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
   title: {
     fontSize: 22,
     fontWeight: '700',
     color: COLORS.primary,
-    marginBottom: 20,
     marginTop: 8,
   },
   sectionTitle: {

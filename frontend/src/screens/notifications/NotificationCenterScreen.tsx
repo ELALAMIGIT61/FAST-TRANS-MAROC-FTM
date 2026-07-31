@@ -11,6 +11,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { COLORS } from '../../constants/theme';
 import {
+  getCurrentProfileId,
   getNotifications,
   markNotificationRead,
   markAllNotificationsRead,
@@ -31,10 +32,6 @@ interface NotifItem {
   created_at: string;
 }
 
-interface Props {
-  profileId: string;
-}
-
 function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
   const min  = Math.floor(diff / 60000);
@@ -45,7 +42,8 @@ function timeAgo(dateStr: string): string {
   return `Il y a ${Math.floor(h / 24)}j`;
 }
 
-export default function NotificationCenterScreen({ profileId }: Props) {
+export default function NotificationCenterScreen() {
+  const [profileId, setProfileId] = useState<string | null>(null);
   const [notifications, setNotifications] = useState<NotifItem[]>([]);
   const [loading, setLoading]     = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -53,7 +51,15 @@ export default function NotificationCenterScreen({ profileId }: Props) {
   const [hasMore, setHasMore]     = useState(false);
   const navigation = useNavigation<{ navigate: (screen: string, params?: Record<string, unknown>) => void }>();
 
+  useEffect(() => {
+    getCurrentProfileId().then((id) => {
+      setProfileId(id);
+      if (!id) setLoading(false);
+    });
+  }, []);
+
   const load = useCallback(async (p = 0, refresh = false) => {
+    if (!profileId) return;
     if (refresh) setRefreshing(true);
     const result = await getNotifications(profileId, p);
     if (result.success) {
@@ -66,12 +72,13 @@ export default function NotificationCenterScreen({ profileId }: Props) {
     setRefreshing(false);
   }, [profileId]);
 
-  useEffect(() => { load(0); }, [load]);
+  useEffect(() => { if (profileId) load(0); }, [profileId, load]);
 
   const onRefresh = () => load(0, true);
   const onLoadMore = () => { if (hasMore && !loading) load(page + 1); };
 
   const onTap = async (item: NotifItem) => {
+    if (!profileId) return;
     if (!item.is_read) {
       await markNotificationRead(item.id, profileId);
       setNotifications(prev =>
@@ -85,6 +92,7 @@ export default function NotificationCenterScreen({ profileId }: Props) {
   };
 
   const onMarkAll = async () => {
+    if (!profileId) return;
     await markAllNotificationsRead(profileId);
     setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
   };
@@ -108,6 +116,14 @@ export default function NotificationCenterScreen({ profileId }: Props) {
     return (
       <View style={styles.center}>
         <ActivityIndicator color={COLORS.primary ?? '#1A73E8'} size="large" />
+      </View>
+    );
+  }
+
+  if (!profileId) {
+    return (
+      <View style={styles.center}>
+        <Text style={styles.emptyText}>Impossible de charger vos notifications.</Text>
       </View>
     );
   }

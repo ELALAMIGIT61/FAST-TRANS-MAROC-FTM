@@ -35,6 +35,7 @@ import AdminMissionsScreen from "../screens/admin/AdminMissionsScreen";
 import AdminUsersScreen from "../screens/admin/AdminUsersScreen";
 import DocumentReviewScreen from "../screens/admin/DocumentReviewScreen";
 import WalletManagementScreen from "../screens/admin/WalletManagementScreen";
+import NotificationCenterScreen from "../screens/notifications/NotificationCenterScreen";
 
 import type { AppRoute } from "../types/database";
 
@@ -46,6 +47,7 @@ export type AuthStackParamList = {
 
 export type ClientStackParamList = {
   ClientHome: undefined;
+  NotificationCenter: undefined;
 };
 
 export type DriverStackParamList = {
@@ -54,6 +56,7 @@ export type DriverStackParamList = {
   WalletTopup: { walletId: string; currentBalance: number; minimumBalance: number };
   TransactionHistory: { walletId: string };
   DocumentStatus: undefined;
+  NotificationCenter: undefined;
 };
 
 export type DriverOnboardingStackParamList = {
@@ -73,6 +76,7 @@ export type AdminStackParamList = {
   WalletManagement: undefined;
   AdminMissions: undefined;
   AdminUsers: undefined;
+  NotificationCenter: undefined;
 };
 
 const AuthStack = createNativeStackNavigator<AuthStackParamList>();
@@ -90,6 +94,7 @@ function ClientNavigator({ clientProfileId }: { clientProfileId: string }) {
         component={CreateMissionScreen as any}
         initialParams={{ clientProfileId }}
       />
+      <ClientStack.Screen name="NotificationCenter" component={NotificationCenterScreen as any} />
     </ClientStack.Navigator>
   );
 }
@@ -141,6 +146,7 @@ function DriverNavigator({ driverId, vehicleCategory }: { driverId: string; vehi
         name="DocumentStatus"
         component={DocumentStatusScreen as any}
       />
+      <DriverStack.Screen name="NotificationCenter" component={NotificationCenterScreen as any} />
     </DriverStack.Navigator>
   );
 }
@@ -168,6 +174,7 @@ function AdminNavigator() {
         name="AdminUsers"
         component={AdminUsersScreen as any}
       />
+      <AdminStack.Screen name="NotificationCenter" component={NotificationCenterScreen as any} />
     </AdminStack.Navigator>
   );
 }

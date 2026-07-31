@@ -16,6 +16,7 @@ import { COLORS, FONTS, SPACING, BORDER_RADIUS } from '../../constants/theme';
 import { getClientCurrentLocation, reverseGeocode } from '../../services/locationService';
 import { createMission, VehicleCategory } from '../../services/missionService';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import NotificationBell from '../../components/NotificationBell';
 
 type RootStackParamList = {
   CreateMission: { clientProfileId: string };
@@ -101,7 +102,10 @@ export default function CreateMissionScreen({ route, navigation }: Props) {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-        <Text style={styles.title}>Nouvelle mission</Text>
+        <View style={styles.headerRow}>
+          <Text style={styles.title}>Nouvelle mission</Text>
+          <NotificationBell />
+        </View>
 
         {/* DÉPART */}
         <Text style={styles.sectionLabel}>📍 DÉPART</Text>
@@ -215,11 +219,16 @@ const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: COLORS.background },
   container: { flex: 1 },
   content: { padding: SPACING.md, paddingBottom: 40 },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SPACING.lg,
+  },
   title: {
     fontSize: 24,
     fontWeight: '700',
     color: COLORS.text,
-    marginBottom: SPACING.lg,
   },
   sectionLabel: {
     fontSize: 12,

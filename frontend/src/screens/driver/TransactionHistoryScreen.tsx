@@ -11,10 +11,12 @@ import {
 import { useRoute, RouteProp } from '@react-navigation/native';
 
 import { COLORS } from '../../constants/theme';
+import { RealtimeChannel } from '@supabase/supabase-js';
 import {
   Transaction,
   TransactionFilter,
   getTransactionHistory,
+  subscribeToNewTransactions,
 } from '../../services/walletService';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -152,6 +154,26 @@ export default function TransactionHistoryScreen({
 
   const filterRef = useRef(activeFilter);
   filterRef.current = activeFilter;
+
+  const channelRef = useRef<RealtimeChannel | null>(null);
+
+  useEffect(() => {
+    channelRef.current = subscribeToNewTransactions(walletId, (tx) => {
+      const currentFilter = filterRef.current;
+      const matchesFilter = currentFilter === 'all' || tx.transaction_type === currentFilter;
+      if (!matchesFilter) return;
+
+      setTransactions((prev) => {
+        if (prev.some((t) => t.id === tx.id)) return prev;
+        setTotalCount((c) => c + 1);
+        return [tx, ...prev];
+      });
+    });
+
+    return () => {
+      channelRef.current?.unsubscribe();
+    };
+  }, [walletId]);
 
   const loadPage = useCallback(
     async (page: number, filter: TransactionFilter, replace = false) => {

@@ -1,4 +1,6 @@
 import { supabase } from '../lib/supabaseClient';
+import { notifyMissionStarted, notifyMissionAccepted, notifyMissionCompleted, notifyMissionCancelled } from './notificationTemplates';
+import { insertNotification } from './pushNotificationService';
 
 export type VehicleCategory = 'vul' | 'n2_medium' | 'n2_large';
 export type MissionType = 'transport' | 'ecommerce_parcel';
@@ -199,6 +201,20 @@ export async function acceptMission(
     status: data.status,
   });
 
+  if (data.client_id) {
+    try {
+      const { data: driverProfile } = await supabase
+        .from('drivers')
+        .select('profiles ( full_name )')
+        .eq('id', driverId)
+        .single();
+      const driverName = (driverProfile?.profiles as { full_name?: string } | null)?.full_name ?? 'Votre chauffeur';
+      await notifyMissionAccepted(data.client_id, { id: data.id, mission_number: data.mission_number }, driverName);
+    } catch (notifyError) {
+      console.log('[FTM-DEBUG] Mission - Notify accepted failed (non-blocking)', { notifyError });
+    }
+  }
+
   return { success: true, mission: data as Mission };
 }
 
@@ -229,6 +245,18 @@ export async function startMission(
     missionId,
     pickupTime: data.actual_pickup_time,
   });
+
+  if (data.client_id) {
+    try {
+      await notifyMissionStarted(data.client_id, {
+        id: data.id,
+        mission_number: data.mission_number,
+        dropoff_city: data.dropoff_city,
+      });
+    } catch (notifyError) {
+      console.log('[FTM-DEBUG] Mission - Notify started failed (non-blocking)', { notifyError });
+    }
+  }
 
   return { success: true, mission: data as Mission };
 }
@@ -266,23 +294,51 @@ export async function completeMission(
     dropoffTime: data.actual_dropoff_time,
   });
 
+  if (data.client_id) {
+    try {
+      const { data: driverProfile } = await supabase
+        .from('drivers')
+        .select('profiles ( id )')
+        .eq('id', driverId)
+        .single();
+      const driverProfileId = (driverProfile?.profiles as { id?: string } | null)?.id;
+      if (driverProfileId) {
+        await notifyMissionCompleted(data.client_id, driverProfileId, {
+          id: data.id,
+          mission_number: data.mission_number,
+          dropoff_city: data.dropoff_city,
+          commission_amount: data.commission_amount ?? 0,
+        });
+      } else {
+        await insertNotification(
+          data.client_id,
+          'mission_completed',
+          '🏁 Mission terminée !',
+          `Mission ${data.mission_number} livrée à ${data.dropoff_city}. Évaluez votre chauffeur.`,
+          { mission_id: data.id, screen: 'RatingScreen' }
+        );
+        console.log('[FTM-DEBUG] Mission - Driver profileId not resolved, client notified alone', { driverId });
+      }
+    } catch (notifyError) {
+      console.log('[FTM-DEBUG] Mission - Notify completed failed (non-blocking)', { notifyError });
+    }
+  }
+
   return { success: true, mission: data as Mission };
 }
 
 export async function cancelMission(
   missionId: string,
-  _userId: string,
+  userId: string,
   cancelledBy: 'client' | 'driver'
 ): Promise<{ success?: boolean; mission?: Mission; error?: string }> {
   const newStatus: MissionStatus =
     cancelledBy === 'client' ? 'cancelled_client' : 'cancelled_driver';
-
   console.log('[FTM-DEBUG] Mission - Cancelling mission', {
     missionId,
     cancelledBy,
     newStatus,
   });
-
   const { data, error } = await supabase
     .from('missions')
     .update({ status: newStatus })
@@ -290,20 +346,51 @@ export async function cancelMission(
     .in('status', ['pending', 'accepted'])
     .select()
     .single();
-
   if (error) {
     console.log('[FTM-DEBUG] Mission - Cancel error', { error: error.message });
     return { error: error.message };
   }
-
   console.log('[FTM-DEBUG] Mission - Cancelled', {
     missionId,
     status: data.status,
   });
 
+  try {
+    if (cancelledBy === 'driver') {
+      if (data.client_id) {
+        await notifyMissionCancelled(
+          data.client_id,
+          { id: data.id, mission_number: data.mission_number },
+          cancelledBy
+        );
+      }
+    } else {
+      if (!data.driver_id) {
+        console.log('[FTM-DEBUG] Mission - Cancelled before driver assignment, no driver to notify', { missionId });
+      } else {
+        const { data: driverProfile } = await supabase
+          .from('drivers')
+          .select('profiles ( id )')
+          .eq('id', data.driver_id)
+          .single();
+        const driverProfileId = (driverProfile?.profiles as { id?: string } | null)?.id;
+        if (driverProfileId) {
+          await notifyMissionCancelled(
+            driverProfileId,
+            { id: data.id, mission_number: data.mission_number },
+            cancelledBy
+          );
+        } else {
+          console.log('[FTM-DEBUG] Mission - Notify cancelled skipped: driver profileId not resolved', { driverId: data.driver_id });
+        }
+      }
+    }
+  } catch (notifyError) {
+    console.log('[FTM-DEBUG] Mission - Notify cancelled failed (non-blocking)', { notifyError });
+  }
+
   return { success: true, mission: data as Mission };
 }
-
 export async function submitClientRating(
   missionId: string,
   rating: number,
