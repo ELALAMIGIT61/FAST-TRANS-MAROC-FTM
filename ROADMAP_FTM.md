@@ -1,2644 +1,813 @@
-ROADMAP-DOCUMENT DE REFERENCE SESSION CLAUDE — FAST TRANS MAROC — VERSION 21/07/2026
-# Fast Trans Maroc — Application Mobile Marocaine
-# Dernière mise à jour : 21/07/2026
+ROADMAP-DOCUMENT DE REFERENCE SESSION CLAUDE — FAST TRANS MAROC — VERSION 04/08/2026
 
----
+Fast Trans Maroc — Application Mobile Marocaine
+Dernière mise à jour : 04/08/2026
+1. INFORMATIONS PROJET
 
-## 1. INFORMATIONS PROJET
-Projet      : Fast Trans Maroc (FTM)
-Stack       : Expo SDK 50 / React Native / TypeScript strict
-Supabase    : ustckqnecsilxqlyjute (org: Tamesna Plus)
-GitHub      : ELALAMIGIT61/FAST-TRANS-MAROC-FTM
-Codespaces  : zany-disco-jj95647gqv473pj9
+Projet : Fast Trans Maroc (FTM) Stack : Expo SDK 50 / React Native / TypeScript strict Supabase : ustckqnecsilxqlyjute (org: Tamesna Plus) GitHub : ELALAMIGIT61/FAST-TRANS-MAROC-FTM Codespaces : zany-disco-jj95647gqv473pj9
 
----
+2. RÈGLES CRITIQUES — À LIRE EN PREMIER
 
-## 2. RÈGLES CRITIQUES — À LIRE EN PREMIER
-⛔ NE JAMAIS utiliser npm audit fix --force
-   (casse la stack SDK 50 → SDK 55 incompatible)
-✅ Toujours utiliser --legacy-peer-deps si conflit
-✅ Toujours utiliser npx expo install pour packages Expo
-✅ .env doit être dans frontend/ (pas à la racine)
-✅ Migrations : timestamps uniques obligatoires
-   Prochain timestamp ≥ 20260504000015
-   Jamais via SQL Editor directement
-   Toujours via GitHub Actions
-✅ 1 session Claude = 1 objectif précis
-✅ Toujours fournir ce fichier en début de session
-✅ Toujours ouvrir console navigateur DevTools
-   avant tout test web
-✅ Toujours regarder console DevTools
-   en cas de page blanche ou crash silencieux
-✅ 1 terminal de travail uniquement
-   Ne jamais ouvrir un 3ème terminal
-✅ Vérifier pwd systématiquement avant tout npx expo start
-   Refuser par principe toute invite d'installation de
-   package non explicitement prévue — incident session 2.13 :
-   terminal remonté à la racine du dépôt a proposé
-   l'installation d'Expo 57 (incompatible SDK 50.0.21),
-   correctement annulée
-✅ Vérifier texte exact via sed avant
-   tout replace() Python3
-✅ Si replace() échoue → réécrire le fichier entier
-   Ne jamais tâtonner avec replace() successifs
-✅ Vérifier contenu exact d'un fichier via repr() Python
-   Ne jamais se fier à cat pour les lignes longues
-   (cat tronque les lignes — trompeur)
-   ⚠️ Fusions de caractères silencieuses possibles au
-   copier-coller lors de la rédaction de migrations SQL
-   (ex. "ONp.id", "IFEXISTS", "driversd") — invisibles au
-   simple cat, révélées uniquement par repr() — session 2.12.
-   Méthode stabilisée : blocs courts, repr() systématique
-   après chaque ajout ; renommer un alias (ex. d → dr) si
-   un bug de fusion récurrent persiste sur une ligne donnée.
-   Session 2.13 : méthode reconduite avec succès sur
-   walletService.ts (faux positif de fusion détecté et
-   infirmé après vérification).
-✅ git pull --rebase origin main avant tout push
-   (ROADMAP mise à jour directement sur GitHub)
-✅ Backup obligatoire avant chaque modification
-✅ Test non-régression CLIENT + ADMIN + DRIVER
-   après chaque étape de modification
-✅ Ne jamais retester ce qui est écarté
-✅ Ne jamais modifier ce qui fonctionne
-✅ Toujours vérifier l'état des fichiers
-   avant toute action
-✅ 3 workflows GitHub INTOUCHABLES :
-   check_supabase.yml
-   deploy_supabase.yml
-   lint_code.yml
-⛔ NE JAMAIS modifier authService.ts
-⛔ NE JAMAIS modifier ProfileSetupScreen.tsx
-⛔ NE JAMAIS modifier driverService.ts
-   Contient createDriverProfile,
-   saveDriverDocuments, createDriverWallet
-   Fichier stable — ne pas recréer
-⛔ NE JAMAIS modifier wallet_update_admin
-   Reste un privilège admin exclusif — confirmé
-   explicitement hors périmètre par le porteur, session 2.13
-⚠️ COMPTE ADMIN +212600000001
-   NE JAMAIS SUPPRIMER CE PROFIL
-   Même entre les tests
-⚠️ NUMÉRO PARTAGÉ +212600000000 — CLIENT OU DRIVER (exclusif)
-   Le même numéro ne peut avoir qu'UN profil actif à la fois
-   (recherche par user_id, suppression Auth = cascade profil/driver)
+⛔ NE JAMAIS utiliser npm audit fix --force (casse la stack SDK 50 → SDK 55 incompatible) ✅ Toujours utiliser --legacy-peer-deps si conflit ✅ Toujours utiliser npx expo install pour packages Expo ✅ .env doit être dans frontend/ (pas à la racine) ✅ Migrations : timestamps uniques obligatoires Prochain timestamp ≥ 20260504000015 Jamais via SQL Editor directement Toujours via GitHub Actions ✅ 1 session Claude = 1 objectif précis ✅ Toujours fournir ce fichier en début de session ✅ Toujours ouvrir console navigateur DevTools avant tout test web ✅ Toujours regarder console DevTools en cas de page blanche ou crash silencieux ✅ 1 terminal de travail uniquement Ne jamais ouvrir un 3ème terminal ✅ Vérifier pwd systématiquement avant tout npx expo start Refuser par principe toute invite d'installation de package non explicitement prévue — incident session 2.13 : terminal remonté à la racine du dépôt a proposé l'installation d'Expo 57 (incompatible SDK 50.0.21), correctement annulée ✅ Vérifier texte exact via sed avant tout replace() Python3 ✅ Si replace() échoue → réécrire le fichier entier Ne jamais tâtonner avec replace() successifs ✅ Vérifier contenu exact d'un fichier via repr() Python Ne jamais se fier à cat pour les lignes longues (cat tronque les lignes — trompeur) ⚠️ Fusions de caractères silencieuses possibles au copier-coller lors de la rédaction de migrations SQL (ex. "ONp.id", "IFEXISTS", "driversd") — invisibles au simple cat, révélées uniquement par repr() — session 2.12. Méthode stabilisée : blocs courts, repr() systématique après chaque ajout ; renommer un alias (ex. d → dr) si un bug de fusion récurrent persiste sur une ligne donnée. Session 2.13 : méthode reconduite avec succès sur walletService.ts (faux positif de fusion détecté et infirmé après vérification). ✅ Tout texte contenant un caractère à signification spéciale en bash (!, mais vigilance également sur ` (backtick), $, ) doit systématiquement transiter par un heredoc à délimiteur quoté (<< 'PYEOF'), jamais par un python3 -c "..." en ligne directe — règle consolidée session 2.14, suite à un incident réel (voir Section 6, bloc session 2.14, "Incident réel — completeMission / interférence bash") ✅ git pull --rebase origin main avant tout push (ROADMAP mise à jour directement sur GitHub) ✅ Backup obligatoire avant chaque modification ✅ Test non-régression CLIENT + ADMIN + DRIVER après chaque étape de modification ✅ Ne jamais retester ce qui est écarté ✅ Ne jamais modifier ce qui fonctionne ✅ Toujours vérifier l'état des fichiers avant toute action ✅ 3 workflows GitHub INTOUCHABLES : check_supabase.yml deploy_supabase.yml lint_code.yml ⛔ NE JAMAIS modifier authService.ts ⛔ NE JAMAIS modifier ProfileSetupScreen.tsx ⛔ NE JAMAIS modifier driverService.ts Contient createDriverProfile, saveDriverDocuments, createDriverWallet Fichier stable — ne pas recréer ⛔ NE JAMAIS modifier wallet_update_admin Reste un privilège admin exclusif — confirmé explicitement hors périmètre par le porteur, session 2.13 ⚠️ COMPTE ADMIN +212600000001 NE JAMAIS SUPPRIMER CE PROFIL Même entre les tests ⚠️ NUMÉRO PARTAGÉ +212600000000 — CLIENT OU DRIVER (exclusif) Le même numéro ne peut avoir qu'UN profil actif à la fois (recherche par user_id, suppression Auth = cascade profil/driver) ⚠️ Limitation confirmée à nouveau session 2.14 : absence de second numéro de test dédié au rôle client — a empêché tout test du Volet 4 (notify* mission) et de la cloche côté client (voir Section 15) — recommandation transmise en Section 17
 
-   Session 2.8 : profil DRIVER (1b6e684e-..., wallet 200 DH,
-   vérifié) → SUPPRIMÉ pour tester CLIENT (ordre DRIVER→ADMIN→CLIENT)
-   Session 2.9 : +212600000000 recréé en mode DRIVER
-   driverId : 29849a0a-5017-4eda-99d4-2c4f5c75a6c3
-   is_verified = true (validé admin session 2.9)
-   Session 2.10 : profil DRIVER recréé
-   driverId : eadc9d5e-0db9-4903-b0a3-b69ca46c0b60
-   is_verified = true — wallet_balance : 200 DH
-   Session 2.12 : profil supprimé puis recréé plusieurs fois
-   (test onboarding driver, puis test client, puis second
-   driver pour test transactions_insert_own)
-   État actuel : DRIVER actif — voir bloc dédié ci-dessous
-   Session 2.13 : aucune rotation du numéro — même profil
-   DRIVER (2ec2b439-...) conservé et réutilisé tout au long
-   de la session (is_verified passé à true en cours de
-   session, pour les besoins des tests de compatibilité
-   admin) — voir bloc dédié Section 3
+Session 2.8 : profil DRIVER (1b6e684e-..., wallet 200 DH, vérifié) → SUPPRIMÉ pour tester CLIENT (ordre DRIVER→ADMIN→CLIENT) Session 2.9 : +212600000000 recréé en mode DRIVER driverId : 29849a0a-5017-4eda-99d4-2c4f5c75a6c3 is_verified = true (validé admin session 2.9) Session 2.10 : profil DRIVER recréé driverId : eadc9d5e-0db9-4903-b0a3-b69ca46c0b60 is_verified = true — wallet_balance : 200 DH Session 2.12 : profil supprimé puis recréé plusieurs fois (test onboarding driver, puis test client, puis second driver pour test transactions_insert_own) État actuel : DRIVER actif — voir bloc dédié ci-dessous Session 2.13 : aucune rotation du numéro — même profil DRIVER (2ec2b439-...) conservé et réutilisé tout au long de la session (is_verified passé à true en cours de session, pour les besoins des tests de compatibilité admin) — voir bloc dédié Section 3 Session 2.14 : aucune rotation du numéro — même profil DRIVER (2ec2b439-...) conservé, confirmé intact (wallet 800 DH, 3 transactions pending) après un cycle déconnexion/reconnexion complet (localStorage.clear()) — voir bloc dédié Section 3
 
-   Si un test CLIENT est à nouveau nécessaire :
-   1. Supprimer +212600000000 dans Supabase Auth
-   2. Reconnexion → ProfileSetupScreen → sélectionner "Client"
+Si un test CLIENT est à nouveau nécessaire :
 
-   Si un test DRIVER est à nouveau nécessaire
-   (depuis un état CLIENT) :
-   1. Supprimer +212600000000 dans Supabase Auth
-   2. Reconnexion → ProfileSetupScreen → sélectionner "Driver"
-   3. Remplir à nouveau les 4 pages onboarding :
-      VehicleInfo → LegalDocuments → DocumentUpload → PendingVerification
-   4. Validation admin requise pour is_verified=true
-   5. Wallet 200 DH à recréditer manuellement si besoin
-⚠️ window.history.back() ne fonctionne pas
-   toujours sur web
-   Utiliser le bouton "← Retour" (navigation.goBack())
-✅ vault.create_secret(valeur, nom, description)
-   Ordre exact : valeur en PREMIER, nom en SECOND
-   Toujours vérifier avec SELECT name FROM vault.secrets
-   immédiatement après création
-✅ timeout_milliseconds := 30000 pour net.http_post
-   Le timeout par défaut 5000 ms est insuffisant
-   en cas de cold start Edge Function Supabase
-✅ cron.unschedule() WHERE EXISTS
-   Pattern obligatoire dans toute migration
-   qui recrée un CRON job — évite les erreurs de doublon
-✅ Diagnostic structuré obligatoire
-   Établir un plan d'investigation complet et priorisé
-   avant tout test — tester maillon par maillon dans l'ordre
-✅ net.http_post → 401 persistant
-   Première hypothèse : vérifier la clé Vault
-   (longueur et comparaison directe avec Dashboard)
-   pas uniquement le nom
-✅ cron.job_run_details
-   Table pg_cron contenant l'historique des exécutions
-   avec statut et timestamps — consulter pour vérifier
-   le fonctionnement réel du CRON
-✅ Vérification git obligatoire
-   Avant et après chaque pause, avant tout commit
-✅ RLS Storage / conception ownership
-   Privilégier la chaîne de propriété complète
-   (storage.foldername(name)[1]::uuid = drivers.id →
-   drivers.profile_id = profiles.id →
-   profiles.user_id = auth.uid()) plutôt qu'un raccourci
-   type owner = auth.uid() — session 2.12
-✅ Fichier de rollback obligatoire pour toute migration RLS
-   sensible : à placer dans supabase/rollbacks/
-   (hors du dossier migrations/, pour éviter toute exécution
-   automatique non désirée) — convention introduite session 2.12
-   ✅ Convention étendue session 2.13 : rollback créé par
-   précaution même pour une migration non-RLS (renommage de
-   vue), avec commentaire explicite précisant qu'un rollback
-   SQL seul est insuffisant en cas de déploiement partiel et
-   nécessite un git revert coordonné du code applicatif
-⚠️ Isoler une clause RLS via fetch() authentifié direct
-   (sans passer par le code applicatif, ex. topupWallet())
-   peut produire des valeurs déclaratives trompeuses
-   (ex. balance_after renseigné manuellement dans une ligne
-   de test) — toujours vérifier la valeur réelle en base
-   (ex. wallet.balance) plutôt que de se fier au contenu
-   de la ligne insérée manuellement — session 2.12
-⚠️ Alert.alert() (React Native) ne s'affiche pas sur web
-   Toujours prévoir Platform.OS === 'web' ? window.alert(...)
-   : Alert.alert(...) pour tout message destiné à s'afficher
-   aussi sur web — bug redécouvert session 2.13
-   (WalletTopupScreen.tsx ligne 70, cf. RÉSOLU 41) après un
-   premier correctif partiel en session 2.8
-   (AdminUsersScreen.tsx, sans généralisation Platform.OS) —
-   voir audit recommandé section 17
-⚠️ CLARIFICATION MÉTIER FONDAMENTALE (rappelée session 2.13,
-   à ne jamais perdre) : le paiement de la course est TOUJOURS
-   hors application — le client paie directement le chauffeur
-   (espèces ou autre moyen), sans jamais transiter par FTM.
-   Seule la COMMISSION (montant fixe selon catégorie de
-   véhicule) est prélevée automatiquement sur le wallet du
-   chauffeur à chaque mission terminée (trigger
-   process_commission_payment). Le wallet n'est donc alimenté
-   QUE par les recharges (jamais par un paiement client), et
-   diminué QUE par les commissions. Cette clarification est la
-   raison structurelle du renommage revenue_current_month →
-   recharges_current_month (RÉSOLU 39) — à garder impérativement
-   en tête pour toute session touchant au workflow financier
-   (notamment 2.17), pour éviter de reproduire la même
-   confusion de nommage ou de conception ailleurs.
+Supprimer +212600000000 dans Supabase Auth
+Reconnexion → ProfileSetupScreen → sélectionner "Client"
 
----
+Si un test DRIVER est à nouveau nécessaire (depuis un état CLIENT) :
 
-## 3. ÉTAT TECHNIQUE ACTUEL
-SDK Expo          : 50.0.21 ✅ stable
-Vulnerabilities   : 39 (outils dev uniquement)
-                    Impact ZÉRO sur app/publication
-                    NE PAS corriger avec --force
-                    Passage de 23 à 39 en session 2.4
-                    Cause : dépendances dev de
-                    expo-image-picker +
-                    expo-document-picker
-App démarre       : ✅ Web Bundled confirmé
-Lancement app web : cd frontend &&
-                    npx expo start --web --no-dev
-URL web           : https://zany-disco-jj95647gqv473pj9
-                    -8081.app.github.dev
-Page blanche web  : ✅ RÉSOLUE — session 2.2
-                    Cause : BORDER_RADIUS manquant
-                    dans theme.ts — commit e7beed2
-Bundle web        : ✅ 1173ms
-Auth CLIENT       : ✅ confirmé — session 2.3
-                    Navigation → CreateMissionScreen
-                    ⚠️ Non re-testé session 2.13 (voir
-                    justification § tests non-régression)
-Auth ADMIN        : ✅ confirmé — session 2.7
-                    Navigation → AdminDashboardScreen
-                    5 écrans dans AdminNavigator :
-                    AdminHome ✅
-                    DocumentReview ✅
-                    WalletManagement ✅
-                    AdminMissions ✅
-                    AdminUsers ✅
-Auth DRIVER       : ✅ COMPLET — session 2.4 suite
-                    Flux complet testé et validé
-                    Étape 1 → VehicleInfoScreen    ✅
-                    Étape 2 → LegalDocumentsScreen ✅
-                    Étape 3 → DocumentUploadScreen ✅
-                    Étape 4 → PendingVerification  ✅
-                    Validation admin → DriverHome  ✅
-                    Realtime Supabase              ✅
-                    ⚠️ Alerte Realtime de validation sur
-                    PendingVerificationScreen.tsx non observée
-                    visiblement lors des tests session 2.13 —
-                    voir bug résiduel Section 15
-Bugs session 2.5  : ✅ 3 bugs corrigés
-                    BUG 1 → SIGNED_IN onboarding ✅
-                    BUG 2 → wallet 404 ✅
-                    BUG 3 → document_reminders ✅
-Bugs session 2.7  : ✅ 5 bugs corrigés
-                    BUG A → wallet RLS récursion ✅
-                    BUG → navigation admin 4 menus ✅
-                    BUG → SIGNED_IN loop admin ✅
-                    BUG → 403 notifications ✅
-                    BUG → enum mission_status ✅
-                    BUG 4 → INFIRMÉ ✅
-Packages ajoutés  : expo-image-picker ~14.7.1 ✅
-                    expo-document-picker ~11.10.1 ✅
-                    commit c318a92
-Storage           : ✅ Bucket driver-documents créé
-                    5 MB max — jpeg/png/pdf
-                    RLS policies configurées
-                    commits 7222601 + c39cafb
-                    ✅ RLS ownership chain corrigée —
-                    session 2.12 (commit 67e9e65) —
-                    voir item 6.6
-                    ✅ Bucket voice-messages créé — session 2.8
-                    5 MB max — audio/m4a, mp4, mpeg, wav, x-m4a
-                    RLS policies configurées (4)
-                    commit 5ee383e
-                    ⚠️ Infrastructure créée mais NON testée
-                    fonctionnellement (audioService.ts non
-                    référencé dans aucun screen — voir item 4.4)
-                    ⚠️ RLS voice-messages toujours permissive —
-                    exclue du périmètre session 2.12 (convention
-                    de chemin différente : missions/{missionId}/
-                    {senderProfileId}_{timestamp}.ext) — clause
-                    dédiée prévue session 2.18 (brouillon SQL
-                    documenté, sans déploiement avant Phase 4.4)
-Connexion Supabase: ✅ .env configuré dans frontend/
-Token Supabase    : ✅ Renouvelé le 29/04/2026
-                    Nom : FTM_GITHUB_ACTIONS
-                    Expiration : Never
-Mode test OTP     : ✅ configuré (MessageBird fictif)
-                    Numéro test : +212600000000
-                    Code fixe   : 123456
-                    Valide jusqu'au : 31/12/2026
-Extensions Supabase : ✅ pg_cron 1.6.4 — installée session 2.9
-                      ✅ pg_net 0.19.5 — installée session 2.9
-CRON reminders    : ✅ OPÉRATIONNEL — session 2.9
-                    jobid=2, 0 8 * * *, active=true
-                    timeout_milliseconds := 30000
-                    5 exécutions succeeded : 18→22/06/2026
-                    check-document-reminders appelée quotidiennement
-Vault Supabase    : ✅ Secret supabase_service_role_key
-                    219 caractères — identique Dashboard
-                    Créé session 2.9 (correction ancien secret
-                    incorrect 244 caractères)
-Realtime Supabase : ✅ OPÉRATIONNEL — session 2.10
-                    5 tables activées :
-                    drivers, missions, wallet,
-                    transactions, notifications
-                    Migration 20260504000012 déployée
-                    WalletDashboardScreen SUBSCRIBED ✅
-                    Effets ⏳ probables (2 fenêtres/device)
-                    transactions + notifications :
-                    Realtime actif — non branché UI ⚠️
-RLS transactions  : ✅ transactions_insert_own corrigée —
-                    session 2.12 (commit 67e9e65) — ownership
-                    chain via wallet (transactions.wallet_id →
-                    wallet.driver_id = drivers.id →
-                    drivers.profile_id → profiles.user_id =
-                    auth.uid()) — voir item 6.6 / RÉSOLU 37
-                    ✅ Fondation confirmée fonctionnelle en usage
-                    réel session 2.13 : requestWalletTopup()
-                    insère désormais des transactions
-                    status: 'pending' via cette même politique,
-                    testée avec succès en conditions réelles
-                    (STATUS 201, voir RÉSOLU 38)
-Wallet topup      : ✅ Mécanisme honnête — session 2.13
-                    (commit 2e76429) — requestWalletTopup()
-                    remplace l'ancien topupWallet() côté
-                    chauffeur : insertion transaction
-                    status: 'pending', balance_after =
-                    balance_before, AUCUNE tentative
-                    d'UPDATE sur wallet.balance — le solde
-                    n'est plus jamais modifié directement par
-                    le chauffeur (Option B explicitement
-                    écartée par le porteur) — voir RÉSOLU 38
-                    ⛔ wallet_update_admin non modifiée —
-                    reste privilège admin exclusif
-Dashboard driver  : ✅ recharges_current_month — session 2.13
-                    (commit 2e76429, migration 20260504000014)
-                    Renommage de revenue_current_month
-                    (nommage trompeur — calculait le total
-                    topup du mois, pas des revenus de mission)
-                    → recharges_current_month, cohérent avec
-                    la clarification métier (voir Section 2)
-                    Vue driver_dashboard + interface
-                    DriverDashboard (walletService.ts) +
-                    libellé JSX WalletDashboardScreen.tsx
-                    tous alignés — voir RÉSOLU 39
-Bug Alert.alert/web : ⚠️ Statut par fichier — session 2.13 :
-                    WalletTopupScreen.tsx ligne 70 (message
-                    succès) → ✅ CORRIGÉ (commit 480130d,
-                    window.alert fallback) — voir RÉSOLU 41
-                    WalletTopupScreen.tsx ligne 66 (message
-                    erreur) → ⚠️ NON VÉRIFIÉ, probablement
-                    affecté par le même mécanisme, laissé
-                    inchangé (Option A) — voir bug résiduel
-                    Section 15
-                    AdminUsersScreen.tsx (session 2.8) → ⚠️
-                    fonctionne sur web mais sans distinction
-                    Platform.OS — planterait probablement sur
-                    mobile natif (window.confirm/window.alert
-                    inexistants) — voir bug résiduel Section 15
-                    Audit systématique recommandé — session
-                    2.19 suggérée (voir Section 17)
-⚠️ Compte ADMIN test :
-   Numéro : +212600000001
-   Rôle admin défini via SQL Editor Supabase
-   UPDATE profiles SET role='admin'
-   WHERE phone_number='+212600000001'
-   NE PAS SUPPRIMER CE PROFIL
-⚠️ DRIVER TEST ACTIF — session 2.13 (mis à jour) :
-   driverId : 2ec2b439-fcdb-443d-8de0-5bee268d30f6
-   Numéro : +212600000000
-   role : 'driver'
-   is_verified : true (passé de false à true durant la
-   session 2.13, changement volontaire et documenté, pour
-   les besoins des tests de compatibilité admin —
-   auparavant false depuis sa création en session 2.12)
-   wallet_id : 58b2b8e7-190a-4cbb-8f09-8340feecf498
-   wallet_balance réel final : 800.00 DH (confirmé en base)
-   Historique des transactions (chronologique inverse) :
-     776ff74b-... | pending   | 1000 DH | 800→800 | 21/07
-     18d8befd-... | pending   |  200 DH | 800→800 | 20/07
-     1e3bfbd3-... | completed |  500 DH | 300→800 | 20/07
-                    (recharge admin réelle)
-     a976368a-... | pending   |  500 DH | 300→300 | 20/07
-     3cd42ae1-... | completed |  300 DH |   0→300 | 16/07
-                    (recharge admin réelle, Étape 1.7)
-     94322b67-... | failed (requalifiée) | 300 DH | 0→0
-                    | ~16/07 (transaction fantôme originale,
-                    corrigée en session 2.13)
-     42b73573-... | pending   |   50 DH |   0→50  | 14/07
-                    (donnée de test antérieure, session 2.12,
-                    non touchée)
-   ⚠️ 3 demandes de recharge restent en pending (200, 500,
-   1000 DH), en attente de traitement admin — cohérent avec
-   le mécanisme conçu (RÉSOLU 38). Ne devraient être ni
-   validées ni supprimées sans décision explicite : elles
-   servent de preuve de fonctionnement du correctif.
-   (Remplace l'état de session 2.12 : is_verified false,
-   wallet_balance 0 DH réel, ligne de test balance_after: 50
-   déclarative — cf. historique ci-dessus, ligne 42b73573-...,
-   désormais intégrée sans réinterprétation)
+Supprimer +212600000000 dans Supabase Auth
+Reconnexion → ProfileSetupScreen → sélectionner "Driver"
+Remplir à nouveau les 4 pages onboarding : VehicleInfo → LegalDocuments → DocumentUpload → PendingVerification
+Validation admin requise pour is_verified=true
+Wallet 200 DH à recréditer manuellement si besoin ⚠️ window.history.back() ne fonctionne pas toujours sur web Utiliser le bouton "← Retour" (navigation.goBack()) ⚠️ Convention non appliquée sur NotificationCenterScreen.tsx (nouvel écran, session 2.14) — voir Anomalie #1, Section 15 ✅ vault.create_secret(valeur, nom, description) Ordre exact : valeur en PREMIER, nom en SECOND Toujours vérifier avec SELECT name FROM vault.secrets immédiatement après création ✅ timeout_milliseconds := 30000 pour net.http_post Le timeout par défaut 5000 ms est insuffisant en cas de cold start Edge Function Supabase ✅ cron.unschedule() WHERE EXISTS Pattern obligatoire dans toute migration qui recrée un CRON job — évite les erreurs de doublon ✅ Diagnostic structuré obligatoire Établir un plan d'investigation complet et priorisé avant tout test — tester maillon par maillon dans l'ordre ✅ net.http_post → 401 persistant Première hypothèse : vérifier la clé Vault (longueur et comparaison directe avec Dashboard) pas uniquement le nom ✅ cron.job_run_details Table pg_cron contenant l'historique des exécutions avec statut et timestamps — consulter pour vérifier le fonctionnement réel du CRON ✅ Vérification git obligatoire Avant et après chaque pause, avant tout commit ✅ RLS Storage / conception ownership Privilégier la chaîne de propriété complète (storage.foldername(name)[1]::uuid = drivers.id → drivers.profile_id = profiles.id → profiles.user_id = auth.uid()) plutôt qu'un raccourci type owner = auth.uid() — session 2.12 ✅ Fichier de rollback obligatoire pour toute migration RLS sensible : à placer dans supabase/rollbacks/ (hors du dossier migrations/, pour éviter toute exécution automatique non désirée) — convention introduite session 2.12 ✅ Convention étendue session 2.13 : rollback créé par précaution même pour une migration non-RLS (renommage de vue), avec commentaire explicite précisant qu'un rollback SQL seul est insuffisant en cas de déploiement partiel et nécessite un git revert coordonné du code applicatif ⚠️ Isoler une clause RLS via fetch() authentifié direct (sans passer par le code applicatif, ex. topupWallet()) peut produire des valeurs déclaratives trompeuses (ex. balance_after renseigné manuellement dans une ligne de test) — toujours vérifier la valeur réelle en base (ex. wallet.balance) plutôt que de se fier au contenu de la ligne insérée manuellement — session 2.12 ⚠️ Alert.alert() (React Native) ne s'affiche pas sur web Toujours prévoir Platform.OS === 'web' ? window.alert(...) : Alert.alert(...) pour tout message destiné à s'afficher aussi sur web — bug redécouvert session 2.13 (WalletTopupScreen.tsx ligne 70, cf. RÉSOLU 41) après un premier correctif partiel en session 2.8 (AdminUsersScreen.tsx, sans généralisation Platform.OS) — voir audit recommandé section 17 ✅ Pattern réappliqué avec succès session 2.14 sur PendingVerificationScreen.tsx (alerte Realtime) — voir RÉSOLU 42. ⚠️ Chemin natif (hors web) toujours non testé à ce jour sur aucun des trois fichiers concernés — environnement de développement limité au web (Codespaces) — audit systématique proposé (session 2.19) reste pertinent ⚠️ CLARIFICATION MÉTIER FONDAMENTALE (rappelée session 2.13, à ne jamais perdre) : le paiement de la course est TOUJOURS hors application — le client paie directement le chauffeur (espèces ou autre moyen), sans jamais transiter par FTM. Seule la COMMISSION (montant fixe selon catégorie de véhicule) est prélevée automatiquement sur le wallet du chauffeur à chaque mission terminée (trigger process_commission_payment). Le wallet n'est donc alimenté QUE par les recharges (jamais par un paiement client), et diminué QUE par les commissions. Cette clarification est la raison structurelle du renommage revenue_current_month → recharges_current_month (RÉSOLU 39) — à garder impérativement en tête pour toute session touchant au workflow financier (notamment 2.17), pour éviter de reproduire la même confusion de nommage ou de conception ailleurs. ⚠️ Rappelée à nouveau session 2.14 dans le contexte de la Piste 4 de l'annexe Section 18 (négociation de prix) : principe « paiement hors app » impératif — FTM ne prélève que la commission, jamais le prix du transport.
+3. ÉTAT TECHNIQUE ACTUEL
 
-⚠️ SIGNED_IN répétés en console admin :
-   Comportement normal Supabase web
-   via refresh token périodique
-   Non bloquant — initializeApp() protégé
+SDK Expo : 50.0.21 ✅ stable Vulnerabilities : 39 (outils dev uniquement) Impact ZÉRO sur app/publication NE PAS corriger avec --force Passage de 23 à 39 en session 2.4 Cause : dépendances dev de expo-image-picker + expo-document-picker App démarre : ✅ Web Bundled confirmé Lancement app web : cd frontend && npx expo start --web --no-dev URL web : https://zany-disco-jj95647gqv473pj9 -8081.app.github.dev Page blanche web : ✅ RÉSOLUE — session 2.2 Cause : BORDER_RADIUS manquant dans theme.ts — commit e7beed2 Bundle web : ✅ 1173ms Auth CLIENT : ✅ confirmé — session 2.3 Navigation → CreateMissionScreen ⚠️ Non re-testé session 2.13 (voir justification § tests non-régression) ⚠️ Non re-testé session 2.14 (contrainte numéro partagé — voir Section 15) Auth ADMIN : ✅ confirmé — session 2.7 Navigation → AdminDashboardScreen 5 écrans dans AdminNavigator : AdminHome ✅ DocumentReview ✅ WalletManagement ✅ AdminMissions ✅ AdminUsers ✅ Auth DRIVER : ✅ COMPLET — session 2.4 suite Flux complet testé et validé Étape 1 → VehicleInfoScreen ✅ Étape 2 → LegalDocumentsScreen ✅ Étape 3 → DocumentUploadScreen ✅ Étape 4 → PendingVerification ✅ Validation admin → DriverHome ✅ Realtime Supabase ✅ ⚠️ Alerte Realtime de validation sur PendingVerificationScreen.tsx non observée visiblement lors des tests session 2.13 — CAUSE IDENTIFIÉE ET CORRIGÉE session 2.14 (voir RÉSOLU 42) — chemin web uniquement, chemin natif non testé Bugs session 2.5 : ✅ 3 bugs corrigés BUG 1 → SIGNED_IN onboarding ✅ BUG 2 → wallet 404 ✅ BUG 3 → document_reminders ✅ Bugs session 2.7 : ✅ 5 bugs corrigés BUG A → wallet RLS récursion ✅ BUG → navigation admin 4 menus ✅ BUG → SIGNED_IN loop admin ✅ BUG → 403 notifications ✅ BUG → enum mission_status ✅ BUG 4 → INFIRMÉ ✅ Packages ajoutés : expo-image-picker ~14.7.1 ✅ expo-document-picker ~11.10.1 ✅ commit c318a92 Storage : ✅ Bucket driver-documents créé 5 MB max — jpeg/png/pdf RLS policies configurées commits 7222601 + c39cafb ✅ RLS ownership chain corrigée — session 2.12 (commit 67e9e65) — voir item 6.6 ✅ Bucket voice-messages créé — session 2.8 5 MB max — audio/m4a, mp4, mpeg, wav, x-m4a RLS policies configurées (4) commit 5ee383e ⚠️ Infrastructure créée mais NON testée fonctionnellement (audioService.ts non référencé dans aucun screen — voir item 4.4) ⚠️ RLS voice-messages toujours permissive — exclue du périmètre session 2.12 (convention de chemin différente : missions/{missionId}/ {senderProfileId}_{timestamp}.ext) — clause dédiée prévue session 2.18 (brouillon SQL documenté, sans déploiement avant Phase 4.4) ⚠️ VoiceChatScreen.tsx confirmé orphelin (jamais monté dans aucun navigator) — découverte session 2.14, pertinente pour la Piste 3 de l'annexe Section 18 Connexion Supabase: ✅ .env configuré dans frontend/ Token Supabase : ✅ Renouvelé le 29/04/2026 Nom : FTM_GITHUB_ACTIONS Expiration : Never Mode test OTP : ✅ configuré (MessageBird fictif) Numéro test : +212600000000 Code fixe : 123456 Valide jusqu'au : 31/12/2026 Extensions Supabase : ✅ pg_cron 1.6.4 — installée session 2.9 ✅ pg_net 0.19.5 — installée session 2.9 CRON reminders : ✅ OPÉRATIONNEL — session 2.9 jobid=2, 0 8 * * , active=true timeout_milliseconds := 30000 5 exécutions succeeded : 18→22/06/2026 check-document-reminders appelée quotidiennement ⚠️ Lien avec notifyDocumentExpiry non vérifié — voir Section 15/17 (en attente, session 2.14) Vault Supabase : ✅ Secret supabase_service_role_key 219 caractères — identique Dashboard Créé session 2.9 (correction ancien secret incorrect 244 caractères) Realtime Supabase : ✅ OPÉRATIONNEL — session 2.10 5 tables activées : drivers, missions, wallet, transactions, notifications Migration 20260504000012 déployée WalletDashboardScreen SUBSCRIBED ✅ Effets ⏳ probables (2 fenêtres/device) transactions ✅ écoute branchée — session 2.14 (voir ci-dessous) notifications : Realtime actif — non branché UI directement, remplacé par NotificationBell/Center (polling via getCurrentProfileId(), pas d'écoute Realtime directe sur cette table — voir bloc session 2.14 ci-dessous) RLS transactions : ✅ transactions_insert_own corrigée — session 2.12 (commit 67e9e65) — ownership chain via wallet (transactions.wallet_id → wallet.driver_id = drivers.id → drivers.profile_id → profiles.user_id = auth.uid()) — voir item 6.6 / RÉSOLU 37 ✅ Fondation confirmée fonctionnelle en usage réel session 2.13 : requestWalletTopup() insère désormais des transactions status: 'pending' via cette même politique, testée avec succès en conditions réelles (STATUS 201, voir RÉSOLU 38) ✅ Confirmée compatible avec le nouveau listener Realtime (Volet 2, session 2.14) — écritures pures vs listener passif, aucune interférence identifiée Wallet topup : ✅ Mécanisme honnête — session 2.13 (commit 2e76429) — requestWalletTopup() remplace l'ancien topupWallet() côté chauffeur : insertion transaction status: 'pending', balance_after = balance_before, AUCUNE tentative d'UPDATE sur wallet.balance — le solde n'est plus jamais modifié directement par le chauffeur (Option B explicitement écartée par le porteur) — voir RÉSOLU 38 ⛔ wallet_update_admin non modifiée — reste privilège admin exclusif ⚠️ Robustesse topupWallet/refundWallet (échec silencieux possible de l'insertion de la transaction après UPDATE du solde) — découverte annexe session 2.14, préexistante, hors périmètre — à documenter pour session future non assignée (voir Section 15/17) Dashboard driver : ✅ recharges_current_month — session 2.13 (commit 2e76429, migration 20260504000014) Renommage de revenue_current_month (nommage trompeur — calculait le total topup du mois, pas des revenus de mission) → recharges_current_month, cohérent avec la clarification métier (voir Section 2) Vue driver_dashboard + interface DriverDashboard (walletService.ts) + libellé JSX WalletDashboardScreen.tsx tous alignés — voir RÉSOLU 39 Bug Alert.alert/web : ⚠️ Statut par fichier — mis à jour session 2.14 : WalletTopupScreen.tsx ligne 70 (message succès) → ✅ CORRIGÉ (commit 480130d, session 2.13, window.alert fallback) — voir RÉSOLU 41 WalletTopupScreen.tsx ligne 66 (message erreur) → ⚠️ NON VÉRIFIÉ, probablement affecté par le même mécanisme, laissé inchangé (Option A) — voir bug résiduel Section 15 AdminUsersScreen.tsx (session 2.8) → ⚠️ fonctionne sur web mais sans distinction Platform.OS — planterait probablement sur mobile natif (window.confirm/window.alert inexistants) — voir bug résiduel Section 15 PendingVerificationScreen.tsx (alerte Realtime de validation) → ✅ CORRIGÉ session 2.14 (pattern Platform.OS appliqué, identique WalletTopupScreen.tsx) — voir RÉSOLU 42 — ⚠️ chemin natif non testé Audit systématique recommandé — session 2.19 suggérée, portée élargie à 3 fichiers connus non entièrement vérifiés (voir Section 17) Realtime transactions/notifications (Volets 2-3, session 2.14) : ✅ subscribeToNewTransactions branché — TransactionHistoryScreen.tsx, channelRef + useEffect, filtre actif respecté (filterRef.current), garde anti-doublon, cleanup unsubscribe() ⚠️ Limitation assumée : écoute INSERT uniquement — un passage pending → completed (validation admin d'une recharge) ne rafraîchit pas automatiquement l'écran ✅ NotificationBell/NotificationCenterScreen montés sur les 3 rôles (Driver, Client, Admin) — auto-résolution du profil via getCurrentProfileId() (pushNotificationService.ts) ⚠️ Anomalie #1 : NotificationCenterScreen.tsx ne comporte aucun bouton "← Retour" — voir Section 15 Fonctions notify mission (Volet 4, session 2.14) : 9 fonctions notify* inventoriées au total (et non 6 comme supposé initialement) : 2 déjà branchées avant 2.14 (notifyDocumentVerified, notifyDocumentRejected, depuis adminService.ts) ✅ 4 nouvelles branchées session 2.14 : notifyMissionStarted (startMission) notifyMissionAccepted (acceptMission) notifyMissionCompleted (completeMission, Option C — double notification client+ chauffeur si résolution réussie, notification de secours client seul sinon) notifyMissionCancelled (cancelMission, renommage _userId → userId, distinction driver/client) ⛔ 3 non retenues cette session : notifyNewMission (incompatibilité structurelle — diffusion broadcast, pas de destinataire unique) notifyDocumentExpiry (en attente — lien avec check-document-reminders non vérifié) notifyWalletLowBalance (écartée — aucun point de déclenchement localisé) ⚠️ NON TESTÉES fonctionnellement (les 4 nouvelles) — contrainte numéro de test partagé, aucun parcours de mission complet réalisable sans sacrifier l'identité driver test — voir Section 15/16 ⚠️ Compte ADMIN test : Numéro : +212600000001 Rôle admin défini via SQL Editor Supabase UPDATE profiles SET role='admin' WHERE phone_number='+212600000001' NE PAS SUPPRIMER CE PROFIL ⚠️ DRIVER TEST ACTIF — session 2.14 (confirmé intact) : driverId : 2ec2b439-fcdb-443d-8de0-5bee268d30f6 Numéro : +212600000000 role : 'driver' is_verified : true (inchangé depuis session 2.13) wallet_id : 58b2b8e7-190a-4cbb-8f09-8340feecf498 wallet_balance réel confirmé : 800.00 DH (intact après session 2.14, y compris après cycle déconnexion/reconnexion complet — localStorage.clear()) Historique des transactions (chronologique inverse, inchangé depuis session 2.13, confirmé intact avec count: 7, totalCount: 7 en session 2.14) : 776ff74b-... | pending | 1000 DH | 800→800 | 21/07 18d8befd-... | pending | 200 DH | 800→800 | 20/07 1e3bfbd3-... | completed | 500 DH | 300→800 | 20/07 (recharge admin réelle) a976368a-... | pending | 500 DH | 300→300 | 20/07 3cd42ae1-... | completed | 300 DH | 0→300 | 16/07 (recharge admin réelle, Étape 1.7) 94322b67-... | failed (requalifiée) | 300 DH | 0→0 | ~16/07 (transaction fantôme originale, corrigée en session 2.13) 42b73573-... | pending | 50 DH | 0→50 | 14/07 (donnée de test antérieure, session 2.12, non touchée) ⚠️ 3 demandes de recharge restent en pending (200, 500, 1000 DH), en attente de traitement admin — cohérent avec le mécanisme conçu (RÉSOLU 38). Ne devraient être ni validées ni supprimées sans décision explicite : elles servent de preuve de fonctionnement du correctif — statut inchangé et reconfirmé à l'issue de la session 2.14. Badge NotificationBell confirmé cohérent : total: 6, unread: 6 (5 notifications historiques préexistantes, hors périmètre session 2.14).
 
----
+⚠️ SIGNED_IN répétés en console admin : Comportement normal Supabase web via refresh token périodique Non bloquant — initializeApp() protégé
 
-## 4. GITHUB SECRETS CONFIGURÉS
-SUPABASE_ACCESS_TOKEN  ✅ renouvelé 29/04/2026
-                          Token : FTM_GITHUB_ACTIONS
-                          Expiration : Never
-SUPABASE_PROJECT_ID    ✅ (ustckqnecsilxqlyjute)
-SUPABASE_DB_PASSWORD   ✅
-SUPABASE_ANON_KEY      ✅
-SUPABASE_URL           ✅
+4. GITHUB SECRETS CONFIGURÉS
 
----
+SUPABASE_ACCESS_TOKEN ✅ renouvelé 29/04/2026 Token : FTM_GITHUB_ACTIONS Expiration : Never SUPABASE_PROJECT_ID ✅ (ustckqnecsilxqlyjute) SUPABASE_DB_PASSWORD ✅ SUPABASE_ANON_KEY ✅ SUPABASE_URL ✅
 
-## 5. HISTORIQUE COMMITS CLÉS
-480130d fix: window.alert fallback for web compatibility
-        on wallet topup success message — session 2.13 ✅
-2e76429 fix: honest wallet topup request mechanism
-        (pending status) + dashboard revenue calculation
-        + navigation fix — session 2.13 ✅
-67e9e65 fix: RLS ownership chain Storage
-        (driver-documents) + transactions_insert_own
-        — session 2.12 ✅
-b65eb9d feat: enable Realtime on 5 tables
-        (drivers, missions, wallet, transactions,
-        notifications) — session 2.10 ✅
-34b32c1 feat: configure CRON job for document expiry
-        reminders - session 2.9 ✅
-5ee383e feat: create voice-messages storage bucket
-        and RLS policies ✅ session 2.8
-aed0bee fix: replace Alert.alert with window.confirm
-        in AdminUsersScreen for web compatibility
-        ✅ session 2.8
-750db88 fix: correct mission_status enum values
-        in AdminMissionsScreen ✅ session 2.7
-626e851 feat: add AdminMissions and AdminUsers
-        screens to admin navigation ✅ session 2.7
-445bdcb fix: add SELECT RLS policy on notifications
-        for admin role ✅ session 2.7
-2351bf3 fix: add INSERT RLS policy on notifications
-        for authenticated users ✅ session 2.7
-4ff3499 fix: add DocumentReview and WalletManagement
-        screens to AdminNavigator ✅ session 2.7
-6ee89b1 fix: prevent SIGNED_IN loop for admin role
-        in RootNavigator ✅ session 2.7
-d420007 fix: replace wallet_update_admin RLS policy
-        use get_my_role() to fix infinite recursion
-        ✅ session 2.7
-c4194db docs: update ROADMAP session 2.6 ✅
-0207e97 fix: add DocumentStatusScreen to driver
-        navigation + add Mes documents button
-        ✅ session 2.6
-8c5d8c5 fix: add RLS INSERT policy on transactions
-        table ✅ session 2.6
-cac7f4d fix: drop and recreate driver_dashboard view
-        fix column order error SQLSTATE 42P16
-        ✅ session 2.6
-884f00e fix: connect wallet screens to driver
-        navigation + fix driver_dashboard view
-        missing columns ✅ session 2.6
-9f22d9d fix: add UNIQUE constraint on
-        document_reminders (driver_id, document_type)
-        enables upsert ON CONFLICT ✅ session 2.5
-b4ec2ba fix: correct wallet table name
-        wallets → wallet in DriverHomeScreen
-        ✅ session 2.5
-475274c fix: ignore SIGNED_IN during driver onboarding
-        use ref to prevent spontaneous navigation
-        ✅ session 2.5
-f377534 docs: update ROADMAP session 2.4 ✅
-c39cafb feat: add RLS policies driver-documents
-        bucket ✅
-7222601 feat: create driver-documents storage
-        bucket ✅
-6b9dae8 fix: prevent skip to PendingStack
-        check doc URLs + web DatePicker fallback ✅
-a23df8b fix: keep driver on onboarding if
-        driver_license_number is null ✅
-1c9af9c fix: allow null legal docs fields
-        at step 1 ✅
-6f7ed8c fix: allow null driver_license_number
-        at step 1 ✅
-8acc64c feat: connect driver onboarding
-        VehicleInfo/LegalDocs/DocumentUpload/
-        PendingVerification navigators ✅
-c318a92 feat: add DriverOnboardingStack/
-        DriverPendingStack routes + install
-        expo-image-picker expo-document-picker ✅
-b669da7 docs: update ROADMAP_FTM session 2.3 ✅
-bd7ead0 fix: SIGNED_IN pour utilisateurs existants ✅
-53725fe fix: clientProfileId transmis à
-        CreateMissionScreen ✅
-8a78903 fix: navigation post-profil via callback ✅
-e7beed2 fix: BORDER_RADIUS ajouté theme.ts ✅
+5. HISTORIQUE COMMITS CLÉS
 
----
+afba878 fix: subscribe to new transactions realtime + mount NotificationBell/NotificationCenter (3 roles) + branch 4 mission notify functions + fix PendingVerification Realtime alert (Platform.OS) — session 2.14 ✅ 480130d fix: window.alert fallback for web compatibility on wallet topup success message — session 2.13 ✅ 2e76429 fix: honest wallet topup request mechanism (pending status) + dashboard revenue calculation + navigation fix — session 2.13 ✅ 67e9e65 fix: RLS ownership chain Storage (driver-documents) + transactions_insert_own — session 2.12 ✅ b65eb9d feat: enable Realtime on 5 tables (drivers, missions, wallet, transactions, notifications) — session 2.10 ✅ 34b32c1 feat: configure CRON job for document expiry reminders - session 2.9 ✅ 5ee383e feat: create voice-messages storage bucket and RLS policies ✅ session 2.8 aed0bee fix: replace Alert.alert with window.confirm in AdminUsersScreen for web compatibility ✅ session 2.8 750db88 fix: correct mission_status enum values in AdminMissionsScreen ✅ session 2.7 626e851 feat: add AdminMissions and AdminUsers screens to admin navigation ✅ session 2.7 445bdcb fix: add SELECT RLS policy on notifications for admin role ✅ session 2.7 2351bf3 fix: add INSERT RLS policy on notifications for authenticated users ✅ session 2.7 4ff3499 fix: add DocumentReview and WalletManagement screens to AdminNavigator ✅ session 2.7 6ee89b1 fix: prevent SIGNED_IN loop for admin role in RootNavigator ✅ session 2.7 d420007 fix: replace wallet_update_admin RLS policy use get_my_role() to fix infinite recursion ✅ session 2.7 c4194db docs: update ROADMAP session 2.6 ✅ 0207e97 fix: add DocumentStatusScreen to driver navigation + add Mes documents button ✅ session 2.6 8c5d8c5 fix: add RLS INSERT policy on transactions table ✅ session 2.6 cac7f4d fix: drop and recreate driver_dashboard view fix column order error SQLSTATE 42P16 ✅ session 2.6 884f00e fix: connect wallet screens to driver navigation + fix driver_dashboard view missing columns ✅ session 2.6 9f22d9d fix: add UNIQUE constraint on document_reminders (driver_id, document_type) enables upsert ON CONFLICT ✅ session 2.5 b4ec2ba fix: correct wallet table name wallets → wallet in DriverHomeScreen ✅ session 2.5 475274c fix: ignore SIGNED_IN during driver onboarding use ref to prevent spontaneous navigation ✅ session 2.5 f377534 docs: update ROADMAP session 2.4 ✅ c39cafb feat: add RLS policies driver-documents bucket ✅ 7222601 feat: create driver-documents storage bucket ✅ 6b9dae8 fix: prevent skip to PendingStack check doc URLs + web DatePicker fallback ✅ a23df8b fix: keep driver on onboarding if driver_license_number is null ✅ 1c9af9c fix: allow null legal docs fields at step 1 ✅ 6f7ed8c fix: allow null driver_license_number at step 1 ✅ 8acc64c feat: connect driver onboarding VehicleInfo/LegalDocs/DocumentUpload/ PendingVerification navigators ✅ c318a92 feat: add DriverOnboardingStack/ DriverPendingStack routes + install expo-image-picker expo-document-picker ✅ b669da7 docs: update ROADMAP_FTM session 2.3 ✅ bd7ead0 fix: SIGNED_IN pour utilisateurs existants ✅ 53725fe fix: clientProfileId transmis à CreateMissionScreen ✅ 8a78903 fix: navigation post-profil via callback ✅ e7beed2 fix: BORDER_RADIUS ajouté theme.ts ✅
 
-## 6. MODIFICATIONS COMMITÉES — DÉTAIL
+6. MODIFICATIONS COMMITÉES — DÉTAIL
+SESSION 2.4 INITIALE — commits c318a92 + 8acc64c
+frontend/src/types/database.ts — commit c318a92
 
-### SESSION 2.4 INITIALE — commits c318a92 + 8acc64c
+Ajout 2 nouvelles routes dans type AppRoute : 'DriverOnboardingStack' 'DriverPendingStack'
 
-#### `frontend/src/types/database.ts` — commit c318a92
-Ajout 2 nouvelles routes dans type AppRoute :
-  'DriverOnboardingStack'
-  'DriverPendingStack'
+frontend/package.json — commit c318a92
 
-#### `frontend/package.json` — commit c318a92
-  expo-image-picker ~14.7.1
-  expo-document-picker ~11.10.1
-  Commande : npx expo install expo-image-picker
-             expo-document-picker
+expo-image-picker ~14.7.1 expo-document-picker ~11.10.1 Commande : npx expo install expo-image-picker expo-document-picker
 
-#### `frontend/src/navigation/RootNavigator.tsx` — commit 8acc64c
+frontend/src/navigation/RootNavigator.tsx — commit 8acc64c
+
 11 modifications :
-1. Type retour initializeApp() étendu
-2. Cas driver dans initializeApp() complet
-3. States ajoutés : driverProfileId + driverVehicleCategory
-4. useEffect — capte driverId + vehicleCategory
-5. SIGNED_IN — capte driverId + vehicleCategory
-6. Imports ajoutés : 4 écrans onboarding
-7. Types navigation ajoutés : DriverOnboardingStackParamList
-                               DriverPendingStackParamList
-8. Navigateurs stack créés : DriverOnboardingStack
-                              DriverPendingStack
-9. Navigateurs créés : DriverOnboardingNavigator (4 écrans)
-                        DriverPendingNavigator
-10. DriverNavigator mis à jour
-11. Rendu conditionnel ajouté
 
----
+Type retour initializeApp() étendu
+Cas driver dans initializeApp() complet
+States ajoutés : driverProfileId + driverVehicleCategory
+useEffect — capte driverId + vehicleCategory
+SIGNED_IN — capte driverId + vehicleCategory
+Imports ajoutés : 4 écrans onboarding
+Types navigation ajoutés : DriverOnboardingStackParamList DriverPendingStackParamList
+Navigateurs stack créés : DriverOnboardingStack DriverPendingStack
+Navigateurs créés : DriverOnboardingNavigator (4 écrans) DriverPendingNavigator
+DriverNavigator mis à jour
+Rendu conditionnel ajouté
+SESSION 2.4 SUITE — commits 6f7ed8c → c39cafb
+frontend/src/navigation/RootNavigator.tsx
 
-### SESSION 2.4 SUITE — commits 6f7ed8c → c39cafb
+Logique driver complète et définitive : !driver → OnboardingStack !driver_license_number → OnboardingStack !toutes 4 URLs → OnboardingStack !is_verified → PendingStack sinon → HomeStack
 
-#### `frontend/src/navigation/RootNavigator.tsx`
-Logique driver complète et définitive :
-  !driver                → OnboardingStack
-  !driver_license_number → OnboardingStack
-  !toutes 4 URLs         → OnboardingStack
-  !is_verified           → PendingStack
-  sinon                  → HomeStack
+frontend/src/screens/driver/onboarding/LegalDocumentsScreen.tsx
 
-#### `frontend/src/screens/driver/onboarding/LegalDocumentsScreen.tsx`
-Fallback web pour DateTimePicker :
-  Platform.OS === 'web' → input type="date" HTML natif
-  Mobile → DateTimePicker natif inchangé
+Fallback web pour DateTimePicker : Platform.OS === 'web' → input type="date" HTML natif Mobile → DateTimePicker natif inchangé
 
-#### Migrations SQL ajoutées :
-20260429000001 → driver_license_number DROP NOT NULL
-20260429000002 → 5 champs légaux DROP NOT NULL
-20260504000001 → CREATE bucket driver-documents
-20260504000002 → RLS policies bucket driver-documents
+Migrations SQL ajoutées :
 
----
+20260429000001 → driver_license_number DROP NOT NULL 20260429000002 → 5 champs légaux DROP NOT NULL 20260504000001 → CREATE bucket driver-documents 20260504000002 → RLS policies bucket driver-documents
 
-### SESSION 2.5 — commits 475274c → 9f22d9d
+SESSION 2.5 — commits 475274c → 9f22d9d
+frontend/src/navigation/RootNavigator.tsx — commit 475274c
 
-#### `frontend/src/navigation/RootNavigator.tsx` — commit 475274c
-Correction BUG 1 — SIGNED_IN stale closure :
-  useRef<AppRoute> ajouté
-  initialRouteRef.current synchronisé
-  Condition : if (initialRouteRef.current
-              !== "DriverOnboardingStack")
+Correction BUG 1 — SIGNED_IN stale closure : useRef<AppRoute> ajouté initialRouteRef.current synchronisé Condition : if (initialRouteRef.current !== "DriverOnboardingStack")
 
-#### `frontend/src/screens/driver/DriverHomeScreen.tsx` — commit b4ec2ba
-Correction BUG 2 — wallet 404 :
-  .from('wallets') → .from('wallet') ligne 36
+frontend/src/screens/driver/DriverHomeScreen.tsx — commit b4ec2ba
 
-#### Migrations SQL ajoutées :
+Correction BUG 2 — wallet 404 : .from('wallets') → .from('wallet') ligne 36
+
+Migrations SQL ajoutées :
+
 20260504000003 → UNIQUE constraint document_reminders
 
----
+SESSION 2.6 — commits 884f00e → c4194db
+frontend/src/navigation/RootNavigator.tsx — commit 884f00e
 
-### SESSION 2.6 — commits 884f00e → c4194db
+4 écrans ajoutés dans DriverStackParamList + DriverNavigator : WalletDashboard, WalletTopup, TransactionHistory, DocumentStatus
 
-#### `frontend/src/navigation/RootNavigator.tsx` — commit 884f00e
-4 écrans ajoutés dans DriverStackParamList + DriverNavigator :
-  WalletDashboard, WalletTopup,
-  TransactionHistory, DocumentStatus
+Migrations SQL ajoutées :
 
-#### Migrations SQL ajoutées :
-20260504000004 → DROP + CREATE VIEW driver_dashboard
-                  5 colonnes ajoutées
-20260504000005 → RLS INSERT policy transactions
-                  pour authenticated
+20260504000004 → DROP + CREATE VIEW driver_dashboard 5 colonnes ajoutées 20260504000005 → RLS INSERT policy transactions pour authenticated
 
----
+SESSION 2.7 — commits d420007 → 750db88
+Migration 20260504000006 — commit d420007
 
-### SESSION 2.7 — commits d420007 → 750db88
+Correction BUG A — wallet_update_admin RLS récursion : DROP POLICY wallet_update_admin CREATE POLICY wallet_update_admin USING (get_my_role() = 'admin') Même correctif que 20260226000000 sur profiles
 
-#### Migration `20260504000006` — commit d420007
-Correction BUG A — wallet_update_admin RLS récursion :
-  DROP POLICY wallet_update_admin
-  CREATE POLICY wallet_update_admin
-  USING (get_my_role() = 'admin')
-  Même correctif que 20260226000000 sur profiles
+frontend/src/navigation/RootNavigator.tsx — commit 6ee89b1
 
-#### `frontend/src/navigation/RootNavigator.tsx` — commit 6ee89b1
-Correction SIGNED_IN loop admin :
-  Condition étendue :
-  if (initialRouteRef.current !== "DriverOnboardingStack"
-      && initialRouteRef.current !== "AdminStack")
-  Backup : RootNavigator.tsx.bak.session2.7
+Correction SIGNED_IN loop admin : Condition étendue : if (initialRouteRef.current !== "DriverOnboardingStack" && initialRouteRef.current !== "AdminStack") Backup : RootNavigator.tsx.bak.session2.7
 
-#### `frontend/src/navigation/RootNavigator.tsx` — commit 4ff3499
-2 écrans admin connectés à AdminNavigator :
-  DocumentReview → DocumentReviewScreen
-  WalletManagement → WalletManagementScreen
-  + imports + AdminStackParamList étendu
-  Backup : RootNavigator.tsx.bak.session2.7b
+frontend/src/navigation/RootNavigator.tsx — commit 4ff3499
 
-#### Migrations `20260504000007` + `20260504000008` — commits 2351bf3 + 445bdcb
-Correction 403 notifications — 2 couches :
-  Couche 1 (007) : INSERT authenticated sur notifications
-  Couche 2 (008) : SELECT admin via get_my_role()
-  Cause : .insert({...}).select().single() tentait
-          de lire la notification du driver avec
-          le rôle admin → politique SELECT manquante
+2 écrans admin connectés à AdminNavigator : DocumentReview → DocumentReviewScreen WalletManagement → WalletManagementScreen
 
-#### `frontend/src/screens/admin/AdminMissionsScreen.tsx` — commit 626e851
-Nouvel écran créé (7130 bytes) :
-  Liste toutes les missions avec filtres
-  6 filtres : Toutes, En attente, En cours,
-              Terminées, Annulées (client),
-              Annulées (chauffeur)
-  Pagination 25/page via getAdminMissions()
-  Bouton Retour via navigation.goBack()
-  Enum corrigé : cancelled → cancelled_client
-                              + cancelled_driver
+imports + AdminStackParamList étendu Backup : RootNavigator.tsx.bak.session2.7b
+Migrations 20260504000007 + 20260504000008 — commits 2351bf3 + 445bdcb
 
-#### `frontend/src/screens/admin/AdminUsersScreen.tsx` — commit 626e851
-Nouvel écran créé (6585 bytes) :
-  Liste drivers avec statut actif/suspendu
-  Barre de recherche par nom/téléphone
-  Bouton Suspendre/Activer via toggleUserActive()
-  Bouton Retour via navigation.goBack()
-  ⚠️ Méthode création : Python 7 étapes séquentielles
-     heredoc et -c posent problème avec ! et longueur
-     Utiliser cette méthode pour fichiers longs
+Correction 403 notifications — 2 couches : Couche 1 (007) : INSERT authenticated sur notifications Couche 2 (008) : SELECT admin via get_my_role() Cause : .insert({...}).select().single() tentait de lire la notification du driver avec le rôle admin → politique SELECT manquante
 
-#### `frontend/src/navigation/RootNavigator.tsx` — commit 626e851
-2 nouveaux écrans connectés à AdminNavigator :
-  AdminMissions → AdminMissionsScreen
-  AdminUsers → AdminUsersScreen
-  + imports + AdminStackParamList étendu
-  Backup : RootNavigator.tsx.bak.session2.7c
+frontend/src/screens/admin/AdminMissionsScreen.tsx — commit 626e851
 
-#### `frontend/src/screens/admin/AdminMissionsScreen.tsx` — commit 750db88
-Correction enum mission_status :
-  'cancelled' → 'cancelled_client' + 'cancelled_driver'
-  STATUS_FILTERS, STATUS_LABELS, FILTER_LABELS mis à jour
+Nouvel écran créé (7130 bytes) : Liste toutes les missions avec filtres 6 filtres : Toutes, En attente, En cours, Terminées, Annulées (client), Annulées (chauffeur) Pagination 25/page via getAdminMissions() Bouton Retour via navigation.goBack() Enum corrigé : cancelled → cancelled_client + cancelled_driver
 
----
+frontend/src/screens/admin/AdminUsersScreen.tsx — commit 626e851
 
-### SESSION 2.8 — commits aed0bee → 5ee383e
+Nouvel écran créé (6585 bytes) : Liste drivers avec statut actif/suspendu Barre de recherche par nom/téléphone Bouton Suspendre/Activer via toggleUserActive() Bouton Retour via navigation.goBack() ⚠️ Méthode création : Python 7 étapes séquentielles heredoc et -c posent problème avec ! et longueur Utiliser cette méthode pour fichiers longs
 
-#### `frontend/src/screens/admin/AdminUsersScreen.tsx` — commit aed0bee
-Correction bug "Suspendre" non fonctionnel sur web :
-  Cause : Alert.alert() (React Native) ne s'affiche pas sur web
-          → clic silencieux, aucun appel réseau
-  Correctif handleToggleActive() :
-    Alert.alert(...) → window.confirm(...)
-    if (confirmed === false) return;
-    Erreurs → window.alert() au lieu de Alert.alert()
-  Backup : AdminUsersScreen.tsx.bak.session2.8 (6585 bytes)
-  Tests confirmés :
-    "Annuler" ×2 → aucune action ✅
-    "Suspendre"+OK → badge "Suspendu", isActive:false,
-      driver availability reset ✅
-    "Activer"+OK → badge "Actif", isActive:true ✅
-  ⚠️ Correctif sans distinction Platform.OS — fonctionne sur
-  web mais planterait probablement sur mobile natif
-  (window.confirm/window.alert inexistants en React Native) —
-  découvert session 2.13, non corrigé (hors périmètre) —
-  voir bug résiduel Section 15
+frontend/src/navigation/RootNavigator.tsx — commit 626e851
 
-#### Migrations `20260504000009` + `20260504000010` — commit 5ee383e
-Création bucket voice-messages + RLS policies :
-  20260504000009 : INSERT storage.buckets
-    id/name: voice-messages, privé, 5MB,
-    types: audio/m4a, mp4, mpeg, wav, x-m4a
-  20260504000010 : 4 policies storage.objects
-    (INSERT/SELECT/UPDATE/DELETE, bucket_id='voice-messages',
-    authenticated) — même modèle que driver-documents
-  Justification : audioService.ts (uploadVoiceMessage,
-    loadVoiceMessages) référence ce bucket — confirmé
-    par grep exhaustif (screens + services + edge functions)
-  Vérifié en base : storage.buckets (2 lignes),
-    pg_policies storage.objects (8/8)
-  ⚠️ Non testé fonctionnellement — audioService.ts non
-    intégré dans l'UI (aucun screen ne l'appelle)
+2 nouveaux écrans connectés à AdminNavigator : AdminMissions → AdminMissionsScreen AdminUsers → AdminUsersScreen
 
-#### Test CLIENT — `CreateMissionScreen` (session 2.8)
-Procédure :
-  Suppression +212600000000 Auth → cascade suppression
-  profil/driver 1b6e684e-... → reconnexion → ProfileSetupScreen
-  → "Client" → nouveau profil 86c76d5f-...
-Formulaire rempli et fonctionnel (Avenue Mohammed V/RABAT/
-  VUL/1000 DH/commission 25 DH) ✅
-Bouton "Trouver un chauffeur" — CONFIRMÉ désactivé :
-  [FTM-DEBUG] GPS - Client location permission denied
-  pickupCoords === null → bouton grisé
-Tentative déblocage permission navigateur (Bloqué→Demander)
-  → permission denied persiste → limitation environnement
-  Codespaces/iframe confirmée (pas un bug applicatif)
+imports + AdminStackParamList étendu Backup : RootNavigator.tsx.bak.session2.7c
+frontend/src/screens/admin/AdminMissionsScreen.tsx — commit 750db88
 
----
+Correction enum mission_status : 'cancelled' → 'cancelled_client' + 'cancelled_driver' STATUS_FILTERS, STATUS_LABELS, FILTER_LABELS mis à jour
 
-### SESSION 2.9 — commit 34b32c1
+SESSION 2.8 — commits aed0bee → 5ee383e
+frontend/src/screens/admin/AdminUsersScreen.tsx — commit aed0bee
 
-#### Migration `20260504000011` — commit 34b32c1
-Configuration CRON job document expiry reminders :
-  Activation extensions :
-    CREATE EXTENSION IF NOT EXISTS pg_net  → 0.19.5 ✅
-    CREATE EXTENSION IF NOT EXISTS pg_cron → 1.6.4 ✅
-  Secret Vault :
-    vault.create_secret(service_role_key,
-      'supabase_service_role_key',
-      'Service role key for CRON job - FTM')
-    219 caractères — identique Dashboard ✅
-  CRON job :
-    cron.unschedule() WHERE EXISTS (pattern anti-doublon)
-    cron.schedule('check-document-reminders',
-      '0 8 * * *', net.http_post(...,
-      timeout_milliseconds := 30000))
-    jobid=2, active=true ✅
-  Résultat Edge Function :
-    {sent: 3, errors: 0} ✅ (test avec driver 29849a0a-...)
-    Flags reminder_30/15/7_days_sent → true ✅
-    3 notifications document_expiry créées ✅
-  5 exécutions succeeded confirmées : 18→22/06/2026 ✅
-  Nettoyage post-test :
-    notifications document_expiry supprimées
-    document_reminders driver test supprimées
+Correction bug "Suspendre" non fonctionnel sur web : Cause : Alert.alert() (React Native) ne s'affiche pas sur web → clic silencieux, aucun appel réseau Correctif handleToggleActive() : Alert.alert(...) → window.confirm(...) if (confirmed === false) return; Erreurs → window.alert() au lieu de Alert.alert() Backup : AdminUsersScreen.tsx.bak.session2.8 (6585 bytes) Tests confirmés : "Annuler" ×2 → aucune action ✅ "Suspendre"+OK → badge "Suspendu", isActive:false, driver availability reset ✅ "Activer"+OK → badge "Actif", isActive:true ✅ ⚠️ Correctif sans distinction Platform.OS — fonctionne sur web mais planterait probablement sur mobile natif (window.confirm/window.alert inexistants en React Native) — découvert session 2.13, non corrigé (hors périmètre) — voir bug résiduel Section 15
 
-#### Driver test recréé — session 2.9
-  Procédure :
-    +212600000000 supprimé de Auth (était CLIENT 86c76d5f-...)
-    Recréé via app → mode DRIVER — 4 pages onboarding
-    driverId : 29849a0a-5017-4eda-99d4-2c4f5c75a6c3
-    Validation admin +212600000001 → is_verified=true ✅
-    document_reminders créées automatiquement par l'app ✅
-  État : remplacé par eadc9d5e-... en session 2.10
+Migrations 20260504000009 + 20260504000010 — commit 5ee383e
 
----
+Création bucket voice-messages + RLS policies : 20260504000009 : INSERT storage.buckets id/name: voice-messages, privé, 5MB, types: audio/m4a, mp4, mpeg, wav, x-m4a 20260504000010 : 4 policies storage.objects (INSERT/SELECT/UPDATE/DELETE, bucket_id='voice-messages', authenticated) — même modèle que driver-documents Justification : audioService.ts (uploadVoiceMessage, loadVoiceMessages) référence ce bucket — confirmé par grep exhaustif (screens + services + edge functions) Vérifié en base : storage.buckets (2 lignes), pg_policies storage.objects (8/8) ⚠️ Non testé fonctionnellement — audioService.ts non intégré dans l'UI (aucun screen ne l'appelle)
 
-### SESSION 2.10 — commit b65eb9d
+Test CLIENT — CreateMissionScreen (session 2.8)
 
-#### Migration `20260504000012` — commit b65eb9d
-Activation Realtime sur 5 tables :
-  ALTER PUBLICATION supabase_realtime
-  ADD TABLE drivers, missions, wallet,
-  transactions, notifications;
-  Taille : 152 bytes ✅
-  Déploiement : Deploy Supabase FTM #42
-    Run 1 ❌ Lint SQL — rate limit exceeded (transitoire)
-    Run 2 ✅ Success — 2m 25s
-  Vérification : 5 rows dans supabase_realtime ✅
-    public | drivers       ✅
-    public | missions      ✅
-    public | notifications ✅
-    public | transactions  ✅
-    public | wallet        ✅
+Procédure : Suppression +212600000000 Auth → cascade suppression profil/driver 1b6e684e-... → reconnexion → ProfileSetupScreen → "Client" → nouveau profil 86c76d5f-... Formulaire rempli et fonctionnel (Avenue Mohammed V/RABAT/ VUL/1000 DH/commission 25 DH) ✅ Bouton "Trouver un chauffeur" — CONFIRMÉ désactivé : [FTM-DEBUG] GPS - Client location permission denied pickupCoords === null → bouton grisé Tentative déblocage permission navigateur (Bloqué→Demander) → permission denied persiste → limitation environnement Codespaces/iframe confirmée (pas un bug applicatif)
 
-#### Constats identifiés — session 2.10
-  Navigation cross-stack :
-    navigation.replace('DriverHome') dans
-    PendingVerificationScreen cible écran absent
-    du stack DriverPendingStack ⚠️
-    Navigation actuelle via onAuthStateChange/
-    initializeApp() — pas via Realtime
-  revenue_current_month : nommage trompeur
-    Calcule total topup du mois (transaction_type='topup')
-    Libellé UI "REVENUS CE MOIS" à corriger
-    en "RECHARGES CE MOIS" ⚠️
-    → CORRIGÉ session 2.13 (voir RÉSOLU 39)
-  NotificationBell : composant prêt
-    Jamais monté dans l'app ⚠️
-  subscribeToNewTransactions : défini
-    dans walletService.ts — jamais appelé ⚠️
-  TrackingDetailScreen : souscription définie
-    mais commentée — manque requête
-    mission_id depuis tracking_number ⚠️
+SESSION 2.9 — commit 34b32c1
+Migration 20260504000011 — commit 34b32c1
 
-### SESSION 2.11 — Planification (Partie 1 : investigation des 11 points, Partie 2 : sessions futures 2.12-2.17)
-Session de planification pure — aucune modification de code,
-aucune migration SQL. 11 points investigués en profondeur
-(lecture réelle du code, vérification RLS en base, tests
-d'hypothèses) — pas une reprise du prompt de passation.
-RÉSULTATS SESSION 2.11 :
-Points 1 à 11 — tous investigués, fiches complètes rédigées
-et validées. Découvertes majeures non anticipées par le
-prompt de passation initial :
-→ Cause racine commune identifiée entre les Points 3, 4,
-  Bug B du Point 6, et Point 9 : échec RLS silencieux sur
-  topupWallet()/refundWallet() (UPDATE bloqué pour un rôle
-  non-admin, 0 ligne affectée, aucune erreur retournée) —
-  transactions insérées avec status: 'completed' malgré
-  échec réel, faussant revenue_current_month et l'affichage
-  "Rechargé" de TransactionHistoryScreen.tsx.
-  → Diagnostiqué et corrigé session 2.13 (voir RÉSOLU 38/39)
-→ Point 7 (NotificationBell) : portée élargie — seules 2 des
-  8 fonctions de notification par événement sont vivantes
-  (notifyDocumentVerified, notifyDocumentRejected). Les 6
-  autres, notamment toutes liées aux missions, sont mortes.
-  Nuance importante : un mécanisme Realtime indépendant
-  (subscribeToNewMissions, DriverHomeScreen.tsx) permet déjà
-  à un chauffeur disponible et connecté de recevoir une
-  nouvelle mission sans dépendre des notifications — le
-  service fonctionne pour l'usage actif, les notifications
-  comblent un manque de portée pour les chauffeurs
-  déconnectés. Décision porteur : traiter montage UI et
-  génération des 6 notifications manquantes ensemble.
-→ Point 8 (TrackingDetailScreen) : bug fonctionnel ACTIF
-  découvert (pas seulement un défaut Realtime comme
-  documenté initialement) — la vue public_parcel_tracking
-  n'expose que 9 colonnes sur une quinzaine utilisées par
-  l'écran ; contenu colis, poids, volume, fragilité,
-  expéditeur complet et infos chauffeur s'affichent vides
-  dès aujourd'hui. Origine des champs manquants confirmée
-  dans ecommerce_parcels (élargissement de vue simple) sauf
-  infos chauffeur (jointure drivers/profiles à ajouter,
-  zone d'ombre assumée sur le champ de jointure exact).
-→ Points 9, 10, 11 : reclassés et regroupés en un seul
-  chantier stratégique. Décisions de principe actées par le
-  porteur : déclenchement des demandes (recharge/
-  remboursement) par le chauffeur avec pièce justificative
-  uploadée (pas de rôle "agent" intermédiaire) ; réforme du
-  timing de prélèvement de la commission — anticipé à 24h
-  avant la mission programmée, ou immédiat si délai court
-  (< 24h) — plutôt qu'à la complétion comme aujourd'hui,
-  pour couvrir le risque de non-déclaration de fin de
-  mission par le chauffeur (paiement direct client-chauffeur
-  hors app, non modifié) ; réutilisation de cancelMission()
-  existant ; workflow générique unique demande → justificatif
-  → validation admin → crédit, réutilisable pour recharge,
-  remboursement et modes de paiement multiples (Point 11,
-  reclassé de Phase 3+ vers session dédiée : simples
-  opérations bancaires courantes au Maroc, pas d'intégration
-  de service de paiement tiers — confirmé par absence totale
-  dans package.json).
-  → Fondation posée session 2.13 (requestWalletTopup(),
-  statut pending, message honnête) : à réutiliser telle
-  quelle par la session 2.17, pas à reconstruire — voir
-  vigilances transmises Section 6 (bloc session 2.13)
-→ Découverte de sécurité complémentaire : policy RLS
-  transactions_insert_own (INSERT) avec with_check: true —
-  aucune restriction, tout utilisateur authentifié peut
-  insérer n'importe quelle transaction. À corriger avec le
-  Point 1 (session 2.12).
+Configuration CRON job document expiry reminders : Activation extensions : CREATE EXTENSION IF NOT EXISTS pg_net → 0.19.5 ✅ CREATE EXTENSION IF NOT EXISTS pg_cron → 1.6.4 ✅ Secret Vault : vault.create_secret(service_role_key, 'supabase_service_role_key', 'Service role key for CRON job - FTM') 219 caractères — identique Dashboard ✅ CRON job : cron.unschedule() WHERE EXISTS (pattern anti-doublon) cron.schedule('check-document-reminders', '0 8 * * *', net.http_post(..., timeout_milliseconds := 30000)) jobid=2, active=true ✅ Résultat Edge Function : {sent: 3, errors: 0} ✅ (test avec driver 29849a0a-...) Flags reminder_30/15/7_days_sent → true ✅ 3 notifications document_expiry créées ✅ 5 exécutions succeeded confirmées : 18→22/06/2026 ✅ Nettoyage post-test : notifications document_expiry supprimées document_reminders driver test supprimées
 
-PLANIFICATION DES SESSIONS FUTURES (validée porteur) :
-2.12 ✅ RLS Storage (Point 1) + RLS transactions_insert_own
-       (Point 10) — bloquant sécurité, priorité maximale
-       COMPLET — voir détail ci-dessous
-2.13 ✅ Cause racine RLS wallet (Points 3, 4, Bug B du 6)
-       — détection échec silencieux topupWallet(),
-       correction revenue_current_month, correction
-       TransactionHistoryScreen.tsx, correction navigation
-       Bug B — COMPLET, voir détail ci-dessous
-2.14 ⏳ Realtime + Notifications (Points 5, 7) — branchement
-       subscribeToNewTransactions, montage NotificationBell/
-       NotificationCenterScreen (3 rôles), implémentation
-       des 6 fonctions notify* manquantes (missions)
-       ⚠️ Vigilance transmise par 2.13 : vérifier en priorité
-       l'alerte Realtime non observée sur
-       PendingVerificationScreen.tsx (voir bug résiduel
-       Section 15)
-2.15 ⏳ TrackingDetailScreen (Point 8) — élargissement vue
-       public_parcel_tracking, jointure drivers/profiles,
-       branchement subscribeToParcelStatus() — peut être
-       traité en parallèle des autres sessions
-2.16 ⏳ Bouton déconnexion 3 rôles (Point 2) — correctif
-       isolé, glissable à tout moment dans le calendrier
-2.17 ⏳ Réforme timing commission + Workflow financier
-       générique (Points 9, 10, 11) — session la plus vaste,
-       dépend de 2.13 (fonctions wallet corrigées) et 2.14
-       (notifications/Realtime opérationnels)
-       ⚠️ Vigilances transmises par 2.13 (voir détail complet
-       dans le bloc session 2.13 ci-dessous — fondation
-       requestWalletTopup, refundWallet() non vérifiée par
-       lecture directe, champ note temporaire, clarification
-       métier commission/paiement hors-app)
-2.18 ⏳ RLS voice-messages (bucket) — session ajoutée à
-       l'issue de la session 2.12, décidée par le porteur
-       (ajout postérieur à la planification 2.11, pas une
-       correction rétroactive de celle-ci) — conception de
-       la clause RLS (lecture schéma missions, brouillon SQL
-       documenté), sans déploiement à ce stade ; déploiement
-       ET test immédiat prévus ensemble en Phase 4.4 (device
-       physique + mission active requis)
-2.19 ⏳ Audit systématique Alert.alert() (proposé session
-       2.13) — tous les usages du projet, pas seulement les
-       fichiers touchés en 2.13 — à réaliser idéalement avant
-       que la Phase 3 (services extérieurs) ne devienne
-       active
+Driver test recréé — session 2.9
 
-Ordre logique : 2.12 → 2.13 → 2.14 → 2.15 (parallélisable)
-→ 2.16 (glissable) → 2.17 (dernière) → 2.18 (glissable,
-liée à Phase 4.4) → 2.19 (glissable, avant Phase 3)
+Procédure : +212600000000 supprimé de Auth (était CLIENT 86c76d5f-...) Recréé via app → mode DRIVER — 4 pages onboarding driverId : 29849a0a-5017-4eda-99d4-2c4f5c75a6c3 Validation admin +212600000001 → is_verified=true ✅ document_reminders créées automatiquement par l'app ✅ État : remplacé par eadc9d5e-... en session 2.10
 
-LISTE DE SUIVI — ANOMALIES/OBSERVATIONS DOCUMENTAIRES
-(à corriger dans le présent document) :
-~~1. ID driver test : 4983 → 4903 (coquille sur un chiffre,
-   3e groupe de l'UUID) — ID exact :
-   eadc9d5e-0db9-4903-b0a3-b69ca46c0b60~~
-   → CORRIGÉ session 2.12 (voir Sections 3 et 15)
-2. Chemin LegalDocumentsScreen.tsx → en réalité sous
-   frontend/src/screens/driver/onboarding/
-3. Chemin PendingVerificationScreen.tsx → en réalité sous
-   frontend/src/screens/driver/onboarding/
-~~4. Bug WalletRecharge non documenté : PendingVerification-
-   Screen.tsx (ligne 131) navigue vers 'WalletRecharge',
-   écran inexistant — nom réel : 'WalletTopup' (Point 6,
-   Bug B, corrigé en session 2.13)~~
-   → CORRIGÉ session 2.13 (bouton supprimé, voir RÉSOLU 40 —
-   distinct du bug résiduel de navigation cross-stack
-   PendingVerification → DriverHome, toujours non résolu,
-   voir Section 15)
-5. Filtrage géographique absent du matching mission-
-   chauffeur : subscribeToNewMissions filtre uniquement par
-   vehicle_category, paramètre _driverLocation présent mais
-   inutilisé — amélioration produit possible, hors périmètre
-   2.11, dépend du GPS (bloqué Codespaces/iframe, Phase 4.x)
-6. Convention de chemins non documentée : plusieurs écrans
-   dans des sous-dossiers thématiques (onboarding/,
-   notifications/, tracking/) non mentionnés dans les
-   versions précédentes de ce document
-~~7. RLS transactions INSERT sans restriction — voir ci-dessus,
-   à corriger session 2.12~~
-   → CORRIGÉ session 2.12 (voir Sections 3 et 15)
-Prochain timestamp migration disponible : 20260504000015
-(20260504000014 déployé en session 2.13)
+SESSION 2.10 — commit b65eb9d
+Migration 20260504000012 — commit b65eb9d
 
-REQUALIFICATION PHASE 6 — AMÉLIORATIONS POST-TESTS
-(historique conservé, items repris par anticipation dans
-les sessions 2.12-2.17 issues de la session 2.11) :
-6.1 ⏳ → Modes de paiement multiples wallet
-       REPRIS PAR ANTICIPATION — voir session 2.17
-       (regroupé avec 6.2/6.3, reclassé de Phase 6 vers
-       session dédiée proche : simples opérations
-       bancaires courantes, pas d'intégration tierce)
-6.2 ⏳ → Workflow validation recharge admin
-       REPRIS PAR ANTICIPATION — voir session 2.17
-       ✅ Fondation posée session 2.13 : demande chauffeur
-       en statut pending — reste à ajouter en 2.17 : upload
-       pièce justificative + écran de traitement admin dédié
-       + notification admin temps réel
-6.3 ⏳ → Remboursements flux dédié
-       REPRIS PAR ANTICIPATION — voir session 2.17
-       ⚠️ refundWallet() non lue en détail en 2.13 (hors
-       périmètre) — partage probablement la même structure
-       vulnérable que l'ancien topupWallet() (affirmation
-       héritée du prompt de mission, NON vérifiée par lecture
-       directe) — à confirmer par lecture directe en tout
-       début de session 2.17
-6.4 ⏳ → Bouton déconnexion 3 rôles
-       REPRIS PAR ANTICIPATION — voir session 2.16
-6.5 ✅/⏳ → Refonte WalletTopupScreen
-       Partie 1 (statut pending honnête, message clair,
-       suppression du calcul de solde trompeur) ✅ TRAITÉE
-       session 2.13 (commits 2e76429 + 480130d)
-       Partie 2 (upload pièce justificative, écran de
-       traitement admin dédié) ⏳ REPRIS PAR ANTICIPATION —
-       voir session 2.17
-6.6 ✅/⏳ → SÉCURITÉ — Renforcer RLS Storage
-       driver-documents ✅ traité session 2.12
-       (ownership chain, commit 67e9e65)
-       voice-messages ⏳ session 2.18 (conception seule
-       en 2.18, déploiement + test en Phase 4.4)
-⚠️ DÉPENDANCE CROISÉE À NOTER — Phase 3 / Session 2.14 :
-L'implémentation des 6 fonctions notify* manquantes
-(Point 7, session 2.14) rebranchera dispatchPushNotification()
-et l'Edge Function send-push-notification, dont le
-fonctionnement réel dépend de l'infrastructure FCM Android
-(3.2) et APNs iOS (3.3) — non réalisée à ce jour. Conséquence :
-la session 2.14 peut implémenter les appels applicatifs aux
-fonctions notify*, mais les notifications push mobiles
-réelles ne seront pleinement opérationnelles qu'une fois la
-Phase 3 complétée. CORS sur web reste un comportement
-attendu, non bloquant (cf. RÉSOLU antérieurs).
-Aucun autre chevauchement identifié avec les Phases 3, 4, 5
-et 7 à ce stade.
+Activation Realtime sur 5 tables : ALTER PUBLICATION supabase_realtime ADD TABLE drivers, missions, wallet, transactions, notifications; Taille : 152 bytes ✅ Déploiement : Deploy Supabase FTM #42 Run 1 ❌ Lint SQL — rate limit exceeded (transitoire) Run 2 ✅ Success — 2m 25s Vérification : 5 rows dans supabase_realtime ✅ public | drivers ✅ public | missions ✅ public | notifications ✅ public | transactions ✅ public | wallet ✅
 
----
+Constats identifiés — session 2.10
 
-### SESSION 2.12 — commit 67e9e65
-**Correction RLS Storage (driver-documents) & transactions_insert_own**
+Navigation cross-stack : navigation.replace('DriverHome') dans PendingVerificationScreen cible écran absent du stack DriverPendingStack ⚠️ Navigation actuelle via onAuthStateChange/ initializeApp() — pas via Realtime revenue_current_month : nommage trompeur Calcule total topup du mois (transaction_type='topup') Libellé UI "REVENUS CE MOIS" à corriger en "RECHARGES CE MOIS" ⚠️ → CORRIGÉ session 2.13 (voir RÉSOLU 39) NotificationBell : composant prêt Jamais monté dans l'app ⚠️ → CORRIGÉ session 2.14 (voir bloc dédié ci-dessous) subscribeToNewTransactions : défini dans walletService.ts — jamais appelé ⚠️ → CORRIGÉ session 2.14 (voir bloc dédié ci-dessous) TrackingDetailScreen : souscription définie mais commentée — manque requête mission_id depuis tracking_number ⚠️
 
-#### Partie 1 — Investigation (lecture seule)
-- 8 policies Storage confirmées sans clause de propriété
-  (4 sur driver-documents, 4 sur voice-messages)
-- Convention `{driver_id}/{docType}.ext` confirmée ;
-  6 dossiers orphelins identifiés sur 7 dossiers au départ
-  (1 driver actif à l'époque : eadc9d5e-0db9-4903-...)
-- Chaîne de propriété établie et validée par jointure réelle :
-  storage.foldername(name)[1]::uuid = drivers.id →
-  drivers.profile_id = profiles.id →
-  profiles.user_id = auth.uid()
-  (chaîne complète retenue plutôt que le raccourci
-  owner = auth.uid(), pour robustesse)
-- transactions_insert_own confirmée WITH CHECK (true)
-  (migration 20260504000005) ; chaîne de propriété établie
-  via wallet : transactions.wallet_id → wallet.driver_id =
-  drivers.id → drivers.profile_id → profiles.user_id =
-  auth.uid() ; enum transaction_status (pending/completed/
-  failed) sans restriction nécessaire
-- Compatibilité vérifiée : driver (upload direct côté client,
-  documentService.ts), admin (get_my_role() = 'admin'
-  strictement nécessaire pour topupWallet/refundWallet, qui
-  insèrent au nom de l'admin connecté), infrastructure
-  (check-document-reminders utilise service_role, non affecté)
-- RLS de drivers vérifiée à la demande du porteur — déjà
-  saine, sert de référence de conception
-- voice-messages : convention de chemin différente découverte
-  (missions/{missionId}/{senderProfileId}_{timestamp}.ext) —
-  a motivé son exclusion du périmètre de cette session
-- Exactement 2 buckets confirmés (tous deux privés) ; RLS
-  activée confirmée sur les 4 tables (objects, transactions,
-  wallet, drivers) ; get_my_role() lu et jugé robuste
-  (retourne NULL proprement en cas limite)
-- Rapport de synthèse rédigé et validé avant Partie 2,
-  incluant analyse de risques (5 mitigations actées) et
-  vigilance transmise à la session 2.17
+SESSION 2.11 — Planification (Partie 1 : investigation des 11 points, Partie 2 : sessions futures 2.12-2.17)
 
-#### Partie 2 — Implémentation
-**Migration** : `20260504000013_fix_storage_transactions_rls_ownership.sql`
-  Difficultés rencontrées : erreurs de fusion de caractères
-  silencieuses au copier-coller (ex. "ONp.id", "IFEXISTS",
-  "driversd") — invisibles au cat, révélées par repr().
-  Méthode stabilisée : blocs courts, repr() systématique
-  après chaque ajout, alias renommé (d → dr) pour contourner
-  un bug de fusion récurrent sur une ligne spécifique.
-  Fichier vérifié intégralement, sans erreur résiduelle.
+Session de planification pure — aucune modification de code, aucune migration SQL. 11 points investigués en profondeur (lecture réelle du code, vérification RLS en base, tests d'hypothèses) — pas une reprise du prompt de passation. RÉSULTATS SESSION 2.11 : Points 1 à 11 — tous investigués, fiches complètes rédigées et validées. Découvertes majeures non anticipées par le prompt de passation initial : → Cause racine commune identifiée entre les Points 3, 4, Bug B du Point 6, et Point 9 : échec RLS silencieux sur topupWallet()/refundWallet() (UPDATE bloqué pour un rôle non-admin, 0 ligne affectée, aucune erreur retournée) — transactions insérées avec status: 'completed' malgré échec réel, faussant revenue_current_month et l'affichage "Rechargé" de TransactionHistoryScreen.tsx. → Diagnostiqué et corrigé session 2.13 (voir RÉSOLU 38/39) → Point 7 (NotificationBell) : portée élargie — seules 2 des 8 fonctions de notification par événement sont vivantes (notifyDocumentVerified, notifyDocumentRejected). Les 6 autres, notamment toutes liées aux missions, sont mortes. Nuance importante : un mécanisme Realtime indépendant (subscribeToNewMissions, DriverHomeScreen.tsx) permet déjà à un chauffeur disponible et connecté de recevoir une nouvelle mission sans dépendre des notifications — le service fonctionne pour l'usage actif, les notifications comblent un manque de portée pour les chauffeurs déconnectés. Décision porteur : traiter montage UI et génération des 6 notifications manquantes ensemble. ⚠️ Décompte révisé session 2.14 : investigation directe a identifié 9 fonctions notify* (et non 6/8) — voir bloc dédié ci-dessous → Point 8 (TrackingDetailScreen) : bug fonctionnel ACTIF découvert (pas seulement un défaut Realtime comme documenté initialement) — la vue public_parcel_tracking n'expose que 9 colonnes sur une quinzaine utilisées par l'écran ; contenu colis, poids, volume, fragilité, expéditeur complet et infos chauffeur s'affichent vides dès aujourd'hui. Origine des champs manquants confirmée dans ecommerce_parcels (élargissement de vue simple) sauf infos chauffeur (jointure drivers/profiles à ajouter, zone d'ombre assumée sur le champ de jointure exact). → Points 9, 10, 11 : reclassés et regroupés en un seul chantier stratégique. Décisions de principe actées par le porteur : déclenchement des demandes (recharge/ remboursement) par le chauffeur avec pièce justificative uploadée (pas de rôle "agent" intermédiaire) ; réforme du timing de prélèvement de la commission — anticipé à 24h avant la mission programmée, ou immédiat si délai court (< 24h) — plutôt qu'à la complétion comme aujourd'hui, pour couvrir le risque de non-déclaration de fin de mission par le chauffeur (paiement direct client-chauffeur hors app, non modifié) ; réutilisation de cancelMission() existant ; workflow générique unique demande → justificatif → validation admin → crédit, réutilisable pour recharge, remboursement et modes de paiement multiples (Point 11, reclassé de Phase 3+ vers session dédiée : simples opérations bancaires courantes au Maroc, pas d'intégration de service de paiement tiers — confirmé par absence totale dans package.json). → Fondation posée session 2.13 (requestWalletTopup(), statut pending, message honnête) : à réutiliser telle quelle par la session 2.17, pas à reconstruire — voir vigilances transmises Section 6 (bloc session 2.13) → Découverte de sécurité complémentaire : policy RLS transactions_insert_own (INSERT) avec with_check: true — aucune restriction, tout utilisateur authentifié peut insérer n'importe quelle transaction. À corriger avec le Point 1 (session 2.12).
 
-**Rollback** : `supabase/rollbacks/rollback_20260504000013.sql`
-  (nouveau dossier rollbacks/, hors migrations/, pour éviter
-  toute exécution automatique non désirée) — vérifié
-  intégralement, fidèle à l'état RLS originel
+PLANIFICATION DES SESSIONS FUTURES (validée porteur, mise à jour session 2.14 — voir insertion 2.14 bis ci-dessous et Section 17) : 2.12 ✅ RLS Storage (Point 1) + RLS transactions_insert_own (Point 10) — bloquant sécurité, priorité maximale COMPLET — voir détail ci-dessous 2.13 ✅ Cause racine RLS wallet (Points 3, 4, Bug B du 6) — détection échec silencieux topupWallet(), correction revenue_current_month, correction TransactionHistoryScreen.tsx, correction navigation Bug B — COMPLET, voir détail ci-dessous 2.14 ✅ Realtime + Notifications (Points 5, 7) — branchement subscribeToNewTransactions, montage NotificationBell/ NotificationCenterScreen (3 rôles), implémentation des fonctions notify* manquantes (missions) — COMPLET avec réserves, voir détail ci-dessous 2.14 bis ⏳ Lecture, investigation et planification de l'amélioration du processus de création de mission — voir Section 17 pour le détail complet (nature, objet, livrable, positionnement) 2.15 ⏳ TrackingDetailScreen (Point 8) — élargissement vue public_parcel_tracking, jointure drivers/profiles, branchement subscribeToParcelStatus() — peut être traité en parallèle des autres sessions 2.16 ⏳ Bouton déconnexion 3 rôles (Point 2) — correctif isolé, glissable à tout moment dans le calendrier 2.17 ⏳ Réforme timing commission + Workflow financier générique (Points 9, 10, 11) — session la plus vaste, dépend de 2.13 (fonctions wallet corrigées) et 2.14 (notifications/Realtime opérationnels) ⚠️ Vigilances transmises par 2.13 (voir détail complet dans le bloc session 2.13 ci-dessous — fondation requestWalletTopup, refundWallet() non vérifiée par lecture directe, champ note temporaire, clarification métier commission/paiement hors-app) 2.18 ⏳ RLS voice-messages (bucket) — session ajoutée à l'issue de la session 2.12, décidée par le porteur (ajout postérieur à la planification 2.11, pas une correction rétroactive de celle-ci) — conception de la clause RLS (lecture schéma missions, brouillon SQL documenté), sans déploiement à ce stade ; déploiement ET test immédiat prévus ensemble en Phase 4.4 (device physique + mission active requis) 2.19 ⏳ Audit systématique Alert.alert() (proposé session 2.13) — tous les usages du projet, pas seulement les fichiers touchés en 2.13 — à réaliser idéalement avant que la Phase 3 (services extérieurs) ne devienne active — portée élargie session 2.14 : inclut également l'Anomalie #1 (bouton retour NotificationCenterScreen), sur décision du porteur à confirmer au moment venu
 
-**Déploiement** : commit 67e9e65 (git add ciblé, 2 fichiers),
-  git pull --rebase propre, push réussi. Confirmé via
-  GitHub Actions : Check Supabase Connection #97,
-  Vérification Qualité Code #101, Deploy Supabase FTM #43 —
-  tous en succès
+Ordre logique : 2.12 → 2.13 → 2.14 → 2.14 bis → 2.15 (parallélisable) → 2.16 (glissable) → 2.17 (dernière) → 2.18 (glissable, liée à Phase 4.4) → 2.19 (glissable, avant Phase 3)
 
-**Tests fonctionnels** (menés directement porteur + Assistant
-Général FTM, hors canal session 2.12, intégrés ici comme
-faits vérifiés) :
+LISTE DE SUIVI — ANOMALIES/OBSERVATIONS DOCUMENTAIRES (à corriger dans le présent document) : 1. ID driver test : 4983 → 4903 (coquille sur un chiffre, 3e groupe de l'UUID) — ID exact : eadc9d5e-0db9-4903-b0a3-b69ca46c0b60 → CORRIGÉ session 2.12 (voir Sections 3 et 15) 2. Chemin LegalDocumentsScreen.tsx → en réalité sous frontend/src/screens/driver/onboarding/ 3. Chemin PendingVerificationScreen.tsx → en réalité sous frontend/src/screens/driver/onboarding/ 4. Bug WalletRecharge non documenté : PendingVerification- Screen.tsx (ligne 131) navigue vers 'WalletRecharge', écran inexistant — nom réel : 'WalletTopup' (Point 6, Bug B, corrigé en session 2.13) → CORRIGÉ session 2.13 (bouton supprimé, voir RÉSOLU 40 — distinct du bug résiduel de navigation cross-stack PendingVerification → DriverHome, toujours non résolu, voir Section 15) 5. Filtrage géographique absent du matching mission- chauffeur : subscribeToNewMissions filtre uniquement par vehicle_category, paramètre _driverLocation présent mais inutilisé — amélioration produit possible, hors périmètre 2.11, dépend du GPS (bloqué Codespaces/iframe, Phase 4.x) ⚠️ Reconfirmé par lecture directe session 2.14 (annexe Section 18, § 2) : aucun autre critère de filtrage que vehicle_category dans realtimeService.ts — pertinent pour la Piste 1 de l'annexe 6. Convention de chemins non documentée : plusieurs écrans dans des sous-dossiers thématiques (onboarding/, notifications/, tracking/) non mentionnés dans les versions précédentes de ce document 7. RLS transactions INSERT sans restriction — voir ci-dessus, à corriger session 2.12 → CORRIGÉ session 2.12 (voir Sections 3 et 15) Prochain timestamp migration disponible : 20260504000015 (aucune migration consommée en session 2.14 — inchangé depuis session 2.13)
 
-| Test | Résultat |
-|---|---|
-| DRIVER — création, upload, ré-upload | ✅ |
-| ADMIN — dashboard, validation | ✅ |
-| Accès croisé Storage (doit échouer) | ✅ 400 |
-| CLIENT — connexion basique | ✅ |
-| transactions_insert_own légitime | ✅ 201 |
-| transactions_insert_own illégitime (doit échouer) | ✅ 403 |
+REQUALIFICATION PHASE 6 — AMÉLIORATIONS POST-TESTS (historique conservé, items repris par anticipation dans les sessions 2.12-2.17 issues de la session 2.11) : 6.1 ⏳ → Modes de paiement multiples wallet REPRIS PAR ANTICIPATION — voir session 2.17 (regroupé avec 6.2/6.3, reclassé de Phase 6 vers session dédiée proche : simples opérations bancaires courantes, pas d'intégration tierce) 6.2 ⏳ → Workflow validation recharge admin REPRIS PAR ANTICIPATION — voir session 2.17 ✅ Fondation posée session 2.13 : demande chauffeur en statut pending — reste à ajouter en 2.17 : upload pièce justificative + écran de traitement admin dédié + notification admin temps réel 6.3 ⏳ → Remboursements flux dédié REPRIS PAR ANTICIPATION — voir session 2.17 ⚠️ refundWallet() non lue en détail en 2.13 (hors périmètre) — partage probablement la même structure vulnérable que l'ancien topupWallet() (affirmation héritée du prompt de mission, NON vérifiée par lecture directe) — à confirmer par lecture directe en tout début de session 2.17 ⚠️ Découverte annexe session 2.14 (hors périmètre, préexistante) : robustesse topupWallet/refundWallet — échec silencieux possible de l'insertion de la transaction après UPDATE du solde — à documenter et vérifier lors de la lecture directe prévue en 2.17 6.4 ⏳ → Bouton déconnexion 3 rôles REPRIS PAR ANTICIPATION — voir session 2.16 6.5 ✅/⏳ → Refonte WalletTopupScreen Partie 1 (statut pending honnête, message clair, suppression du calcul de solde trompeur) ✅ TRAITÉE session 2.13 (commits 2e76429 + 480130d) Partie 2 (upload pièce justificative, écran de traitement admin dédié) ⏳ REPRIS PAR ANTICIPATION — voir session 2.17 6.6 ✅/⏳ → SÉCURITÉ — Renforcer RLS Storage driver-documents ✅ traité session 2.12 (ownership chain, commit 67e9e65) voice-messages ⏳ session 2.18 (conception seule en 2.18, déploiement + test en Phase 4.4) ⚠️ DÉPENDANCE CROISÉE À NOTER — Phase 3 / Session 2.14 : L'implémentation des fonctions notify* manquantes (Point 7, session 2.14) rebranchera dispatchPushNotification() et l'Edge Function send-push-notification, dont le fonctionnement réel dépend de l'infrastructure FCM Android (3.2) et APNs iOS (3.3) — non réalisée à ce jour. Conséquence : la session 2.14 a implémenté les appels applicatifs aux fonctions notify*, mais les notifications push mobiles réelles ne seront pleinement opérationnelles qu'une fois la Phase 3 complétée. CORS sur web reste un comportement attendu, non bloquant (cf. RÉSOLU antérieurs). Aucun autre chevauchement identifié avec les Phases 3, 4, 5 et 7 à ce stade.
+
+SESSION 2.12 — commit 67e9e65
+
+Correction RLS Storage (driver-documents) & transactions_insert_own
+
+Partie 1 — Investigation (lecture seule)
+8 policies Storage confirmées sans clause de propriété (4 sur driver-documents, 4 sur voice-messages)
+Convention {driver_id}/{docType}.ext confirmée ; 6 dossiers orphelins identifiés sur 7 dossiers au départ (1 driver actif à l'époque : eadc9d5e-0db9-4903-...)
+Chaîne de propriété établie et validée par jointure réelle : storage.foldername(name)[1]::uuid = drivers.id → drivers.profile_id = profiles.id → profiles.user_id = auth.uid() (chaîne complète retenue plutôt que le raccourci owner = auth.uid(), pour robustesse)
+transactions_insert_own confirmée WITH CHECK (true) (migration 20260504000005) ; chaîne de propriété établie via wallet : transactions.wallet_id → wallet.driver_id = drivers.id → drivers.profile_id → profiles.user_id = auth.uid() ; enum transaction_status (pending/completed/ failed) sans restriction nécessaire
+Compatibilité vérifiée : driver (upload direct côté client, documentService.ts), admin (get_my_role() = 'admin' strictement nécessaire pour topupWallet/refundWallet, qui insèrent au nom de l'admin connecté), infrastructure (check-document-reminders utilise service_role, non affecté)
+RLS de drivers vérifiée à la demande du porteur — déjà saine, sert de référence de conception
+voice-messages : convention de chemin différente découverte (missions/{missionId}/{senderProfileId}_{timestamp}.ext) — a motivé son exclusion du périmètre de cette session
+Exactement 2 buckets confirmés (tous deux privés) ; RLS activée confirmée sur les 4 tables (objects, transactions, wallet, drivers) ; get_my_role() lu et jugé robuste (retourne NULL proprement en cas limite)
+Rapport de synthèse rédigé et validé avant Partie 2, incluant analyse de risques (5 mitigations actées) et vigilance transmise à la session 2.17
+Partie 2 — Implémentation
+
+Migration : 20260504000013_fix_storage_transactions_rls_ownership.sql Difficultés rencontrées : erreurs de fusion de caractères silencieuses au copier-coller (ex. "ONp.id", "IFEXISTS", "driversd") — invisibles au cat, révélées par repr(). Méthode stabilisée : blocs courts, repr() systématique après chaque ajout, alias renommé (d → dr) pour contourner un bug de fusion récurrent sur une ligne spécifique. Fichier vérifié intégralement, sans erreur résiduelle.
+
+Rollback : supabase/rollbacks/rollback_20260504000013.sql (nouveau dossier rollbacks/, hors migrations/, pour éviter toute exécution automatique non désirée) — vérifié intégralement, fidèle à l'état RLS originel
+
+Déploiement : commit 67e9e65 (git add ciblé, 2 fichiers), git pull --rebase propre, push réussi. Confirmé via GitHub Actions : Check Supabase Connection #97, Vérification Qualité Code #101, Deploy Supabase FTM #43 — tous en succès
+
+Tests fonctionnels (menés directement porteur + Assistant Général FTM, hors canal session 2.12, intégrés ici comme faits vérifiés) :
+
+Test	Résultat
+DRIVER — création, upload, ré-upload	✅
+ADMIN — dashboard, validation	✅
+Accès croisé Storage (doit échouer)	✅ 400
+CLIENT — connexion basique	✅
+transactions_insert_own légitime	✅ 201
+transactions_insert_own illégitime (doit échouer)	✅ 403
 
 Détail :
-- Driver test `3514fa86-7cab-4303-a59d-25d83dc40087` créé via
-  onboarding complet : profil ✅, premier upload 4 documents
-  (INSERT) ✅, ré-upload d'un document existant (UPDATE/
-  upsert) ✅ réussi — point de risque le plus critique de la
-  conception, confirmé fonctionnel
-- Connexion admin (+212600000001) : dashboard, stats,
-  validation des 4 documents — tous ✅
-- Test d'accès croisé : depuis la session du driver
-  3514fa86-..., tentative de fetch() authentifié vers
-  driver-documents/eadc9d5e-.../driver_license.jpg (dossier
-  orphelin d'un autre chauffeur) → STATUS 400 (Bad Request).
-  Faille originelle confirmée corrigée ✅
-- Driver 3514fa86-... supprimé pour libérer le numéro
-  partagé (+212600000000) → test client : profil role=client,
-  navigation vers "Nouvelle mission" ✅
-- Compte client (cf260b9f-...) supprimé à son tour pour
-  recréer un second driver nécessaire au test
-  transactions_insert_own (défaut de séquençage des tests
-  reconnu, non anticipé initialement)
-- Driver `2ec2b439-fcdb-443d-8de0-5bee268d30f6` créé,
-  wallet_id : 58b2b8e7-190a-4cbb-8f09-8340feecf498. Une seule
-  ligne wallet en base à ce moment (pas d'orphelin) — cohérent
-  avec une cascade de suppression sur wallet/drivers lors de
-  la suppression Auth, contrairement à Storage qui ne connaît
-  aucune relation de clé étrangère (observation factuelle,
-  non vérifiée par une contrainte ON DELETE CASCADE explicite)
-- Test légitime : insertion transaction (wallet_id propre,
-  status: 'pending') via fetch() authentifié → STATUS 201
-  (confirme aussi la compatibilité avec le statut 'pending',
-  vigilance transmise à la session 2.13 — confirmée
-  fonctionnelle en usage réel session 2.13, voir RÉSOLU 38)
-- Test illégitime : insertion vers wallet_id fictif
-  (00000000-0000-0000-0000-000000000099) → STATUS 403,
-  {"code":"42501", "message":"new row violates row-level
-  security policy for table \"transactions\""} — refus
-  confirmé, message RLS explicite
 
-**Anomalie mineure découverte** (non bloquante, sans lien
-avec la RLS) : bug d'affichage `DocumentReviewScreen.tsx` —
-après validation du dernier document en attente d'un
-chauffeur (4/4), le modal ne se rafraîchit pas visuellement
-(reste "En attente") car getPendingDrivers() ne retourne plus
-ce chauffeur une fois tous documents validés, et drivers.find()
-ne le retrouve donc plus dans la liste rafraîchie par
-loadDrivers(). Donnée en base confirmée correcte (dashboard
-admin : verifiedDrivers bien incrémenté) — bug d'état React
-côté client, pas un problème RLS. Vérifié : ne correspond à
-aucun bug déjà documenté en sections 9/15 (notamment distinct
-des limitations web GPS/pickupCoords et de l'ancien bug
-"Suspendre" déjà résolu en session 2.8). **Rattaché au
-traitement secondaire et optionnel de la session 2.13
-(décision porteur) — non traité faute de temps — reporté à
-une session ultérieure, à assigner.**
+Driver test 3514fa86-7cab-4303-a59d-25d83dc40087 créé via onboarding complet : profil ✅, premier upload 4 documents (INSERT) ✅, ré-upload d'un document existant (UPDATE/ upsert) ✅ réussi — point de risque le plus critique de la conception, confirmé fonctionnel
+Connexion admin (+212600000001) : dashboard, stats, validation des 4 documents — tous ✅
+Test d'accès croisé : depuis la session du driver 3514fa86-..., tentative de fetch() authentifié vers driver-documents/eadc9d5e-.../driver_license.jpg (dossier orphelin d'un autre chauffeur) → STATUS 400 (Bad Request). Faille originelle confirmée corrigée ✅
+Driver 3514fa86-... supprimé pour libérer le numéro partagé (+212600000000) → test client : profil role=client, navigation vers "Nouvelle mission" ✅
+Compte client (cf260b9f-...) supprimé à son tour pour recréer un second driver nécessaire au test transactions_insert_own (défaut de séquençage des tests reconnu, non anticipé initialement)
+Driver 2ec2b439-fcdb-443d-8de0-5bee268d30f6 créé, wallet_id : 58b2b8e7-190a-4cbb-8f09-8340feecf498. Une seule ligne wallet en base à ce moment (pas d'orphelin) — cohérent avec une cascade de suppression sur wallet/drivers lors de la suppression Auth, contrairement à Storage qui ne connaît aucune relation de clé étrangère (observation factuelle, non vérifiée par une contrainte ON DELETE CASCADE explicite)
+Test légitime : insertion transaction (wallet_id propre, status: 'pending') via fetch() authentifié → STATUS 201 (confirme aussi la compatibilité avec le statut 'pending', vigilance transmise à la session 2.13 — confirmée fonctionnelle en usage réel session 2.13, voir RÉSOLU 38)
+Test illégitime : insertion vers wallet_id fictif (00000000-0000-0000-0000-000000000099) → STATUS 403, {"code":"42501", "message":"new row violates row-level security policy for table "transactions""} — refus confirmé, message RLS explicite
 
-**État final réel constaté à l'issue de la session** :
-- +212600000000 : compte CLIENT supprimé (aucun compte client
-  actif au terme de la session 2.12)
-- Driver 2ec2b439-fcdb-443d-8de0-5bee268d30f6 reste actif en
-  base — is_verified: false (jamais validé par l'admin),
-  wallet_id: 58b2b8e7-..., wallet.balance réel = 0 DH (la
-  valeur 50 DH visible dans transactions.balance_after de la
-  ligne de test est déclarative uniquement — topupWallet()
-  n'a jamais été appelé durant ce test, sans lien avec le bug
-  topupWallet documenté pour la session 2.13)
-- Dossiers Storage driver-documents : 8 dossiers orphelins +
-  1 dossier actif (2ec2b439-...) = 9 dossiers au total —
-  signalé pour information, aucune session de nettoyage
-  planifiée à ce stade (à réévaluer si le nombre continue de
-  croître significativement ou si une politique de rétention
-  devient nécessaire avant mise en production)
+Anomalie mineure découverte (non bloquante, sans lien avec la RLS) : bug d'affichage DocumentReviewScreen.tsx — après validation du dernier document en attente d'un chauffeur (4/4), le modal ne se rafraîchit pas visuellement (reste "En attente") car getPendingDrivers() ne retourne plus ce chauffeur une fois tous documents validés, et drivers.find() ne le retrouve donc plus dans la liste rafraîchie par loadDrivers(). Donnée en base confirmée correcte (dashboard admin : verifiedDrivers bien incrémenté) — bug d'état React côté client, pas un problème RLS. Vérifié : ne correspond à aucun bug déjà documenté en sections 9/15 (notamment distinct des limitations web GPS/pickupCoords et de l'ancien bug "Suspendre" déjà résolu en session 2.8). Rattaché au traitement secondaire et optionnel de la session 2.13 (décision porteur) — non traité faute de temps — reporté à une session ultérieure, à assigner.
 
-**Décision actée par le porteur** : conception RLS
-voice-messages différée à la session 2.18 (voir planification
-ci-dessus), sans déploiement à ce stade.
+État final réel constaté à l'issue de la session :
 
-**Fichiers créés** :
-  supabase/migrations/20260504000013_fix_storage_transactions_rls_ownership.sql
-  supabase/rollbacks/rollback_20260504000013.sql (nouveau
-  dossier rollbacks/)
++212600000000 : compte CLIENT supprimé (aucun compte client actif au terme de la session 2.12)
+Driver 2ec2b439-fcdb-443d-8de0-5bee268d30f6 reste actif en base — is_verified: false (jamais validé par l'admin), wallet_id: 58b2b8e7-..., wallet.balance réel = 0 DH (la valeur 50 DH visible dans transactions.balance_after de la ligne de test est déclarative uniquement — topupWallet() n'a jamais été appelé durant ce test, sans lien avec le bug topupWallet documenté pour la session 2.13)
+Dossiers Storage driver-documents : 8 dossiers orphelins + 1 dossier actif (2ec2b439-...) = 9 dossiers au total — signalé pour information, aucune session de nettoyage planifiée à ce stade (à réévaluer si le nombre continue de croître significativement ou si une politique de rétention devient nécessaire avant mise en production)
 
-**Prochain timestamp de migration disponible** : 20260504000014
+Décision actée par le porteur : conception RLS voice-messages différée à la session 2.18 (voir planification ci-dessus), sans déploiement à ce stade.
 
----
+Fichiers créés : supabase/migrations/20260504000013_fix_storage_transactions_rls_ownership.sql supabase/rollbacks/rollback_20260504000013.sql (nouveau dossier rollbacks/)
 
-### SESSION 2.13 — commits 2e76429 + 480130d
-**Correction de la cause racine RLS wallet — mécanisme de recharge honnête, correction du nommage revenue_current_month, correction de la navigation cassée sur PendingVerificationScreen.tsx**
+Prochain timestamp de migration disponible : 20260504000014
 
-#### 1. Objectif et périmètre
-Transformer une fausse recharge silencieusement échouée
-(message de succès affiché malgré un échec réel de mise à
-jour du solde — cause racine identifiée en session 2.11,
-Points 3/4/Bug B du 6) en une **demande de recharge honnête**
-(statut `pending`, message clair d'attente de traitement
-admin). En parallèle : correction du calcul erroné de
-`revenue_current_month`, et correction du bouton de
-navigation cassé sur `PendingVerificationScreen.tsx`.
+SESSION 2.13 — commits 2e76429 + 480130d
+
+Correction de la cause racine RLS wallet — mécanisme de recharge honnête, correction du nommage revenue_current_month, correction de la navigation cassée sur PendingVerificationScreen.tsx
+
+1. Objectif et périmètre
+
+Transformer une fausse recharge silencieusement échouée (message de succès affiché malgré un échec réel de mise à jour du solde — cause racine identifiée en session 2.11, Points 3/4/Bug B du 6) en une demande de recharge honnête (statut pending, message clair d'attente de traitement admin). En parallèle : correction du calcul erroné de revenue_current_month, et correction du bouton de navigation cassé sur PendingVerificationScreen.tsx.
 
 Décisions de périmètre actées et strictement respectées :
-- La recharge wallet par le chauffeur ne devient **pas** une
-  modification directe du solde par le chauffeur (Option B
-  explicitement écartée par le porteur — voir Section 10)
-- **Aucune modification** de la policy `wallet_update_admin`
-  — reste un privilège admin exclusif (voir Section 2)
-- **Pas d'upload de pièce justificative**, **pas d'écran de
-  traitement admin dédié** — renvoyés explicitement à la
-  session 2.17 (Point 9)
-- Session structurée en deux parties (investigation puis
-  implémentation), avec validation explicite de l'Assistant
-  Général FTM entre les deux — règle respectée intégralement
-
-#### 2. Modifications effectuées (Partie 2), fichier par fichier
-
-**`frontend/src/services/walletService.ts`**
-- Ajout de la fonction `requestWalletTopup(walletId, amount,
-  note)` — insère une transaction `status: 'pending'`,
-  `balance_after = balance_before` (aucune tentative
-  d'`UPDATE` sur `wallet.balance`). Insérée entre
-  `topupWallet()` et `refundWallet()`, sans modifier ni
-  l'une ni l'autre.
-- Renommage de l'interface `DriverDashboard` : champ
-  `revenue_current_month` → `recharges_current_month`
-- Renommage de la clé de log dans `getDriverDashboard()` :
-  `revenueThisMonth` → `rechargesThisMonth`
-- Vérifié intégralement : backup créé
-  (`walletService.ts.bak.session2.13`), taille comparée
-  avant/après, repr() complet ligne par ligne (un faux
-  positif de fusion de caractères détecté et infirmé), grep
-  de contrôle final sans trace résiduelle.
-
-**`frontend/src/screens/driver/WalletTopupScreen.tsx`**
-- Renommage `agentRef`/`setAgentRef` → `note`/`setNote`
-  (state, placeholder, titre de section, usage)
-- Suppression de la déclaration `newBalance` et du bloc JSX
-  "Nouveau solde" (calcul trompeur, plus jamais utilisé)
-- Remplacement de l'appel `topupWallet(...)` par
-  `requestWalletTopup(...)`
-- Remplacement du message de succès par le nouveau message
-  honnête ("📨 Demande transmise")
-- Reformulation du texte `noteBox` (mention de la validation
-  admin nécessaire)
-- Correctif additionnel (commit 480130d) : ajout d'une
-  distinction `Platform.OS === 'web' ? window.alert(...) :
-  Alert.alert(...)` pour le message de succès (ligne ~70),
-  suite à la découverte qu'`Alert.alert()` reste silencieux
-  sur web dans ce projet (bug documenté en session 2.8,
-  redécouvert ici)
-- Vérifié intégralement : backup créé, omission d'import
-  (`requestWalletTopup` non importée) détectée et corrigée
-  après un premier repr() global, grep ciblés multiples
-  confirmant l'absence de résidus (`agentRef`, `newBalance`,
-  `topupWallet`). Diagnostic du bug Alert.alert confirmé par
-  preuve directe (insertion et retrait propre d'un
-  console.log temporaire). Correctif final testé deux fois
-  en production avec succès.
-- ⚠️ Ligne 66 (message d'erreur `Alert.alert('Erreur',
-  result.error)`) probablement affectée par le même
-  mécanisme, mais **non vérifiée directement par test** —
-  laissée inchangée cette session (Option A), signalée pour
-  audit général futur (voir bug résiduel Section 15)
-
-**`frontend/src/screens/driver/WalletDashboardScreen.tsx`**
-- Renommage du libellé JSX : "── REVENUS CE MOIS ──" →
-  "── RECHARGES CE MOIS ──"
-- Renommage de la référence : `dashboard.revenue_current_month`
-  → `dashboard.recharges_current_month`
-- Renommage du style : `revenueText` → `rechargeText`
-  (définition et usage JSX)
-- Vérifié intégralement : backup créé, grep de contrôle
-  final sans trace résiduelle de "revenue"/"REVENUS". Testé
-  en conditions réelles (affichage confirmé "RECHARGES CE
-  MOIS : 300 DH" puis "800 DH" selon l'état du wallet)
-
-**`frontend/src/screens/driver/onboarding/PendingVerificationScreen.tsx`**
-- Suppression complète du bloc `TouchableOpacity` (bouton
-  "Recharger mon wallet" menant à la route inexistante
-  `'WalletRecharge'`)
-- Suppression des styles orphelins associés (`walletButton`,
-  `walletButtonText`)
-- Reformulation du texte informatif (retrait de l'incitation
-  à l'action immédiate, cohérent avec le fait qu'aucun bouton
-  ne reste sur cet écran)
-- Vérifié intégralement : backup créé, lecture complète du
-  fichier avant modification, grep de contrôle final
-  confirmant l'absence de toute trace du bouton/route/styles
-- ⚠️ Distinct du bug résiduel existant "navigation
-  cross-stack PendingVerification → DriverHome"
-  (`navigation.replace('DriverHome')` ciblant un écran absent
-  du stack DriverPendingStack, documenté depuis session
-  2.10) — non traité cette session, toujours non résolu,
-  voir Section 15
-
-**`supabase/migrations/20260504000014_rename_revenue_to_recharges_driver_dashboard.sql`**
-- Création — `DROP VIEW` + `CREATE VIEW driver_dashboard`,
-  renommage de la colonne `revenue_current_month` →
-  `recharges_current_month`, filtre de calcul inchangé
-  (`status='completed'`, `type='topup'`, mois en cours)
-- Vérifié : taille vérifiée, contenu affiché et relu
-  intégralement avant déploiement. Déployé avec succès via
-  `deploy_supabase.yml`.
-
-**`supabase/rollbacks/20260504000014_rename_revenue_to_recharges_driver_dashboard_rollback.sql`**
-- Création — restaure la définition précédente exacte de la
-  vue (avec `revenue_current_month`), créée par précaution
-  bien que non strictement imposée par la règle du projet
-  (qui vise les migrations RLS, pas les vues)
-- Commentaire explicite précisant que ce rollback SQL seul
-  est insuffisant en cas de déploiement partiel — nécessite
-  un `git revert` coordonné du code applicatif
-- Vérifié : taille vérifiée, contenu affiché et relu
-  intégralement. Jamais exécuté (aucun rollback nécessaire).
-
-#### 3. Commits et déploiements
-
-| # | Hash | Message | Fichiers | Workflows |
-|---|---|---|---|---|
-| 1 | `2e76429` | fix: honest wallet topup request mechanism (pending status) + dashboard revenue calculation + navigation fix - session 2.13 | 6 fichiers (178 insertions, 41 suppressions) | Vérification Qualité Code #103 ✅, Deploy Supabase FTM #44 ✅, Check Supabase Connection #99 ✅ |
-| 2 | `480130d` | fix: window.alert fallback for web compatibility on wallet topup success message - session 2.13 | 1 fichier (10 insertions, 5 suppressions) | Vérification Qualité Code #104 ✅, Check Supabase Connection #100 ✅ (pas de Deploy Supabase FTM — aucune migration SQL, cohérent) |
-
-Tous les workflows confirmés en succès par capture d'écran
-de GitHub Actions.
-
-#### 4. Tests post-déploiement
-
-**Volet DRIVER — trois moments de test distincts :**
-- Test 1 (après migration `2e76429`) : `recharges_current_month`
-  vérifié via requête SQL directe sur la vue
-  `driver_dashboard` — confirmé à 300 DH (uniquement la
-  vraie recharge admin, la transaction fantôme ayant été
-  requalifiée en `failed`)
-- Test 2 (demande de recharge 500 DH via l'app) : transaction
-  insérée en `pending`, solde inchangé (300 DH), `updated_at`
-  inchangé — mécanisme fonctionnel. Message de succès non
-  visible à l'écran (bug Alert.alert alors non diagnostiqué)
-  — observation ayant déclenché l'investigation du bug
-- Diagnostic du bug Alert.alert/web confirmé par preuve
-  directe (console.log temporaire, inséré puis retiré
-  proprement)
-- Test 3 (après correctif `480130d`, demande 1000 DH) : boîte
-  de dialogue "Demande transmise" affichée avec succès (via
-  window.alert), navigation de retour fonctionnelle,
-  transaction pending confirmée en base
-  (balance_before = balance_after = 800.00)
-
-**Volet ADMIN :**
-- Recharge test de 500 DH via `adminTopupDriverWallet` →
-  solde réellement passé de 300 à 800 DH, `updated_at` mis à
-  jour, logs cohérents utilisant `topupWallet()` inchangée.
-  **Aucune régression confirmée.**
-
-**Autres usages de `driver_dashboard` :**
-- Recherche exhaustive (`grep -rn "driver_dashboard"
-  frontend/src`) : un seul point d'accès identifié
-  (`getDriverDashboard()` dans `walletService.ts`), consommé
-  uniquement par `WalletDashboardScreen.tsx`. Pas d'usage par
-  `AdminDashboardScreen.tsx` ou un autre écran.
-
-**Volet CLIENT :**
-- **Non testé dans cette session.** Justification : aucun
-  numéro de test client dédié documenté ; le seul moyen de
-  tester aurait nécessité la rotation du numéro partagé
-  `+212600000000`, détruisant l'état du driver test constitué
-  tout au long de la session (wallet 800 DH, historique de
-  transactions). Aucune modification de cette session ne
-  touche au parcours client — risque jugé disproportionné.
-
-#### 5. Découvertes annexes et bugs préexistants (non corrigés)
-- `AdminUsersScreen.tsx` : le correctif de session 2.8
-  (Alert.alert → window.confirm/window.alert) ne comporte
-  aucune distinction Platform.OS (grep confirmé vide) — cet
-  écran fonctionne sur web mais planterait probablement sur
-  mobile natif. Bug préexistant, non introduit par cette
-  session, non corrigé (hors périmètre)
-- `WalletTopupScreen.tsx` ligne 66 (message d'erreur) :
-  probablement affectée par le même mécanisme que la ligne
-  70, mais non vérifiée directement par test — laissée
-  inchangée (Option A), signalée pour audit futur
-- Recommandation : audit systématique de tous les usages
-  d'Alert.alert() dans l'ensemble du projet, idéalement en
-  session 2.19, avant que la Phase 3 ne devienne active
-- Alerte Realtime de `PendingVerificationScreen.tsx` non
-  observée pendant les tests : abonnement Realtime censé
-  afficher une alerte de validation et rediriger
-  automatiquement vers DriverHome dès `is_verified=true` —
-  ne s'est pas déclenché de façon visible lors de la
-  validation admin du driver test. Deux hypothèses non
-  départagées (alerte affichée puis fermée trop vite, ou
-  dysfonctionnement réel). À vérifier en priorité en
-  session 2.14 (navigation/Realtime)
-- Champ `note` (ex-`agentRef`) : jamais testé rempli avec un
-  texte non vide durant les tests réels — jugé non bloquant
-  (code gère explicitement le cas vide), à garder en tête
-- Coexistence de `total_commissions` (cumul stocké) et
-  `commissions_current_month` (calcul mensuel à la volée) sur
-  le même écran : pas confirmé comme un bug, mais risque de
-  confusion pour un futur chauffeur avec historique
-  multi-mois — non observable avec le driver test actuel
-  (aucune mission complétée)
-- Risque de pagination sur `totalCredit`/`totalDebit`
-  (`TransactionHistoryScreen.tsx`) : calcul limité aux
-  transactions chargées en mémoire (pagination 20/page), sans
-  filtre de mois — pourrait ne représenter qu'une fraction de
-  l'historique réel pour un chauffeur à activité prolongée
-
-#### 6. Recommandations stratégiques actées
-Voir Section 17 — sous-section dédiée "Recommandations
-stratégiques en attente d'arbitrage porteur"
-
-#### 7. Vigilances transmises à la session 2.17
-1. Le mécanisme de demande (`requestWalletTopup()`, statut
-   `pending`, message honnête) posé en 2.13 constitue une
-   **fondation directe** pour le Point 9 de 2.17 — à
-   réutiliser tel quel, pas à reconstruire
-2. `refundWallet()` (non lue en détail cette session, hors
-   périmètre) partage **probablement** la même structure
-   vulnérable que l'ancien `topupWallet()` (affirmation
-   héritée du prompt de mission, **non vérifiée par lecture
-   directe** en 2.13) — à confirmer par lecture directe en
-   tout début de session 2.17
-3. Le champ `note` (ex-`agentRef`) est un renommage neutre
-   temporaire — 2.17 introduira un mécanisme d'upload de
-   pièce justificative (reçu, virement) validé par l'admin,
-   remplaçant ce champ, pas en le réutilisant
-4. La notification admin en temps réel sur nouvelle demande
-   de recharge est à concevoir avec le reste du workflow 2.17
-5. **Clarification métier fondamentale** (voir Section 2) :
-   paiement de la course toujours hors application ; seule la
-   commission est prélevée sur le wallet — raison structurelle
-   du renommage revenue→recharges (RÉSOLU 39) — à rappeler
-   impérativement à 2.17
-
-#### 8. État final du driver test
-Voir Section 3 — bloc "DRIVER TEST ACTIF — session 2.13"
-
-**Fichiers créés/modifiés** :
-  frontend/src/services/walletService.ts
-  frontend/src/screens/driver/WalletTopupScreen.tsx
-  frontend/src/screens/driver/WalletDashboardScreen.tsx
-  frontend/src/screens/driver/onboarding/PendingVerificationScreen.tsx
-  supabase/migrations/20260504000014_rename_revenue_to_recharges_driver_dashboard.sql
-  supabase/rollbacks/20260504000014_rename_revenue_to_recharges_driver_dashboard_rollback.sql
-
-**Prochain timestamp de migration disponible** : 20260504000015
-
----
-
-## 7. CHAÎNE DE NAVIGATION DRIVER
-ProfileSetupScreen
-  → onProfileCreated(role='driver')
-  → DriverOnboardingStack
-
-VehicleInfoScreen
-  → appelle createDriverProfile()
-  → navigate('LegalDocuments', { driverId })
-
-LegalDocumentsScreen [reçoit driverId]
-  → appelle saveDriverDocuments()
-  → navigate('DocumentUpload', { driverId })
-
-DocumentUploadScreen [reçoit driverId]
-  → appelle uploadDocument() × 4
-  → upload dans bucket driver-documents
-  ⚠️ limitations web : bouton Photo non disponible
-     utiliser bouton Fichier uniquement sur web
-  → navigate('PendingVerification', { driverId })
-
-PendingVerificationScreen [reçoit driverId]
-  → souscrit realtime driver-verification-{driverId}
-  → si is_verified === true
-  → navigation.replace('DriverHome')
-  ⚠️ Bouton "Recharger mon wallet" (route inexistante
-     'WalletRecharge') SUPPRIMÉ — session 2.13 (voir RÉSOLU 40)
-  ⚠️ navigation.replace('DriverHome') cible toujours un écran
-     absent du stack DriverPendingStack — bug distinct, non
-     traité, non résolu (voir Section 15)
-  ⚠️ Alerte Realtime de validation non observée visiblement
-     lors des tests session 2.13 — à vérifier session 2.14
-     (voir Section 15)
-
-DriverHomeScreen
-  → attend driverId : string — obligatoire
-  → attend vehicleCategory : string — obligatoire
-    ('vul' | 'n2_medium' | 'n2_large')
-  → affiche solde wallet (table wallet sans 's')
-  → carte Wallet → WalletDashboard { driverId }
-  → bouton Mes documents → DocumentStatus
-
-⚠️ is_verified = GENERATED ALWAYS AS
-   Devient true quand ces 4 champs = 'verified' :
-   driver_license_verified
-   vehicle_registration_verified
-   insurance_verified
-   technical_inspection_verified
-
-   Pour simuler validation admin — SQL Editor :
-   UPDATE drivers SET
-     driver_license_verified = 'verified',
-     vehicle_registration_verified = 'verified',
-     insurance_verified = 'verified',
-     technical_inspection_verified = 'verified'
-   WHERE license_plate = 'VOTRE_PLAQUE';
-
----
-
-## 8. CHAÎNE DE NAVIGATION ADMIN
-AdminDashboardScreen
-  → Documents en attente → DocumentReviewScreen ✅
-  → Toutes les missions  → AdminMissionsScreen  ✅
-  → Gestion utilisateurs → AdminUsersScreen     ✅
-  → Wallets & Transactions → WalletManagementScreen ✅
-
-DocumentReviewScreen
-  → Valider/Rejeter documents driver
-  → Notification driver via insertNotification()
-  → Driver fully verified → DriverHomeScreen (realtime)
-  ⚠️ Bug d'affichage identifié session 2.12 : modal ne se
-     rafraîchit pas visuellement après validation du 4e/dernier
-     document (getPendingDrivers() ne retourne plus le
-     chauffeur, drivers.find() ne le retrouve plus dans la
-     liste rafraîchie) — donnée en base correcte, bug d'état
-     React côté client. Rattaché au traitement secondaire et
-     optionnel de la session 2.13 (décision porteur) — non
-     traité faute de temps — reporté à une session ultérieure,
-     à assigner.
-
-WalletManagementScreen
-  → Liste drivers vérifiés avec solde
-  → Recharger wallet → adminTopupDriverWallet()
-  → Solde mis à jour en temps réel ✅
-  → Testé sans régression session 2.13 (300→800 DH) ✅
-  ⚠️ Ne gère pas encore les demandes de recharge chauffeur
-     en statut pending (3 en attente — voir Section 3) —
-     écran de traitement dédié prévu session 2.17
-
-AdminMissionsScreen
-  → Liste toutes missions avec 6 filtres
-  → Enum mission_status :
-    pending / accepted / in_progress /
-    completed / cancelled_client / cancelled_driver
-
-AdminUsersScreen
-  → Liste drivers avec statut actif/suspendu
-  → Suspendre/Activer via toggleUserActive()
-  ⚠️ Alert.alert → window.confirm/window.alert sans
-     distinction Platform.OS — fonctionne web, risque mobile
-     natif non corrigé (découvert session 2.13)
-
----
-
-## 9. PROBLÈMES RENCONTRÉS ET RÉSOLUS
-
-RÉSOLU 1 — Page blanche web (session 2.2)
-Cause    : BORDER_RADIUS manquant theme.ts
-Correctif: export BORDER_RADIUS ajouté
-Commit   : e7beed2
-
-RÉSOLU 2 — Navigation post-profil (session 2.3)
-Cause    : SIGNED_IN déclenché avant création
-           profil — closure JavaScript —
-           initialRoute figé
-Correctif: callback onProfileCreated depuis
-           ProfileSetupScreen → RootNavigator
-Commits  : 8a78903 + 53725fe + bd7ead0
-
-RÉSOLU 3 — Page blanche après packages (2.4)
-Cause    : expo-image-picker absent package.json
-Correctif: npx expo install expo-image-picker
-           expo-document-picker
-Commit   : c318a92
-
-RÉSOLU 4 — Terminal défaillant (session 2.4)
-Cause    : 3ème terminal ouvert manuellement
-Correctif: fermeture + reprise terminal frontend
-Règle    : 1 terminal de travail uniquement
-
-RÉSOLU 5 — replace() Python3 sans effet
-Cause    : texte cible inexact
-Correctif: vérification via sed avant replace()
-           Si échec → réécrire le fichier entier
-
-RÉSOLU 6 — driver_license_number NOT NULL
-Cause    : champ collecté étape 2
-           mais contrainte dès étape 1
-Correctif: migration DROP NOT NULL
-Commit   : 6f7ed8c
-
-RÉSOLU 7 — Champs légaux NOT NULL (5 champs)
-Cause    : même architecture étape 1 / étape 2
-Correctif: migration DROP NOT NULL × 5
-Commit   : 1c9af9c
-
-RÉSOLU 8 — Passage spontané étape 2 → étape 4
-Cause    : SIGNED_IN relançait initializeApp()
-           driver sans license_number
-           → PendingStack immédiatement
-Correctif: condition !driver_license_number
-           → OnboardingStack
-Commit   : a23df8b
-
-RÉSOLU 9 — Passage spontané étape 3 → étape 4
-Cause    : SIGNED_IN relançait initializeApp()
-           driver avec license_number
-           mais sans vérifier URLs documents
-Correctif: condition !toutes 4 URLs
-           → OnboardingStack
-Commit   : 6b9dae8
-
-RÉSOLU 10 — DateTimePicker non supporté web
-Cause    : composant natif mobile uniquement
-Correctif: fallback Platform.OS === 'web'
-           → input type="date" HTML natif
-Commit   : 6b9dae8
-
-RÉSOLU 11 — Bucket not found (Storage)
-Cause    : bucket driver-documents non créé
-Correctif: migration SQL CREATE bucket
-Commit   : 7222601
-
-RÉSOLU 12 — RLS Storage bloque upload
-Cause    : bucket sans politique d'accès
-Correctif: migration RLS policies × 4
-Commit   : c39cafb
-
-RÉSOLU 13 — Token Supabase expiré
-Cause    : SUPABASE_ACCESS_TOKEN expiré
-           GitHub Actions rejeté "Unauthorized"
-Correctif: nouveau token FTM_GITHUB_ACTIONS
-           Never expires — mis à jour GitHub Secrets
-Statut   : RÉSOLU ✅ 29/04/2026
-
-RÉSOLU 14 — SIGNED_IN interrompt onboarding
-           étape 3 (BUG 1 session 2.5)
-Cause    : stale closure — initialRoute capturé
-           dans onAuthStateChange gardait
-           l'ancienne valeur
-           → initializeApp() relancé
-           → PendingStack immédiat
-Correctif: useRef<AppRoute> ajouté
-           initialRouteRef.current synchronisé
-           Condition !== "DriverOnboardingStack"
-           dans SIGNED_IN
-Commit   : 475274c
-
-RÉSOLU 15 — GET /wallets → 404
-           (BUG 2 session 2.5)
-Cause    : .from('wallets') — 's' en trop
-           Table en base : wallet (sans 's')
-Correctif: .from('wallet') — ligne 36
-           DriverHomeScreen.tsx
-Commit   : b4ec2ba
-
-RÉSOLU 16 — document_reminders ON CONFLICT → 400
-           (BUG 3 session 2.5)
-Cause    : contrainte UNIQUE manquante sur
-           (driver_id, document_type)
-           upsert impossible sans contrainte
-Correctif: migration SQL
-           ADD CONSTRAINT UNIQUE
-           (driver_id, document_type)
-Commit   : 9f22d9d
-
-RÉSOLU 17 — Écrans wallet non connectés
-           navigation (session 2.6)
-Cause    : WalletDashboard, WalletTopup,
-           TransactionHistory, DocumentStatus
-           absents de DriverStackParamList
-           et DriverNavigator
-Correctif: 4 écrans ajoutés dans RootNavigator
-           imports + params + navigateurs
-Commit   : 884f00e
-
-RÉSOLU 18 — driverId undefined WalletDashboard
-           (session 2.6)
-Cause    : driverId non transmis via route.params
-           NativeStackScreenProps manquant
-Correctif: NativeStackScreenProps ajouté
-           lecture driverId depuis route.params
-Commit   : 884f00e
-
-RÉSOLU 19 — Vue driver_dashboard incomplète
-           SQLSTATE 42P16 (session 2.6)
-Cause    : colonnes manquantes :
-           wallet_id, minimum_balance,
-           is_wallet_blocked,
-           commissions_current_month,
-           revenue_current_month
-Correctif: DROP + CREATE VIEW driver_dashboard
-           5 colonnes ajoutées
-Commit   : cac7f4d
-
-RÉSOLU 20 — Erreur 403 RLS INSERT transactions
-           (session 2.6)
-Cause    : politique RLS manquante pour INSERT
-           sur table transactions
-           pour utilisateurs authenticated
-Correctif: migration RLS INSERT policy
-           pour authenticated
-Commit   : 8c5d8c5
-
-RÉSOLU 21 — DocumentStatusScreen non accessible
-           (session 2.6)
-Cause    : écran absent de la navigation driver
-           bouton manquant dans DriverHomeScreen
-Correctif: ajout dans DriverStackParamList
-           + DriverNavigator
-           + bouton "📄 Mes documents"
-             dans DriverHomeScreen
-Commit   : 0207e97
-
-RÉSOLU 22 — BUG 4 SQL UPDATE phone_number
-           → 0 row — INFIRMÉ (session 2.7)
-Cause    : numéro format +212600000000
-           présent tel quel en base
-           UPDATE fonctionne correctement
-Statut   : INFIRMÉ ✅ — non reproduit
-
-RÉSOLU 23 — BUG A wallet_update_admin
-           récursion RLS (session 2.7)
-Cause    : EXISTS (SELECT FROM profiles)
-           → récursion RLS infinie
-Correctif: get_my_role() = 'admin'
-           Fonction SECURITY DEFINER
-Commit   : d420007
-Confirmé : balanceBefore: 0
-           balanceAfter: 200 DH ✅
-
-RÉSOLU 24 — Navigation admin 4 menus
-           silencieuse (session 2.7)
-Cause    : AdminNavigator ne contenait
-           qu'AdminHome — 4 routes absentes
-Correctif: Déclarer tous les écrans
-           dans AdminNavigator
-Commits  : 4ff3499 + 626e851
-
-RÉSOLU 25 — SIGNED_IN loop admin
-           (session 2.7)
-Cause    : Condition !== "DriverOnboardingStack"
-           ne couvrait pas AdminStack
-Correctif: Ajouter && !== "AdminStack"
-Commit   : 6ee89b1
-
-RÉSOLU 26 — 403 Forbidden notifications
-           (session 2.7)
-Cause    : 2 couches :
-           1. INSERT — politique {public}
-           2. SELECT — admin ne peut pas lire
-              notif du driver
-Correctif: Migration 007 INSERT authenticated
-           Migration 008 SELECT admin
-           get_my_role()
-Commits  : 2351bf3 + 445bdcb
-
-RÉSOLU 27 — Enum mission_status incorrect
-           (session 2.7)
-Cause    : 'cancelled' inexistant dans l'enum
-Correctif: STATUS_FILTERS + STATUS_LABELS
-           + FILTER_LABELS mis à jour
-           cancelled_client + cancelled_driver
-Commit   : 750db88
-
-RÉSOLU 28 — Création fichier long via Python
-           (session 2.7)
-Cause    : heredoc et -c posent problème
-           avec caractère ! et longueur
-Correctif: Écriture en 7 étapes séquentielles
-           python3 -c "f=open(...,'a');
-           f.write(...)"
-Règle    : Utiliser pour tout fichier
-           > 100 lignes
-
-RÉSOLU 29 — Bug "Suspendre" AdminUsersScreen
-           non fonctionnel sur web (session 2.8)
-Cause    : Alert.alert() (React Native)
-           ne s'affiche pas sur web
-           → clic silencieux, aucun appel réseau
-Correctif: window.confirm() à la place
-           if (confirmed === false) return;
-           Erreurs → window.alert()
-Commit   : aed0bee
-Confirmé : "Annuler" ×2 → aucune action ✅
-           "Suspendre"+OK → isActive:false ✅
-           "Activer"+OK → isActive:true ✅
-
-RÉSOLU 30 — Bucket voice-messages + RLS
-           (session 2.8)
-Cause    : audioService.ts référençait
-           un bucket inexistant
-Correctif: Migrations 009 + 010
-           Bucket créé + 4 RLS policies
-Commit   : 5ee383e
-⚠️ Non testé fonctionnellement —
-   audioService.ts non intégré UI
-   Voir item 4.4
-
-RÉSOLU 31 — Cause GPS AdminMissions
-           confirmée (session 2.8)
-Cause    : pickupCoords=null —
-           permission GPS refusée
-           environnement Codespaces/iframe
-Statut   : Confirmé par logs directs —
-           [FTM-DEBUG] GPS - Client location
-           permission denied
-           Pas un bug applicatif
-           Reporté phase 4.x avec TEST 1/2/3
-
-RÉSOLU 32 — vault.create_secret() arguments inversés
-Cause    : Supabase a stocké la description comme nom
-           → secret stocké avec name =
-           'Service role key for CRON job - FTM'
-           au lieu de 'supabase_service_role_key'
-           → clé Vault incorrecte (244 vs 219 caractères)
-Certitude: 100% confirmé — comparaison directe
-           cles_identiques = false
-Correctif: DELETE FROM vault.secrets WHERE name =
-           'Service role key for CRON job - FTM'
-           + vault.create_secret(valeur, nom, desc)
-           avec ordre correct (valeur en PREMIER)
-           + SELECT name FROM vault.secrets
-           pour vérification immédiate
-Statut   : RÉSOLU ✅ session 2.9
-
-RÉSOLU 33 — net.http_post → 401 persistant
-Cause    : Clé Vault incorrecte (244 vs 219 car.)
-           + timeout 5000 ms insuffisant
-           (cold start Edge Function dépasse 5s)
-Diagnostic: Plan en 10 maillons — maillon par maillon :
-           Maillon 1 (Vault retourne clé) ✅
-           Maillon 2 (Header construit) ✅
-           Maillon 3 (DNS+TCP/SSL) ✅
-           Maillon 4 (Timeout) → timeout_ms := 30000
-           Test httpbin.org → 200 → pg_net OK général
-           Comparaison longueur clé → 244 vs 219 ❌
-Correctif: Correction Vault (voir RÉSOLU 32)
-           + timeout_milliseconds := 30000
-Statut   : RÉSOLU ✅ session 2.9
-           status_code = 200, timed_out = false ✅
-
-RÉSOLU 34 — pg_cron non activé au démarrage
-Cause    : SELECT * FROM cron.job → erreur 42P01
-           pg_cron et pg_net disponibles mais
-           non installées
-Correctif: CREATE EXTENSION IF NOT EXISTS pg_net
-           CREATE EXTENSION IF NOT EXISTS pg_cron
-           inclus dans migration 20260504000011
-Statut   : RÉSOLU ✅ session 2.9
-
-RÉSOLU 35 — Realtime inactif sur tables FTM
-           (session 2.10)
-Cause    : puballtables = false — aucune table
-           dans supabase_realtime avant session
-           0 tables activées — souscriptions
-           existantes sans effet
-Correctif: ALTER PUBLICATION supabase_realtime
-           ADD TABLE drivers, missions, wallet,
-           transactions, notifications
-           Migration 20260504000012
-Commit   : b65eb9d
-Confirmé : 5 rows supabase_realtime ✅
-           WalletDashboardScreen SUBSCRIBED ✅
-
-RÉSOLU 36 — RLS Storage permissif driver-documents
-           (session 2.12)
-Cause    : 4 policies storage.objects sans clause
-           de propriété — tout utilisateur
-           authenticated pouvait lire/écrire/
-           modifier/supprimer n'importe quel fichier
-           (aucune vérification auth.uid()/propriété)
-Correctif: Ownership chain complète :
-           storage.foldername(name)[1]::uuid =
-           drivers.id → drivers.profile_id =
-           profiles.id → profiles.user_id = auth.uid()
-Migration: 20260504000013
-Commit   : 67e9e65
-Confirmé : Test accès croisé → STATUS 400 ✅
-           Upload/ré-upload driver légitime → ✅
-⚠️ voice-messages non couvert par cette correction —
-   voir session 2.18
-
-RÉSOLU 37 — RLS transactions_insert_own sans
-           restriction (session 2.12)
-Cause    : policy INSERT WITH CHECK (true) —
-           aucune restriction, tout utilisateur
-           authentifié pouvait insérer n'importe
-           quelle transaction (découverte session 2.11)
-Correctif: Ownership chain via wallet :
-           transactions.wallet_id → wallet.driver_id
-           = drivers.id → drivers.profile_id →
-           profiles.user_id = auth.uid()
-Migration: 20260504000013
-Commit   : 67e9e65
-Confirmé : Insertion légitime (wallet_id propre) →
-           STATUS 201 ✅
-           Insertion illégitime (wallet_id fictif) →
-           STATUS 403, code 42501 ✅
-
-RÉSOLU 38 — Échec silencieux topupWallet() côté
-           chauffeur — fausse recharge (session 2.13)
-Cause    : RLS bloquait silencieusement l'UPDATE de
-           wallet.balance pour un rôle non-admin
-           (0 ligne affectée, aucune erreur retournée)
-           — transaction insérée avec status:'completed'
-           malgré échec réel du crédit (découverte
-           session 2.11, Points 3/4/Bug B du 6)
-Correctif: Nouvelle fonction requestWalletTopup()
-           insérant une transaction status:'pending',
-           balance_after = balance_before — AUCUNE
-           tentative d'UPDATE sur wallet.balance côté
-           chauffeur. Le solde ne peut plus être modifié
-           que par l'admin (topupWallet(), inchangée)
-Fichier  : frontend/src/services/walletService.ts
-Commit   : 2e76429
-Confirmé : Demande pending insérée sans effet sur le
-           solde (Test 2 et Test 3) ✅
-           Recharge admin réelle toujours fonctionnelle,
-           testée sans régression (300→800 DH) ✅
-
-RÉSOLU 39 — revenue_current_month : nommage trompeur
-           (session 2.13)
-Cause    : la colonne calculait le total des topups du
-           mois, pas des revenus de mission — libellé UI
-           "REVENUS CE MOIS" incorrect (découvert
-           session 2.10)
-Correctif: Renommage complet — vue driver_dashboard
-           (migration SQL), interface DriverDashboard
-           (walletService.ts), libellé JSX et style
-           (WalletDashboardScreen.tsx) :
-           revenue_current_month → recharges_current_month
-           "REVENUS CE MOIS" → "RECHARGES CE MOIS"
-Migration: 20260504000014
-Commit   : 2e76429
-Confirmé : Affichage "RECHARGES CE MOIS : 300 DH" puis
-           "800 DH" selon état du wallet ✅
-
-RÉSOLU 40 — Bouton navigation cassé
-           PendingVerificationScreen.tsx (session 2.13)
-Cause    : bouton "Recharger mon wallet" naviguait vers
-           'WalletRecharge', route inexistante (nom réel :
-           'WalletTopup') — découvert session 2.11 (Point 6,
-           Bug B)
-Correctif: Bouton et styles orphelins associés
-           (walletButton, walletButtonText) supprimés
-           complètement ; texte informatif reformulé
-Fichier  : frontend/src/screens/driver/onboarding/
-           PendingVerificationScreen.tsx
-Commit   : 2e76429
-⚠️ Distinct du bug résiduel non résolu "navigation
-   cross-stack PendingVerification → DriverHome"
-   (navigation.replace('DriverHome') ciblant un écran
-   absent du stack) — non traité, voir Section 15
-
-RÉSOLU 41 — Message de succès invisible sur web,
-           WalletTopupScreen.tsx ligne 70 (session 2.13)
-Cause    : Alert.alert() (React Native) ne s'affiche pas
-           sur web — même mécanisme que le bug résolu en
-           session 2.8 sur AdminUsersScreen.tsx, ici
-           redécouvert sur un fichier différent
-Correctif: Platform.OS === 'web' ?
-           window.alert(...) : Alert.alert(...)
-Fichier  : frontend/src/screens/driver/WalletTopupScreen.tsx
-Commit   : 480130d
-Confirmé : boîte de dialogue "Demande transmise" affichée
-           avec succès, navigation de retour fonctionnelle
-           (Test 3) ✅
-⚠️ Ne couvre que la ligne 70 (message de succès) — la
-   ligne 66 (message d'erreur) reste non vérifiée, voir
-   bug résiduel Section 15
-
----
-
-## 10. PISTES DÉFINITIVEMENT ÉCARTÉES
-Ne pas retester :
-❌ locationService import statique
-❌ expo-haptics / expo-notifications
-❌ expo-location fallback web
-❌ missionService / realtimeService
-❌ react-native-screens sans fallback web
-❌ NativeStackScreenProps sans type
-❌ Dépendance circulaire missionService
-❌ audioService / expo-av (contexte : débogage page blanche
-   session 2.x — N'IMPLIQUE PAS l'abandon de la fonctionnalité
-   messages vocaux, voir item 4.4)
-❌ supabaseClient.ts
-❌ showAuth logique incorrecte
-❌ ErrorBoundary capture l'erreur
-❌ --no-dev résout seul
-❌ 'cancelled' comme valeur enum mission_status
-   Valeurs correctes : cancelled_client
-                       + cancelled_driver
-❌ cron.run_job(integer)
-   pg_cron 1.6.4 ne supporte pas cette fonction
-❌ owner = auth.uid() comme clause RLS Storage simple
-   (raccourci écarté au profit de la chaîne de propriété
-   complète — voir RÉSOLU 36, session 2.12)
-❌ Modification directe du solde wallet par le chauffeur
-   (Option B) — écartée explicitement par le porteur,
-   session 2.13 : le chauffeur ne peut que soumettre une
-   demande (statut pending), jamais créditer lui-même son
-   wallet — voir RÉSOLU 38
-
----
-
-## 11. MIGRATIONS SUPABASE DÉPLOYÉES
-20260220155500_initial_schema.sql                    ✅ P1-P2
-20260221000000_add_rpc_nearby_drivers.sql            ✅ P3
-20260222000000_add_tracking_functions.sql            ✅ P4
-20260223000000_add_push_tokens.sql                   ✅ P6
-20260224000000_add_rls_policies.sql                  ✅ P7
-20260226000000_fix_profiles_rls_recursion.sql        ✅ Phase 2.1
-20260429000001_allow_null_driver_license_number.sql  ✅ Session 2.4
-20260429000002_allow_null_legal_docs_fields.sql      ✅ Session 2.4
-20260504000001_create_driver_documents_bucket.sql    ✅ Session 2.4
-20260504000002_storage_rls_policies.sql              ✅ Session 2.4
-20260504000003_add_unique_constraint_document_reminders.sql ✅ Session 2.5
-20260504000004_update_driver_dashboard_view.sql      ✅ Session 2.6
-20260504000005_add_transactions_insert_policy.sql    ✅ Session 2.6
-20260504000006_fix_wallet_update_admin_rls.sql       ✅ Session 2.7
-20260504000007_fix_notifications_insert_rls.sql      ✅ Session 2.7
-20260504000008_fix_notifications_select_admin.sql    ✅ Session 2.7
-20260504000009_create_voice_messages_bucket.sql      ✅ Session 2.8
-20260504000010_voice_messages_storage_rls_policies.sql ✅ Session 2.8
-20260504000011_configure_cron_document_reminders.sql ✅ Session 2.9
-20260504000012_enable_realtime_tables.sql            ✅ Session 2.10
-20260504000013_fix_storage_transactions_rls_ownership.sql ✅ Session 2.12
-20260504000014_rename_revenue_to_recharges_driver_dashboard.sql ✅ Session 2.13
+
+La recharge wallet par le chauffeur ne devient pas une modification directe du solde par le chauffeur (Option B explicitement écartée par le porteur — voir Section 10)
+Aucune modification de la policy wallet_update_admin — reste un privilège admin exclusif (voir Section 2)
+Pas d'upload de pièce justificative, pas d'écran de traitement admin dédié — renvoyés explicitement à la session 2.17 (Point 9)
+Session structurée en deux parties (investigation puis implémentation), avec validation explicite de l'Assistant Général FTM entre les deux — règle respectée intégralement
+2. Modifications effectuées (Partie 2), fichier par fichier
+
+frontend/src/services/walletService.ts
+
+Ajout de la fonction requestWalletTopup(walletId, amount, note) — insère une transaction status: 'pending', balance_after = balance_before (aucune tentative d'UPDATE sur wallet.balance). Insérée entre topupWallet() et refundWallet(), sans modifier ni l'une ni l'autre.
+Renommage de l'interface DriverDashboard : champ revenue_current_month → recharges_current_month
+Renommage de la clé de log dans getDriverDashboard() : revenueThisMonth → rechargesThisMonth
+Vérifié intégralement : backup créé (walletService.ts.bak.session2.13), taille comparée avant/après, repr() complet ligne par ligne (un faux positif de fusion de caractères détecté et infirmé), grep de contrôle final sans trace résiduelle.
+
+frontend/src/screens/driver/WalletTopupScreen.tsx
+
+Renommage agentRef/setAgentRef → note/setNote (state, placeholder, titre de section, usage)
+Suppression de la déclaration newBalance et du bloc JSX "Nouveau solde" (calcul trompeur, plus jamais utilisé)
+Remplacement de l'appel topupWallet(...) par requestWalletTopup(...)
+Remplacement du message de succès par le nouveau message honnête ("📨 Demande transmise")
+Reformulation du texte noteBox (mention de la validation admin nécessaire)
+Correctif additionnel (commit 480130d) : ajout d'une distinction Platform.OS === 'web' ? window.alert(...) : Alert.alert(...) pour le message de succès (ligne ~70), suite à la découverte qu'Alert.alert() reste silencieux sur web dans ce projet (bug documenté en session 2.8, redécouvert ici)
+Vérifié intégralement : backup créé, omission d'import (requestWalletTopup non importée) détectée et corrigée après un premier repr() global, grep ciblés multiples confirmant l'absence de résidus (agentRef, newBalance, topupWallet). Diagnostic du bug Alert.alert confirmé par preuve directe (insertion et retrait propre d'un console.log temporaire). Correctif final testé deux fois en production avec succès.
+⚠️ Ligne 66 (message d'erreur Alert.alert('Erreur', result.error)) probablement affectée par le même mécanisme, mais non vérifiée directement par test — laissée inchangée cette session (Option A), signalée pour audit général futur (voir bug résiduel Section 15)
+
+frontend/src/screens/driver/WalletDashboardScreen.tsx
+
+Renommage du libellé JSX : "── REVENUS CE MOIS ──" → "── RECHARGES CE MOIS ──"
+Renommage de la référence : dashboard.revenue_current_month → dashboard.recharges_current_month
+Renommage du style : revenueText → rechargeText (définition et usage JSX)
+Vérifié intégralement : backup créé, grep de contrôle final sans trace résiduelle de "revenue"/"REVENUS". Testé en conditions réelles (affichage confirmé "RECHARGES CE MOIS : 300 DH" puis "800 DH" selon l'état du wallet)
+
+frontend/src/screens/driver/onboarding/PendingVerificationScreen.tsx
+
+Suppression complète du bloc TouchableOpacity (bouton "Recharger mon wallet" menant à la route inexistante 'WalletRecharge')
+Suppression des styles orphelins associés (walletButton, walletButtonText)
+Reformulation du texte informatif (retrait de l'incitation à l'action immédiate, cohérent avec le fait qu'aucun bouton ne reste sur cet écran)
+Vérifié intégralement : backup créé, lecture complète du fichier avant modification, grep de contrôle final confirmant l'absence de toute trace du bouton/route/styles
+⚠️ Distinct du bug résiduel existant "navigation cross-stack PendingVerification → DriverHome" (navigation.replace('DriverHome') ciblant un écran absent du stack DriverPendingStack, documenté depuis session 2.10) — non traité cette session, toujours non résolu, voir Section 15
+
+supabase/migrations/20260504000014_rename_revenue_to_recharges_driver_dashboard.sql
+
+Création — DROP VIEW + CREATE VIEW driver_dashboard, renommage de la colonne revenue_current_month → recharges_current_month, filtre de calcul inchangé (status='completed', type='topup', mois en cours)
+Vérifié : taille vérifiée, contenu affiché et relu intégralement avant déploiement. Déployé avec succès via deploy_supabase.yml.
+
+supabase/rollbacks/20260504000014_rename_revenue_to_recharges_driver_dashboard_rollback.sql
+
+Création — restaure la définition précédente exacte de la vue (avec revenue_current_month), créée par précaution bien que non strictement imposée par la règle du projet (qui vise les migrations RLS, pas les vues)
+Commentaire explicite précisant que ce rollback SQL seul est insuffisant en cas de déploiement partiel — nécessite un git revert coordonné du code applicatif
+Vérifié : taille vérifiée, contenu affiché et relu intégralement. Jamais exécuté (aucun rollback nécessaire).
+3. Commits et déploiements
+#	Hash	Message	Fichiers	Workflows
+1	2e76429	fix: honest wallet topup request mechanism (pending status) + dashboard revenue calculation + navigation fix - session 2.13	6 fichiers (178 insertions, 41 suppressions)	Vérification Qualité Code #103 ✅, Deploy Supabase FTM #44 ✅, Check Supabase Connection #99 ✅
+2	480130d	fix: window.alert fallback for web compatibility on wallet topup success message - session 2.13	1 fichier (10 insertions, 5 suppressions)	Vérification Qualité Code #104 ✅, Check Supabase Connection #100 ✅ (pas de Deploy Supabase FTM — aucune migration SQL, cohérent)
+
+Tous les workflows confirmés en succès par capture d'écran de GitHub Actions.
+
+4. Tests post-déploiement
+
+Volet DRIVER — trois moments de test distincts :
+
+Test 1 (après migration 2e76429) : recharges_current_month vérifié via requête SQL directe sur la vue driver_dashboard — confirmé à 300 DH (uniquement la vraie recharge admin, la transaction fantôme ayant été requalifiée en failed)
+Test 2 (demande de recharge 500 DH via l'app) : transaction insérée en pending, solde inchangé (300 DH), updated_at inchangé — mécanisme fonctionnel. Message de succès non visible à l'écran (bug Alert.alert alors non diagnostiqué) — observation ayant déclenché l'investigation du bug
+Diagnostic du bug Alert.alert/web confirmé par preuve directe (console.log temporaire, inséré puis retiré proprement)
+Test 3 (après correctif 480130d, demande 1000 DH) : boîte de dialogue "Demande transmise" affichée avec succès (via window.alert), navigation de retour fonctionnelle, transaction pending confirmée en base (balance_before = balance_after = 800.00)
+
+Volet ADMIN :
+
+Recharge test de 500 DH via adminTopupDriverWallet → solde réellement passé de 300 à 800 DH, updated_at mis à jour, logs cohérents utilisant topupWallet() inchangée. Aucune régression confirmée.
+
+Autres usages de driver_dashboard :
+
+Recherche exhaustive (grep -rn "driver_dashboard" frontend/src) : un seul point d'accès identifié (getDriverDashboard() dans walletService.ts), consommé uniquement par WalletDashboardScreen.tsx. Pas d'usage par AdminDashboardScreen.tsx ou un autre écran.
+
+Volet CLIENT :
+
+Non testé dans cette session. Justification : aucun numéro de test client dédié documenté ; le seul moyen de tester aurait nécessité la rotation du numéro partagé +212600000000, détruisant l'état du driver test constitué tout au long de la session (wallet 800 DH, historique de transactions). Aucune modification de cette session ne touche au parcours client — risque jugé disproportionné.
+5. Découvertes annexes et bugs préexistants (non corrigés)
+AdminUsersScreen.tsx : le correctif de session 2.8 (Alert.alert → window.confirm/window.alert) ne comporte aucune distinction Platform.OS (grep confirmé vide) — cet écran fonctionne sur web mais planterait probablement sur mobile natif. Bug préexistant, non introduit par cette session, non corrigé (hors périmètre)
+WalletTopupScreen.tsx ligne 66 (message d'erreur) : probablement affectée par le même mécanisme que la ligne 70, mais non vérifiée directement par test — laissée inchangée (Option A), signalée pour audit futur
+Recommandation : audit systématique de tous les usages d'Alert.alert() dans l'ensemble du projet, idéalement en session 2.19, avant que la Phase 3 ne devienne active
+Alerte Realtime de PendingVerificationScreen.tsx non observée pendant les tests : abonnement Realtime censé afficher une alerte de validation et rediriger automatiquement vers DriverHome dès is_verified=true — ne s'est pas déclenché de façon visible lors de la validation admin du driver test. Deux hypothèses non départagées (alerte affichée puis fermée trop vite, ou dysfonctionnement réel). À vérifier en priorité en session 2.14 (navigation/Realtime) → CAUSE IDENTIFIÉE ET CORRIGÉE session 2.14, voir RÉSOLU 42
+Champ note (ex-agentRef) : jamais testé rempli avec un texte non vide durant les tests réels — jugé non bloquant (code gère explicitement le cas vide), à garder en tête
+Coexistence de total_commissions (cumul stocké) et commissions_current_month (calcul mensuel à la volée) sur le même écran : pas confirmé comme un bug, mais risque de confusion pour un futur chauffeur avec historique multi-mois — non observable avec le driver test actuel (aucune mission complétée)
+Risque de pagination sur totalCredit/totalDebit (TransactionHistoryScreen.tsx) : calcul limité aux transactions chargées en mémoire (pagination 20/page), sans filtre de mois — pourrait ne représenter qu'une fraction de l'historique réel pour un chauffeur à activité prolongée
+6. Recommandations stratégiques actées
+
+Voir Section 17 — sous-section dédiée "Recommandations stratégiques en attente d'arbitrage porteur"
+
+7. Vigilances transmises à la session 2.17
+Le mécanisme de demande (requestWalletTopup(), statut pending, message honnête) posé en 2.13 constitue une fondation directe pour le Point 9 de 2.17 — à réutiliser tel quel, pas à reconstruire
+refundWallet() (non lue en détail cette session, hors périmètre) partage probablement la même structure vulnérable que l'ancien topupWallet() (affirmation héritée du prompt de mission, non vérifiée par lecture directe en 2.13) — à confirmer par lecture directe en tout début de session 2.17
+Le champ note (ex-agentRef) est un renommage neutre temporaire — 2.17 introduira un mécanisme d'upload de pièce justificative (reçu, virement) validé par l'admin, remplaçant ce champ, pas en le réutilisant
+La notification admin en temps réel sur nouvelle demande de recharge est à concevoir avec le reste du workflow 2.17
+Clarification métier fondamentale (voir Section 2) : paiement de la course toujours hors application ; seule la commission est prélevée sur le wallet — raison structurelle du renommage revenue→recharges (RÉSOLU 39) — à rappeler impérativement à 2.17
+8. État final du driver test
+
+Voir Section 3 — bloc "DRIVER TEST ACTIF"
+
+Fichiers créés/modifiés : frontend/src/services/walletService.ts frontend/src/screens/driver/WalletTopupScreen.tsx frontend/src/screens/driver/WalletDashboardScreen.tsx frontend/src/screens/driver/onboarding/PendingVerificationScreen.tsx supabase/migrations/20260504000014_rename_revenue_to_recharges_driver_dashboard.sql supabase/rollbacks/20260504000014_rename_revenue_to_recharges_driver_dashboard_rollback.sql
+
+Prochain timestamp de migration disponible : 20260504000015
+
+SESSION 2.14 — commit afba878
+
+Realtime transactions + Notification Center + branchement notify mission*
+
+1. Objectif et périmètre
+
+Trois volets techniques distincts, tous issus de la planification de session 2.11 (Points 5 et 7) : (1) corriger l'alerte Realtime de validation non observée sur PendingVerificationScreen.tsx (vigilance transmise par 2.13) ; (2) brancher subscribeToNewTransactions(), jusque-là code mort ; (3) monter NotificationBell/ NotificationCenterScreen, jusque-là orphelins, sur les 3 rôles ; (4) brancher les fonctions notify* liées aux missions, jusque-là non appelées.
+
+2. Partie 1 — Investigation (synthèse)
+
+Résultats CONFIRMÉS par lecture directe :
+
+subscribeToNewTransactions() : existante dans walletService.ts, jamais appelée — code mort confirmé. Pattern de branchement identifié via sa fonction sœur subscribeToWalletUpdates.
+NotificationBell/NotificationCenterScreen : existants et complets, mais orphelins (jamais montés dans aucun navigator) — infirmant l'hypothèse initiale du prompt de mission (« a priori absents »).
+9 fonctions notify* inventoriées (et non 6 comme supposé initialement) : 2 déjà branchées (notifyDocumentVerified, notifyDocumentRejected, depuis adminService.ts), 7 en code mort.
+Compatibilité recharge honnête (2.13) : CONFIRMÉE, aucune interférence possible (écritures pures vs listener passif).
+Diagnostic alerte Realtime PendingVerificationScreen.tsx : cause identifiée — absence de gestion Platform.OS, contrairement au pattern déjà appliqué sur WalletTopupScreen.tsx en 2.13.
+
+Découvertes annexes documentées (hors périmètre de cette session) : bug de reconnexion clientProfileId vide (RootNavigator.tsx), robustesse topupWallet/refundWallet (échec silencieux de l'insertion transaction après UPDATE du solde), realtimeService.ts (troisième mécanisme Realtime, sans lien avec les notifications), dossier ecommerce/ existant, VoiceChatScreen.tsx orphelin, point de sécurité cancelMission/userId (rattaché à la session 2.17 sur décision du porteur).
+
+Investigation complémentaire menée avec l'Assistant Général FTM (hors de ce fil direct, synthèse reçue et intégrée) : incompatibilité structurelle confirmée de notifyNewMission (diffusion broadcast, pas de destinataire unique) ; notifyDocumentExpiry laissée en attente (lien avec l'Edge Function check-document-reminders non vérifié) ; notifyWalletLowBalance écartée (aucun point de déclenchement localisé).
+
+3. Partie 2 — Implémentation, volet par volet
+
+Volet 1 — Correctif alerte Realtime
+
+Fichier modifié : PendingVerificationScreen.tsx
+Changement : ajout de l'import Platform, application du pattern Platform.OS === 'web' ? window.alert(...) + navigation.replace(...) : Alert.alert(...), identique à WalletTopupScreen.tsx (2.13).
+⚠️ Réserve documentée : le chemin natif (bouton « Commencer ») n'a pas pu être testé dans cet environnement (web uniquement) — à vérifier lors de tests sur device physique.
+
+Volet 2 — Branchement subscribeToNewTransactions
+
+Fichier modifié : TransactionHistoryScreen.tsx
+Changement : ajout de channelRef + useEffect de souscription, respect du filtre actif via filterRef.current, garde anti-doublon (prev.some(t => t.id === tx.id)), cleanup unsubscribe().
+⚠️ Limitation assumée et documentée : le listener n'écoute que INSERT, pas UPDATE — un passage pending → completed (validation admin d'une recharge) ne rafraîchit pas automatiquement l'écran.
+
+Volet 3 — NotificationBell / NotificationCenterScreen
+
+Fichiers modifiés : pushNotificationService.ts (ajout getCurrentProfileId()), NotificationBell.tsx (réécriture complète — auto-résolution du profil, échec silencieux), NotificationCenterScreen.tsx (réécriture complète — auto-résolution du profil, message d'erreur explicite si échec), DriverHomeScreen.tsx, CreateMissionScreen.tsx, AdminDashboardScreen.tsx (montage de la cloche, avec création du style headerRow pour Client et Admin), RootNavigator.tsx (ajout de NotificationCenter aux 3 ParamList et aux 3 navigators).
+Alternative documentée, non retenue : corriger initializeApp() pour distribuer systématiquement le vrai profiles.id — écartée au profit de la résolution autonome par composant, jugée plus proportionnée au périmètre de la session.
+
+Volet 4 — Branchement des 4 fonctions notify* mission
+
+Fichier modifié : missionService.ts
+startMission → notifyMissionStarted : branchement simple, aucun obstacle.
+acceptMission → notifyMissionAccepted : résolution du nom du chauffeur via requête drivers → profiles(full_name), fallback 'Votre chauffeur'.
+completeMission → notifyMissionCompleted : Option C — résolution du profiles.id du chauffeur ; si résolu, double notification (client + chauffeur) ; si non résolu, notification de secours au client seul via insertNotification directement (pour ne jamais priver le client d'une information qui le concerne à cause d'un problème technique côté chauffeur).
+cancelMission → notifyMissionCancelled : renommage _userId → userId (paramètre resté non exploité pour la logique de notification — point de sécurité distinct, documenté séparément), distinction de deux branches (cancelledBy === 'driver' vs 'client'), avec sous-distinction pour le cas client (absence de chauffeur assigné = log neutre, vs chauffeur assigné = résolution profiles.id avec fallback silencieux).
+
+Non retenues pour cette session : notifyNewMission (incompatibilité structurelle), notifyDocumentExpiry (en attente de vérification externe), notifyWalletLowBalance (point de déclenchement non localisé).
+
+4. Incident réel — completeMission / interférence bash
+
+Cause : lors de la première tentative de branchement via python3 -c "...", le caractère ! contenu dans le texte du titre de notification ('🏁 Mission terminée !') a déclenché une expansion d'historique bash (event not found), tronquant silencieusement l'argument avant qu'il n'atteigne le script Python.
+
+Symptôme : l'appel à insertNotification s'est retrouvé avec 4 arguments au lieu de 5 (décalage complet des paramètres title/body/data), malgré un message de succès affiché par le script.
+
+Diagnostic : détecté par vérification systématique post-modification (grep ciblé n'ayant rien trouvé pour « Mission terminée »), confirmé par lecture en bytes bruts pour écarter une hypothèse de corruption d'encodage (les accents se sont révélés parfaitement valides en UTF-8 — seul le titre manquait réellement).
+
+Résolution : réparation chirurgicale via heredoc à délimiteur quoté (<< 'PYEOF'), qui neutralise structurellement toute interprétation de caractères spéciaux par bash. Deux corrections d'indentation mineures ont suivi (artefacts de la manipulation de chaînes), jusqu'à cohérence intégralement vérifiée (10 espaces uniformes).
+
+Leçon méthodologique consolidée (intégrée Section 2, règles critiques) : tout texte contenant un caractère à signification spéciale en bash (!, mais vigilance également sur `, $, \) doit systématiquement transiter par un heredoc à délimiteur quoté, jamais par un python3 -c "..." en ligne directe. Cette règle a été appliquée sans incident sur toutes les modifications suivantes.
+
+5. Vérification avant déploiement
+
+Relecture fraîche et complète (contenu intégral, pas seulement les zones modifiées) des 10 fichiers modifiés, réalisée en deux temps : d'abord missionService.ts (fichier ayant connu l'incident), puis, sur décision explicite du porteur (option B — exhaustivité par souci de traçabilité malgré l'absence de risque technique résiduel identifié sur les 9 autres fichiers), l'ensemble des 9 fichiers restants. Aucune anomalie détectée sur l'ensemble. Vérification complémentaire : git fetch + comparaison HEAD..origin/main, confirmant l'absence de changement distant.
+
+6. Déploiement
+
+Commit afba878 : 10 fichiers modifiés, 207 insertions / 25 suppressions. Message de commit : corrigé avant validation (le message pré-rédigé dans le prompt initial mentionnait « 6 notify functions », inexact au regard du travail réellement effectué — corrigé en « 4 mission notify functions »). Push réussi vers origin/main (d148385..afba878). GitHub Actions confirmé propre : Check Supabase Connection #102 ✅ et Vérification Qualité Code #106 ✅ tous deux déclenchés et réussis sur ce commit ; Deploy Supabase FTM non déclenché, cohérent avec l'absence de migration SQL dans cette session.
+
+7. Tests post-déploiement
+
+Volet Driver — testé et validé intégralement
+
+Connexion +212600000000 réussie, cloche affichée avec badge « 6 », logs Push - Fetching/Subscribing/Fetched notifications confirmant la chaîne getCurrentProfileId() → NotificationBell fonctionnelle.
+NotificationCenterScreen affiche 5 notifications historiques (préexistantes, hors périmètre de cette session), cohérence totale entre badge et contenu (total: 6, unread: 6).
+Wallet 800 DH et 3 transactions pending confirmés intacts, y compris après un cycle déconnexion/reconnexion complet (localStorage.clear()).
+Historique des transactions (TransactionHistoryScreen) : les 3 transactions pending (200/500/1000 DH) visibles et intactes, cohérence confirmée avec count: 7, totalCount: 7.
+Log clé confirmant le Volet 2 en conditions réelles : Wallet - Subscribing to new transactions — preuve que notre listener s'active bien au montage de l'écran.
+
+Volet Admin — testé et validé
+
+Connexion +212600000001 réussie, cloche affichée sans badge (cohérent avec total: 0, unread: 0).
+NotificationCenterScreen affiche correctement l'état vide (« Aucune notification »).
+
+Volet Client — reporté, aucun test effectué Le numéro de test partagé +212600000000 ne permet qu'un seul profil actif à la fois. Un parcours de mission complet (création côté client → acceptation/démarrage/complétion côté driver) nécessiterait de supprimer le compte client pour libérer le numéro et revenir en driver — rendant l'identité du client définitivement inaccessible pour vérifier la réception effective des notifications côté client. Report vers une phase ultérieure, idéalement avec un second numéro de test dédié au rôle client.
+
+Le test isolé de la cloche côté client (sans création de mission) avait été identifié comme faisable, car autonome et sans dépendance de retour vers le driver. Sur décision finale du porteur, ce test a néanmoins été renoncé et reporté avec le test du Volet 4 — même contrainte de fond : aucun numéro de test dédié au rôle client n'existe dans le projet, et le seul numéro disponible (+212600000000) doit rester occupé par le driver test à préserver. Aucun test n'a donc été effectué côté client dans cette session.
+
+Volet 4 (4 fonctions notify mission) — non testé* Pour la même raison de contrainte du numéro partagé : impossible de tester un parcours de mission complet sans sacrifier l'accès à l'identité testée.
+
+8. Anomalie #1 — Absence de bouton « ← Retour »
+
+Constat : NotificationCenterScreen.tsx (composant partagé entre les 3 rôles) ne contient aucun bouton de retour/fermeture — oubli de conception du Volet 3, confirmé identiquement présent sur l'écran Driver et l'écran Admin (cohérent, composant unique).
+
+Contexte aggravant, mais non imputable à cette session : le prompt de passation documente déjà que window.history.back() n'est pas fiable sur web dans ce projet, et que la convention établie est d'ajouter un bouton « ← Retour » explicite — convention omise pour ce nouvel écran.
+
+Décision de traitement (validée par le porteur et l'Assistant Général FTM) : non bloquante (composant transversal, pas de blocage total puisque navigable autrement), à corriger avant que la Phase 3 ne devienne active — non traitée dans cette session, sur le même modèle que la session 2.19 déjà prévue pour l'audit Alert.alert().
+
+9. Fichiers modifiés — liste complète (10)
+
+frontend/src/screens/driver/onboarding/PendingVerificationScreen.tsx frontend/src/screens/driver/TransactionHistoryScreen.tsx frontend/src/services/pushNotificationService.ts frontend/src/components/NotificationBell.tsx frontend/src/screens/notifications/NotificationCenterScreen.tsx frontend/src/screens/driver/DriverHomeScreen.tsx frontend/src/screens/client/CreateMissionScreen.tsx frontend/src/screens/admin/AdminDashboardScreen.tsx frontend/src/navigation/RootNavigator.tsx frontend/src/services/missionService.ts
+
+10. Recommandations et points en suspens pour la suite
+Point	Rattachement proposé
+Anomalie #1 (bouton retour manquant)	À corriger avant Phase 3 ; à rattacher éventuellement à la session 2.19 (audit Alert.alert()) ou en point autonome — décision du porteur au moment de la ROADMAP
+Test complet du Volet 4 (4 fonctions notify* mission) + cloche côté client — aucun test effectué côté client dans cette session, report définitif	Nécessite un second numéro de test dédié au rôle client, distinct du numéro partagé actuel
+Point de sécurité cancelMission/userId (absence de vérification d'autorisation)	Rattaché à la session 2.17 (décision déjà actée)
+notifyDocumentExpiry	En attente — lien avec l'Edge Function check-document-reminders à vérifier (voir annexe Section 18 pour l'état des lieux du processus de mission)
+Amélioration du processus de création de mission (diffusion optimisée, planification, communication texte sécurisée, négociation de prix)	Voir Section 17 — session 2.14 bis, positionnée entre 2.14 et 2.15
+Bug de reconnexion clientProfileId vide (RootNavigator.tsx)	Découverte annexe, hors périmètre — à documenter pour une session future non encore assignée
+Robustesse topupWallet/refundWallet (échec silencieux insertion transaction)	Découverte annexe, préexistante, hors périmètre — à documenter, à vérifier lors de la lecture directe prévue en 2.17
+VoiceChatScreen.tsx orphelin, dossier ecommerce/	Découvertes annexes — pertinentes pour l'annexe Section 18 (Piste 3 : communication sécurisée)
+
+Prochain timestamp de migration disponible : 20260504000015 (inchangé — aucune migration SQL dans cette session)
+
+7. CHAÎNE DE NAVIGATION DRIVER
+
+ProfileSetupScreen → onProfileCreated(role='driver') → DriverOnboardingStack
+
+VehicleInfoScreen → appelle createDriverProfile() → navigate('LegalDocuments', { driverId })
+
+LegalDocumentsScreen [reçoit driverId] → appelle saveDriverDocuments() → navigate('DocumentUpload', { driverId })
+
+DocumentUploadScreen [reçoit driverId] → appelle uploadDocument() × 4 → upload dans bucket driver-documents ⚠️ limitations web : bouton Photo non disponible utiliser bouton Fichier uniquement sur web → navigate('PendingVerification', { driverId })
+
+PendingVerificationScreen [reçoit driverId] → souscrit realtime driver-verification-{driverId} → si is_verified === true → Platform.OS === 'web' ? window.alert(...) + navigation.replace('DriverHome') : Alert.alert(...) ✅ Correctif session 2.14 — voir RÉSOLU 42 ⚠️ Chemin natif (Alert.alert, bouton "Commencer") non testé dans cet environnement (web uniquement) ⚠️ Bouton "Recharger mon wallet" (route inexistante 'WalletRecharge') SUPPRIMÉ — session 2.13 (voir RÉSOLU 40) ⚠️ navigation.replace('DriverHome') cible toujours un écran absent du stack DriverPendingStack — bug distinct, non traité, non résolu (voir Section 15)
+
+DriverHomeScreen → attend driverId : string — obligatoire → attend vehicleCategory : string — obligatoire ('vul' | 'n2_medium' | 'n2_large') → affiche solde wallet (table wallet sans 's') → carte Wallet → WalletDashboard { driverId } → bouton Mes documents → DocumentStatus → ✅ NotificationBell montée — session 2.14 (badge dynamique via getCurrentProfileId()) → NotificationBell → NotificationCenterScreen ⚠️ Aucun bouton "← Retour" sur cet écran — voir Anomalie #1, Section 15
+
+TransactionHistoryScreen → ✅ Écoute Realtime branchée — session 2.14 (subscribeToNewTransactions, INSERT uniquement)
+
+⚠️ is_verified = GENERATED ALWAYS AS Devient true quand ces 4 champs = 'verified' : driver_license_verified vehicle_registration_verified insurance_verified technical_inspection_verified
+
+Pour simuler validation admin — SQL Editor : UPDATE drivers SET driver_license_verified = 'verified', vehicle_registration_verified = 'verified', insurance_verified = 'verified', technical_inspection_verified = 'verified' WHERE license_plate = 'VOTRE_PLAQUE';
+
+8. CHAÎNE DE NAVIGATION ADMIN
+
+AdminDashboardScreen → Documents en attente → DocumentReviewScreen ✅ → Toutes les missions → AdminMissionsScreen ✅ → Gestion utilisateurs → AdminUsersScreen ✅ → Wallets & Transactions → WalletManagementScreen ✅ → ✅ NotificationBell montée — session 2.14 (état vide confirmé testé : total: 0, unread: 0) → NotificationBell → NotificationCenterScreen ⚠️ Aucun bouton "← Retour" — voir Anomalie #1, Section 15
+
+DocumentReviewScreen → Valider/Rejeter documents driver → Notification driver via insertNotification() → Driver fully verified → DriverHomeScreen (realtime) ⚠️ Bug d'affichage identifié session 2.12 : modal ne se rafraîchit pas visuellement après validation du 4e/dernier document (getPendingDrivers() ne retourne plus le chauffeur, drivers.find() ne le retrouve plus dans la liste rafraîchie) — donnée en base correcte, bug d'état React côté client. Rattaché au traitement secondaire et optionnel de la session 2.13 (décision porteur) — non traité faute de temps — reporté à une session ultérieure, à assigner.
+
+WalletManagementScreen → Liste drivers vérifiés avec solde → Recharger wallet → adminTopupDriverWallet() → Solde mis à jour en temps réel ✅ → Testé sans régression session 2.13 (300→800 DH) ✅ ⚠️ Ne gère pas encore les demandes de recharge chauffeur en statut pending (3 en attente — voir Section 3) — écran de traitement dédié prévu session 2.17
+
+AdminMissionsScreen → Liste toutes missions avec 6 filtres → Enum mission_status : pending / accepted / in_progress / completed / cancelled_client / cancelled_driver
+
+AdminUsersScreen → Liste drivers avec statut actif/suspendu → Suspendre/Activer via toggleUserActive() ⚠️ Alert.alert → window.confirm/window.alert sans distinction Platform.OS — fonctionne web, risque mobile natif non corrigé (découvert session 2.13)
+
+CHAÎNE DE NAVIGATION CLIENT (extrait pertinent — session 2.14)
+
+CreateMissionScreen → ✅ NotificationBell montée — session 2.14 (création du style headerRow spécifique) → NotificationBell → NotificationCenterScreen ⚠️ Aucun bouton "← Retour" — voir Anomalie #1, Section 15 ⚠️ Volet Client non testé fonctionnellement en session 2.14 (contrainte numéro de test partagé) — voir Section 15/16
+
+9. PROBLÈMES RENCONTRÉS ET RÉSOLUS
+
+RÉSOLU 1 — Page blanche web (session 2.2) Cause : BORDER_RADIUS manquant theme.ts Correctif: export BORDER_RADIUS ajouté Commit : e7beed2
+
+RÉSOLU 2 — Navigation post-profil (session 2.3) Cause : SIGNED_IN déclenché avant création profil — closure JavaScript — initialRoute figé Correctif: callback onProfileCreated depuis ProfileSetupScreen → RootNavigator Commits : 8a78903 + 53725fe + bd7ead0
+
+RÉSOLU 3 — Page blanche après packages (2.4) Cause : expo-image-picker absent package.json Correctif: npx expo install expo-image-picker expo-document-picker Commit : c318a92
+
+RÉSOLU 4 — Terminal défaillant (session 2.4) Cause : 3ème terminal ouvert manuellement Correctif: fermeture + reprise terminal frontend Règle : 1 terminal de travail uniquement
+
+RÉSOLU 5 — replace() Python3 sans effet Cause : texte cible inexact Correctif: vérification via sed avant replace() Si échec → réécrire le fichier entier
+
+RÉSOLU 6 — driver_license_number NOT NULL Cause : champ collecté étape 2 mais contrainte dès étape 1 Correctif: migration DROP NOT NULL Commit : 6f7ed8c
+
+RÉSOLU 7 — Champs légaux NOT NULL (5 champs) Cause : même architecture étape 1 / étape 2 Correctif: migration DROP NOT NULL × 5 Commit : 1c9af9c
+
+RÉSOLU 8 — Passage spontané étape 2 → étape 4 Cause : SIGNED_IN relançait initializeApp() driver sans license_number → PendingStack immédiatement Correctif: condition !driver_license_number → OnboardingStack Commit : a23df8b
+
+RÉSOLU 9 — Passage spontané étape 3 → étape 4 Cause : SIGNED_IN relançait initializeApp() driver avec license_number mais sans vérifier URLs documents Correctif: condition !toutes 4 URLs → OnboardingStack Commit : 6b9dae8
+
+RÉSOLU 10 — DateTimePicker non supporté web Cause : composant natif mobile uniquement Correctif: fallback Platform.OS === 'web' → input type="date" HTML natif Commit : 6b9dae8
+
+RÉSOLU 11 — Bucket not found (Storage) Cause : bucket driver-documents non créé Correctif: migration SQL CREATE bucket Commit : 7222601
+
+RÉSOLU 12 — RLS Storage bloque upload Cause : bucket sans politique d'accès Correctif: migration RLS policies × 4 Commit : c39cafb
+
+RÉSOLU 13 — Token Supabase expiré Cause : SUPABASE_ACCESS_TOKEN expiré GitHub Actions rejeté "Unauthorized" Correctif: nouveau token FTM_GITHUB_ACTIONS Never expires — mis à jour GitHub Secrets Statut : RÉSOLU ✅ 29/04/2026
+
+RÉSOLU 14 — SIGNED_IN interrompt onboarding étape 3 (BUG 1 session 2.5) Cause : stale closure — initialRoute capturé dans onAuthStateChange gardait l'ancienne valeur → initializeApp() relancé → PendingStack immédiat Correctif: useRef<AppRoute> ajouté initialRouteRef.current synchronisé Condition !== "DriverOnboardingStack" dans SIGNED_IN Commit : 475274c
+
+RÉSOLU 15 — GET /wallets → 404 (BUG 2 session 2.5) Cause : .from('wallets') — 's' en trop Table en base : wallet (sans 's') Correctif: .from('wallet') — ligne 36 DriverHomeScreen.tsx Commit : b4ec2ba
+
+RÉSOLU 16 — document_reminders ON CONFLICT → 400 (BUG 3 session 2.5) Cause : contrainte UNIQUE manquante sur (driver_id, document_type) upsert impossible sans contrainte Correctif: migration SQL ADD CONSTRAINT UNIQUE (driver_id, document_type) Commit : 9f22d9d
+
+RÉSOLU 17 — Écrans wallet non connectés navigation (session 2.6) Cause : WalletDashboard, WalletTopup, TransactionHistory, DocumentStatus absents de DriverStackParamList et DriverNavigator Correctif: 4 écrans ajoutés dans RootNavigator imports + params + navigateurs Commit : 884f00e
+
+RÉSOLU 18 — driverId undefined WalletDashboard (session 2.6) Cause : driverId non transmis via route.params NativeStackScreenProps manquant Correctif: NativeStackScreenProps ajouté lecture driverId depuis route.params Commit : 884f00e
+
+RÉSOLU 19 — Vue driver_dashboard incomplète SQLSTATE 42P16 (session 2.6) Cause : colonnes manquantes : wallet_id, minimum_balance, is_wallet_blocked, commissions_current_month, revenue_current_month Correctif: DROP + CREATE VIEW driver_dashboard 5 colonnes ajoutées Commit : cac7f4d
+
+RÉSOLU 20 — Erreur 403 RLS INSERT transactions (session 2.6) Cause : politique RLS manquante pour INSERT sur table transactions pour utilisateurs authenticated Correctif: migration RLS INSERT policy pour authenticated Commit : 8c5d8c5
+
+RÉSOLU 21 — DocumentStatusScreen non accessible (session 2.6) Cause : écran absent de la navigation driver bouton manquant dans DriverHomeScreen Correctif: ajout dans DriverStackParamList + DriverNavigator + bouton "📄 Mes documents" dans DriverHomeScreen Commit : 0207e97
+
+RÉSOLU 22 — BUG 4 SQL UPDATE phone_number → 0 row — INFIRMÉ (session 2.7) Cause : numéro format +212600000000 présent tel quel en base UPDATE fonctionne correctement Statut : INFIRMÉ ✅ — non reproduit
+
+RÉSOLU 23 — BUG A wallet_update_admin récursion RLS (session 2.7) Cause : EXISTS (SELECT FROM profiles) → récursion RLS infinie Correctif: get_my_role() = 'admin' Fonction SECURITY DEFINER Commit : d420007 Confirmé : balanceBefore: 0 balanceAfter: 200 DH ✅
+
+RÉSOLU 24 — Navigation admin 4 menus silencieuse (session 2.7) Cause : AdminNavigator ne contenait qu'AdminHome — 4 routes absentes Correctif: Déclarer tous les écrans dans AdminNavigator Commits : 4ff3499 + 626e851
+
+RÉSOLU 25 — SIGNED_IN loop admin (session 2.7) Cause : Condition !== "DriverOnboardingStack" ne couvrait pas AdminStack Correctif: Ajouter && !== "AdminStack" Commit : 6ee89b1
+
+RÉSOLU 26 — 403 Forbidden notifications (session 2.7) Cause : 2 couches : 1. INSERT — politique {public} 2. SELECT — admin ne peut pas lire notif du driver Correctif: Migration 007 INSERT authenticated Migration 008 SELECT admin get_my_role() Commits : 2351bf3 + 445bdcb
+
+RÉSOLU 27 — Enum mission_status incorrect (session 2.7) Cause : 'cancelled' inexistant dans l'enum Correctif: STATUS_FILTERS + STATUS_LABELS + FILTER_LABELS mis à jour cancelled_client + cancelled_driver Commit : 750db88
+
+RÉSOLU 28 — Création fichier long via Python (session 2.7) Cause : heredoc et -c posent problème avec caractère ! et longueur Correctif: Écriture en 7 étapes séquentielles python3 -c "f=open(...,'a'); f.write(...)" Règle : Utiliser pour tout fichier > 100 lignes ⚠️ Complétée session 2.14 : pour tout texte contenant un caractère spécial bash, préférer un heredoc à délimiteur quoté (voir RÉSOLU supplémentaire ci-dessous et Section 2)
+
+RÉSOLU 29 — Bug "Suspendre" AdminUsersScreen non fonctionnel sur web (session 2.8) Cause : Alert.alert() (React Native) ne s'affiche pas sur web → clic silencieux, aucun appel réseau Correctif: window.confirm() à la place if (confirmed === false) return; Erreurs → window.alert() Commit : aed0bee Confirmé : "Annuler" ×2 → aucune action ✅ "Suspendre"+OK → isActive:false ✅ "Activer"+OK → isActive:true ✅
+
+RÉSOLU 30 — Bucket voice-messages + RLS (session 2.8) Cause : audioService.ts référençait un bucket inexistant Correctif: Migrations 009 + 010 Bucket créé + 4 RLS policies Commit : 5ee383e ⚠️ Non testé fonctionnellement — audioService.ts non intégré UI Voir item 4.4
+
+RÉSOLU 31 — Cause GPS AdminMissions confirmée (session 2.8) Cause : pickupCoords=null — permission GPS refusée environnement Codespaces/iframe Statut : Confirmé par logs directs — [FTM-DEBUG] GPS - Client location permission denied Pas un bug applicatif Reporté phase 4.x avec TEST 1/2/3
+
+RÉSOLU 32 — vault.create_secret() arguments inversés Cause : Supabase a stocké la description comme nom → secret stocké avec name = 'Service role key for CRON job - FTM' au lieu de 'supabase_service_role_key' → clé Vault incorrecte (244 vs 219 caractères) Certitude: 100% confirmé — comparaison directe cles_identiques = false Correctif: DELETE FROM vault.secrets WHERE name = 'Service role key for CRON job - FTM' + vault.create_secret(valeur, nom, desc) avec ordre correct (valeur en PREMIER) + SELECT name FROM vault.secrets pour vérification immédiate Statut : RÉSOLU ✅ session 2.9
+
+RÉSOLU 33 — net.http_post → 401 persistant Cause : Clé Vault incorrecte (244 vs 219 car.) + timeout 5000 ms insuffisant (cold start Edge Function dépasse 5s) Diagnostic: Plan en 10 maillons — maillon par maillon : Maillon 1 (Vault retourne clé) ✅ Maillon 2 (Header construit) ✅ Maillon 3 (DNS+TCP/SSL) ✅ Maillon 4 (Timeout) → timeout_ms := 30000 Test httpbin.org → 200 → pg_net OK général Comparaison longueur clé → 244 vs 219 ❌ Correctif: Correction Vault (voir RÉSOLU 32) + timeout_milliseconds := 30000 Statut : RÉSOLU ✅ session 2.9 status_code = 200, timed_out = false ✅
+
+RÉSOLU 34 — pg_cron non activé au démarrage Cause : SELECT * FROM cron.job → erreur 42P01 pg_cron et pg_net disponibles mais non installées Correctif: CREATE EXTENSION IF NOT EXISTS pg_net CREATE EXTENSION IF NOT EXISTS pg_cron inclus dans migration 20260504000011 Statut : RÉSOLU ✅ session 2.9
+
+RÉSOLU 35 — Realtime inactif sur tables FTM (session 2.10) Cause : puballtables = false — aucune table dans supabase_realtime avant session 0 tables activées — souscriptions existantes sans effet Correctif: ALTER PUBLICATION supabase_realtime ADD TABLE drivers, missions, wallet, transactions, notifications Migration 20260504000012 Commit : b65eb9d Confirmé : 5 rows supabase_realtime ✅ WalletDashboardScreen SUBSCRIBED ✅
+
+RÉSOLU 36 — RLS Storage permissif driver-documents (session 2.12) Cause : 4 policies storage.objects sans clause de propriété — tout utilisateur authenticated pouvait lire/écrire/ modifier/supprimer n'importe quel fichier (aucune vérification auth.uid()/propriété) Correctif: Ownership chain complète : storage.foldername(name)[1]::uuid = drivers.id → drivers.profile_id = profiles.id → profiles.user_id = auth.uid() Migration: 20260504000013 Commit : 67e9e65 Confirmé : Test accès croisé → STATUS 400 ✅ Upload/ré-upload driver légitime → ✅ ⚠️ voice-messages non couvert par cette correction — voir session 2.18
+
+RÉSOLU 37 — RLS transactions_insert_own sans restriction (session 2.12) Cause : policy INSERT WITH CHECK (true) — aucune restriction, tout utilisateur authentifié pouvait insérer n'importe quelle transaction (découverte session 2.11) Correctif: Ownership chain via wallet : transactions.wallet_id → wallet.driver_id = drivers.id → drivers.profile_id → profiles.user_id = auth.uid() Migration: 20260504000013 Commit : 67e9e65 Confirmé : Insertion légitime (wallet_id propre) → STATUS 201 ✅ Insertion illégitime (wallet_id fictif) → STATUS 403, code 42501 ✅
+
+RÉSOLU 38 — Échec silencieux topupWallet() côté chauffeur — fausse recharge (session 2.13) Cause : RLS bloquait silencieusement l'UPDATE de wallet.balance pour un rôle non-admin (0 ligne affectée, aucune erreur retournée) — transaction insérée avec status:'completed' malgré échec réel du crédit (découverte session 2.11, Points 3/4/Bug B du 6) Correctif: Nouvelle fonction requestWalletTopup() insérant une transaction status:'pending', balance_after = balance_before — AUCUNE tentative d'UPDATE sur wallet.balance côté chauffeur. Le solde ne peut plus être modifié que par l'admin (topupWallet(), inchangée) Fichier : frontend/src/services/walletService.ts Commit : 2e76429 Confirmé : Demande pending insérée sans effet sur le solde (Test 2 et Test 3) ✅ Recharge admin réelle toujours fonctionnelle, testée sans régression (300→800 DH) ✅ Solde et historique reconfirmés intacts session 2.14 (800 DH, count: 7) ✅
+
+RÉSOLU 39 — revenue_current_month : nommage trompeur (session 2.13) Cause : la colonne calculait le total des topups du mois, pas des revenus de mission — libellé UI "REVENUS CE MOIS" incorrect (découvert session 2.10) Correctif: Renommage complet — vue driver_dashboard (migration SQL), interface DriverDashboard (walletService.ts), libellé JSX et style (WalletDashboardScreen.tsx) : revenue_current_month → recharges_current_month "REVENUS CE MOIS" → "RECHARGES CE MOIS" Migration: 20260504000014 Commit : 2e76429 Confirmé : Affichage "RECHARGES CE MOIS : 300 DH" puis "800 DH" selon état du wallet ✅
+
+RÉSOLU 40 — Bouton navigation cassé PendingVerificationScreen.tsx (session 2.13) Cause : bouton "Recharger mon wallet" naviguait vers 'WalletRecharge', route inexistante (nom réel : 'WalletTopup') — découvert session 2.11 (Point 6, Bug B) Correctif: Bouton et styles orphelins associés (walletButton, walletButtonText) supprimés complètement ; texte informatif reformulé Fichier : frontend/src/screens/driver/onboarding/ PendingVerificationScreen.tsx Commit : 2e76429 ⚠️ Distinct du bug résiduel non résolu "navigation cross-stack PendingVerification → DriverHome" (navigation.replace('DriverHome') ciblant un écran absent du stack) — non traité, voir Section 15
+
+RÉSOLU 41 — Message de succès invisible sur web, WalletTopupScreen.tsx ligne 70 (session 2.13) Cause : Alert.alert() (React Native) ne s'affiche pas sur web — même mécanisme que le bug résolu en session 2.8 sur AdminUsersScreen.tsx, ici redécouvert sur un fichier différent Correctif: Platform.OS === 'web' ? window.alert(...) : Alert.alert(...) Fichier : frontend/src/screens/driver/WalletTopupScreen.tsx Commit : 480130d Confirmé : boîte de dialogue "Demande transmise" affichée avec succès, navigation de retour fonctionnelle (Test 3) ✅ ⚠️ Ne couvre que la ligne 70 (message de succès) — la ligne 66 (message d'erreur) reste non vérifiée, voir bug résiduel Section 15
+
+RÉSOLU 42 — Alerte Realtime de validation non observée, PendingVerificationScreen.tsx (session 2.14) Cause : absence de gestion Platform.OS dans le déclenchement de l'alerte de validation (is_verified=true) — même mécanisme que les bugs Alert.alert/web déjà documentés (RÉSOLU 29, 41), ici sur un troisième fichier — découvert session 2.13, cause diagnostiquée par lecture directe session 2.14 Correctif: Platform.OS === 'web' ? window.alert(...) + navigation.replace(...) : Alert.alert(...), pattern identique à WalletTopupScreen.tsx (2.13) Fichier : frontend/src/screens/driver/onboarding/ PendingVerificationScreen.tsx Commit : afba878 ⚠️ Chemin natif (Alert.alert, bouton "Commencer") non testé — environnement de développement limité au web — à vérifier lors de tests sur device physique (Phase 4)
+
+10. PISTES DÉFINITIVEMENT ÉCARTÉES
+
+Ne pas retester : ❌ locationService import statique ❌ expo-haptics / expo-notifications ❌ expo-location fallback web ❌ missionService / realtimeService ❌ react-native-screens sans fallback web ❌ NativeStackScreenProps sans type ❌ Dépendance circulaire missionService ❌ audioService / expo-av (contexte : débogage page blanche session 2.x — N'IMPLIQUE PAS l'abandon de la fonctionnalité messages vocaux, voir item 4.4) ❌ supabaseClient.ts ❌ showAuth logique incorrecte ❌ ErrorBoundary capture l'erreur ❌ --no-dev résout seul ❌ 'cancelled' comme valeur enum mission_status Valeurs correctes : cancelled_client + cancelled_driver ❌ cron.run_job(integer) pg_cron 1.6.4 ne supporte pas cette fonction ❌ owner = auth.uid() comme clause RLS Storage simple (raccourci écarté au profit de la chaîne de propriété complète — voir RÉSOLU 36, session 2.12) ❌ Modification directe du solde wallet par le chauffeur (Option B) — écartée explicitement par le porteur, session 2.13 : le chauffeur ne peut que soumettre une demande (statut pending), jamais créditer lui-même son wallet — voir RÉSOLU 38 ❌ python3 -c "..." en ligne directe pour tout texte contenant un caractère spécial bash (!, `, $, ) — écarté au profit du heredoc à délimiteur quoté, suite à l'incident réel de troncature silencieuse (session 2.14, voir Section 6 bloc session 2.14, § Incident réel) ❌ notifyNewMission comme fonction notify* branchable isolément (session 2.14) — incompatibilité structurelle confirmée : diffusion broadcast à plusieurs chauffeurs, pas de destinataire unique adressable par la logique insertNotification actuelle — nécessite une conception dédiée, voir annexe Section 18 (Piste 1) ❌ Correction d'initializeApp() pour distribuer systématiquement profiles.id (session 2.14) — écartée au profit de la résolution autonome par composant (getCurrentProfileId()), jugée plus proportionnée au périmètre de la session Notification Center
+
+11. MIGRATIONS SUPABASE DÉPLOYÉES
+
+20260220155500_initial_schema.sql ✅ P1-P2 20260221000000_add_rpc_nearby_drivers.sql ✅ P3 20260222000000_add_tracking_functions.sql ✅ P4 20260223000000_add_push_tokens.sql ✅ P6 20260224000000_add_rls_policies.sql ✅ P7 20260226000000_fix_profiles_rls_recursion.sql ✅ Phase 2.1 20260429000001_allow_null_driver_license_number.sql ✅ Session 2.4 20260429000002_allow_null_legal_docs_fields.sql ✅ Session 2.4 20260504000001_create_driver_documents_bucket.sql ✅ Session 2.4 20260504000002_storage_rls_policies.sql ✅ Session 2.4 20260504000003_add_unique_constraint_document_reminders.sql ✅ Session 2.5 20260504000004_update_driver_dashboard_view.sql ✅ Session 2.6 20260504000005_add_transactions_insert_policy.sql ✅ Session 2.6 20260504000006_fix_wallet_update_admin_rls.sql ✅ Session 2.7 20260504000007_fix_notifications_insert_rls.sql ✅ Session 2.7 20260504000008_fix_notifications_select_admin.sql ✅ Session 2.7 20260504000009_create_voice_messages_bucket.sql ✅ Session 2.8 20260504000010_voice_messages_storage_rls_policies.sql ✅ Session 2.8 20260504000011_configure_cron_document_reminders.sql ✅ Session 2.9 20260504000012_enable_realtime_tables.sql ✅ Session 2.10 20260504000013_fix_storage_transactions_rls_ownership.sql ✅ Session 2.12 20260504000014_rename_revenue_to_recharges_driver_dashboard.sql ✅ Session 2.13
+
+Aucune migration SQL déployée en session 2.14 (session purement applicative/frontend + service — cohérent avec l'absence de déclenchement de Deploy Supabase FTM).
 
 Prochain timestamp disponible : 20260504000015
 
----
+12. EDGE FUNCTIONS DÉPLOYÉES
 
-## 12. EDGE FUNCTIONS DÉPLOYÉES
-send-push-notification   ✅ (CORS bloqué sur web —
-                            fonctionnel sur device)
-register-push-token      ✅
-check-document-reminders ✅ (CRON opérationnel — session 2.9
-                            5 exécutions succeeded 18→22/06/2026)
-send-tracking-sms        ✅
+send-push-notification ✅ (CORS bloqué sur web — fonctionnel sur device) register-push-token ✅ check-document-reminders ✅ (CRON opérationnel — session 2.9 5 exécutions succeeded 18→22/06/2026) ⚠️ Lien avec notifyDocumentExpiry non vérifié — session 2.14 send-tracking-sms ✅
 
----
+13. ARBORESCENCE COMPLÈTE DU REPO
 
-## 13. ARBORESCENCE COMPLÈTE DU REPO
-FAST-TRANS-MAROC-FTM/
-├── .github/
-│   └── workflows/
-│       ├── check_supabase.yml        ← INTOUCHABLE
-│       ├── deploy_supabase.yml       ← INTOUCHABLE
-│       └── lint_code.yml             ← INTOUCHABLE
-├── docs/
-│   ├── SPEC_NATIVELY_P1.md
-│   ├── SPEC_NATIVELY_P2.md
-│   ├── SPEC_NATIVELY_P3.md
-│   ├── SPEC_NATIVELY_P4.md
-│   ├── SPEC_NATIVELY_P5.md
-│   ├── SPEC_NATIVELY_P6.md
-│   └── SPEC_NATIVELY_P7.md
-├── frontend/
-│   ├── .env
-│   ├── .env.example
-│   ├── App.tsx
-│   ├── package.json        ← expo-image-picker ajouté
-│   ├── package-lock.json
-│   ├── tsconfig.json
-│   └── src/
-│       ├── components/
-│       │   ├── NotificationBell.tsx
-│       │   └── VoiceMicButton.tsx
-│       ├── constants/
-│       │   └── theme.ts        ← BORDER_RADIUS ajouté
-│       ├── lib/
-│       │   └── supabaseClient.ts
-│       ├── navigation/
-│       │   └── RootNavigator.tsx ← session 2.7 — 5 écrans admin
-│       ├── screens/
-│       │   ├── admin/
-│       │   │   ├── AdminDashboardScreen.tsx
-│       │   │   ├── AdminMissionsScreen.tsx  ← créé session 2.7
-│       │   │   ├── AdminUsersScreen.tsx     ← créé session 2.7
-│       │   │   ├── DocumentReviewScreen.tsx
-│       │   │   └── WalletManagementScreen.tsx
-│       │   ├── auth/
-│       │   │   ├── OTPVerificationScreen.tsx
-│       │   │   ├── PhoneInputScreen.tsx
-│       │   │   └── ProfileSetupScreen.tsx ← INTOUCHABLE
-│       │   ├── client/
-│       │   │   ├── CreateMissionScreen.tsx
-│       │   │   ├── MissionTrackingScreen.tsx
-│       │   │   └── RatingScreen.tsx
-│       │   ├── driver/
-│       │   │   ├── DocumentStatusScreen.tsx
-│       │   │   ├── DriverHomeScreen.tsx
-│       │   │   ├── MissionActiveScreen.tsx
-│       │   │   ├── NewMissionModal.tsx
-│       │   │   ├── ParcelMissionDetailScreen.tsx
-│       │   │   ├── TransactionDetailModal.tsx
-│       │   │   ├── TransactionHistoryScreen.tsx
-│       │   │   ├── WalletDashboardScreen.tsx ← modifié session 2.13
-│       │   │   ├── WalletTopupScreen.tsx     ← modifié session 2.13
-│       │   │   └── onboarding/
-│       │   │       ├── DocumentUploadScreen.tsx
-│       │   │       ├── LegalDocumentsScreen.tsx
-│       │   │       ├── PendingVerificationScreen.tsx ← modifié session 2.13
-│       │   │       └── VehicleInfoScreen.tsx
-│       │   ├── ecommerce/
-│       │   │   ├── CreateParcelScreen.tsx
-│       │   │   ├── ParcelConfirmationScreen.tsx
-│       │   │   └── ParcelHistoryScreen.tsx
-│       │   ├── mission/
-│       │   │   └── VoiceChatScreen.tsx
-│       │   ├── notifications/
-│       │   │   └── NotificationCenterScreen.tsx
-│       │   └── tracking/
-│       │       ├── TrackingDetailScreen.tsx
-│       │       └── TrackingInputScreen.tsx
-│       ├── services/
-│       │   ├── adminService.ts
-│       │   ├── audioService.ts
-│       │   ├── authService.ts         ← INTOUCHABLE
-│       │   ├── documentService.ts
-│       │   ├── driverService.ts       ← STABLE INTOUCHABLE
-│       │   ├── i18nService.ts
-│       │   ├── locationService.ts
-│       │   ├── missionService.ts
-│       │   ├── notificationTemplates.ts
-│       │   ├── parcelService.ts
-│       │   ├── pushNotificationService.ts
-│       │   ├── realtimeService.ts
-│       │   ├── reminderService.ts
-│       │   └── walletService.ts       ← modifié session 2.13
-│       ├── types/
-│       │   └── database.ts
-│       └── utils/
-│           └── parcelCalculations.ts
-├── supabase/
-│   ├── config.toml
-│   ├── functions/
-│   │   ├── check-document-reminders/
-│   │   ├── register-push-token/
-│   │   ├── send-push-notification/
-│   │   └── send-tracking-sms/
-│   ├── migrations/
-│   │   ├── 20260220155500_initial_schema.sql
-│   │   ├── 20260221000000_add_rpc_nearby_drivers.sql
-│   │   ├── 20260222000000_add_tracking_functions.sql
-│   │   ├── 20260223000000_add_push_tokens.sql
-│   │   ├── 20260224000000_add_rls_policies.sql
-│   │   ├── 20260225000000_enable_rls_push_tokens.sql
-│   │   ├── 20260226000000_fix_profiles_rls_recursion.sql
-│   │   ├── 20260429000001_allow_null_driver_license_number.sql
-│   │   ├── 20260429000002_allow_null_legal_docs_fields.sql
-│   │   ├── 20260504000001_create_driver_documents_bucket.sql
-│   │   ├── 20260504000002_storage_rls_policies.sql
-│   │   ├── 20260504000003_add_unique_constraint_document_reminders.sql
-│   │   ├── 20260504000004_update_driver_dashboard_view.sql
-│   │   ├── 20260504000005_add_transactions_insert_policy.sql
-│   │   ├── 20260504000006_fix_wallet_update_admin_rls.sql
-│   │   ├── 20260504000007_fix_notifications_insert_rls.sql
-│   │   ├── 20260504000008_fix_notifications_select_admin.sql
-│   │   ├── 20260504000009_create_voice_messages_bucket.sql
-│   │   ├── 20260504000010_voice_messages_storage_rls_policies.sql
-│   │   ├── 20260504000011_configure_cron_document_reminders.sql ← session 2.9
-│   │   ├── 20260504000012_enable_realtime_tables.sql            ← session 2.10
-│   │   ├── 20260504000013_fix_storage_transactions_rls_ownership.sql ← session 2.12
-│   │   └── 20260504000014_rename_revenue_to_recharges_driver_dashboard.sql ← session 2.13
-│   └── rollbacks/
-│       ├── rollback_20260504000013.sql ← session 2.12
-│       └── 20260504000014_rename_revenue_to_recharges_driver_dashboard_rollback.sql ← session 2.13
-├── .env.example
-├── .gitignore
-├── ROADMAP_FTM.md
-└── install_*.sh
+FAST-TRANS-MAROC-FTM/ ├── .github/ │ └── workflows/ │ ├── check_supabase.yml ← INTOUCHABLE │ ├── deploy_supabase.yml ← INTOUCHABLE │ └── lint_code.yml ← INTOUCHABLE ├── docs/ │ ├── SPEC_NATIVELY_P1.md │ ├── SPEC_NATIVELY_P2.md │ ├── SPEC_NATIVELY_P3.md │ ├── SPEC_NATIVELY_P4.md │ ├── SPEC_NATIVELY_P5.md │ ├── SPEC_NATIVELY_P6.md │ └── SPEC_NATIVELY_P7.md ├── frontend/ │ ├── .env │ ├── .env.example │ ├── App.tsx │ ├── package.json ← expo-image-picker ajouté │ ├── package-lock.json │ ├── tsconfig.json │ └── src/ │ ├── components/ │ │ ├── NotificationBell.tsx ← modifié session 2.14 │ │ └── VoiceMicButton.tsx │ ├── constants/ │ │ └── theme.ts ← BORDER_RADIUS ajouté │ ├── lib/ │ │ └── supabaseClient.ts │ ├── navigation/ │ │ └── RootNavigator.tsx ← modifié session 2.14 (NotificationCenter × 3 rôles) │ ├── screens/ │ │ ├── admin/ │ │ │ ├── AdminDashboardScreen.tsx ← modifié session 2.14 │ │ │ ├── AdminMissionsScreen.tsx ← créé session 2.7 │ │ │ ├── AdminUsersScreen.tsx ← créé session 2.7 │ │ │ ├── DocumentReviewScreen.tsx │ │ │ └── WalletManagementScreen.tsx │ │ ├── auth/ │ │ │ ├── OTPVerificationScreen.tsx │ │ │ ├── PhoneInputScreen.tsx │ │ │ └── ProfileSetupScreen.tsx ← INTOUCHABLE │ │ ├── client/ │ │ │ ├── CreateMissionScreen.tsx ← modifié session 2.14 │ │ │ ├── MissionTrackingScreen.tsx │ │ │ └── RatingScreen.tsx │ │ ├── driver/ │ │ │ ├── DocumentStatusScreen.tsx │ │ │ ├── DriverHomeScreen.tsx ← modifié session 2.14 │ │ │ ├── MissionActiveScreen.tsx │ │ │ ├── NewMissionModal.tsx │ │ │ ├── ParcelMissionDetailScreen.tsx │ │ │ ├── TransactionDetailModal.tsx │ │ │ ├── TransactionHistoryScreen.tsx ← modifié session 2.14 │ │ │ ├── WalletDashboardScreen.tsx ← modifié session 2.13 │ │ │ ├── WalletTopupScreen.tsx ← modifié session 2.13 │ │ │ └── onboarding/ │ │ │ ├── DocumentUploadScreen.tsx │ │ │ ├── LegalDocumentsScreen.tsx │ │ │ ├── PendingVerificationScreen.tsx ← modifié sessions 2.13 + 2.14 │ │ │ └── VehicleInfoScreen.tsx │ │ ├── ecommerce/ │ │ │ ├── CreateParcelScreen.tsx │ │ │ ├── ParcelConfirmationScreen.tsx │ │ │ └── ParcelHistoryScreen.tsx │ │ ├── mission/ │ │ │ └── VoiceChatScreen.tsx ← confirmé orphelin, session 2.14 │ │ ├── notifications/ │ │ │ └── NotificationCenterScreen.tsx ← modifié session 2.14 (réécriture complète) │ │ └── tracking/ │ │ ├── TrackingDetailScreen.tsx │ │ └── TrackingInputScreen.tsx │ ├── services/ │ │ ├── adminService.ts │ │ ├── audioService.ts │ │ ├── authService.ts ← INTOUCHABLE │ │ ├── documentService.ts │ │ ├── driverService.ts ← STABLE INTOUCHABLE │ │ ├── i18nService.ts │ │ ├── locationService.ts │ │ ├── missionService.ts ← modifié session 2.14 │ │ ├── notificationTemplates.ts │ │ ├── parcelService.ts │ │ ├── pushNotificationService.ts ← modifié session 2.14 │ │ ├── realtimeService.ts │ │ ├── reminderService.ts │ │ └── walletService.ts ← modifié session 2.13 │ ├── types/ │ │ └── database.ts │ └── utils/ │ └── parcelCalculations.ts ├── supabase/ │ ├── config.toml │ ├── functions/ │ │ ├── check-document-reminders/ │ │ ├── register-push-token/ │ │ ├── send-push-notification/ │ │ └── send-tracking-sms/ │ ├── migrations/ │ │ ├── 20260220155500_initial_schema.sql │ │ ├── 20260221000000_add_rpc_nearby_drivers.sql │ │ ├── 20260222000000_add_tracking_functions.sql │ │ ├── 20260223000000_add_push_tokens.sql │ │ ├── 20260224000000_add_rls_policies.sql │ │ ├── 20260225000000_enable_rls_push_tokens.sql │ │ ├── 20260226000000_fix_profiles_rls_recursion.sql │ │ ├── 20260429000001_allow_null_driver_license_number.sql │ │ ├── 20260429000002_allow_null_legal_docs_fields.sql │ │ ├── 20260504000001_create_driver_documents_bucket.sql │ │ ├── 20260504000002_storage_rls_policies.sql │ │ ├── 20260504000003_add_unique_constraint_document_reminders.sql │ │ ├── 20260504000004_update_driver_dashboard_view.sql │ │ ├── 20260504000005_add_transactions_insert_policy.sql │ │ ├── 20260504000006_fix_wallet_update_admin_rls.sql │ │ ├── 20260504000007_fix_notifications_insert_rls.sql │ │ ├── 20260504000008_fix_notifications_select_admin.sql │ │ ├── 20260504000009_create_voice_messages_bucket.sql │ │ ├── 20260504000010_voice_messages_storage_rls_policies.sql │ │ ├── 20260504000011_configure_cron_document_reminders.sql ← session 2.9 │ │ ├── 20260504000012_enable_realtime_tables.sql ← session 2.10 │ │ ├── 20260504000013_fix_storage_transactions_rls_ownership.sql ← session 2.12 │ │ └── 20260504000014_rename_revenue_to_recharges_driver_dashboard.sql ← session 2.13 │ └── rollbacks/ │ ├── rollback_20260504000013.sql ← session 2.12 │ └── 20260504000014_rename_revenue_to_recharges_driver_dashboard_rollback.sql ← session 2.13 ├── .env.example ├── .gitignore ├── ROADMAP_FTM.md └── install_*.sh
 
----
+14. SERVICES EXTERNES — ÉTAT
 
-## 14. SERVICES EXTERNES — ÉTAT
-Twilio SMS       : ⏳ pas encore configuré
-FCM Android      : ⏳ pas encore configuré
-                   ⚠️ send-push-notification bloquée
-                   par CORS sur web — fonctionnel
-                   sur device physique uniquement
-APNs iOS         : ⏳ pas encore configuré
-Storage buckets  : ✅ driver-documents créé
-                   ✅ RLS ownership chain — session 2.12
-                   ✅ voice-messages créé — session 2.8
-                   ⚠️ voice-messages non testé fonctionnellement
-                   (audioService.ts non intégré UI — item 4.4)
-                   ⚠️ voice-messages RLS toujours permissive —
-                   conception session 2.18, déploiement Phase 4.4
-CRON reminders   : ✅ OPÉRATIONNEL — session 2.9
-                   check-document-reminders — 0 8 * * *
-                   5 exécutions succeeded : 18→22/06/2026
-                   timeout_milliseconds := 30000
-Wallet topup     : ✅ Mécanisme honnête opérationnel —
-                   session 2.13 — requestWalletTopup()
-                   (statut pending, aucune modification
-                   directe du solde par le chauffeur)
+Twilio SMS : ⏳ pas encore configuré FCM Android : ⏳ pas encore configuré ⚠️ send-push-notification bloquée par CORS sur web — fonctionnel sur device physique uniquement ⚠️ Dépendance croisée confirmée session 2.14 : les 4 fonctions notify* mission nouvellement branchées appellent dispatchPushNotification() → push mobile réel non pleinement opérationnel tant que FCM/APNs non configurés (voir Section 6) APNs iOS : ⏳ pas encore configuré Storage buckets : ✅ driver-documents créé ✅ RLS ownership chain — session 2.12 ✅ voice-messages créé — session 2.8 ⚠️ voice-messages non testé fonctionnellement (audioService.ts non intégré UI — item 4.4) ⚠️ voice-messages RLS toujours permissive — conception session 2.18, déploiement Phase 4.4 CRON reminders : ✅ OPÉRATIONNEL — session 2.9 check-document-reminders — 0 8 * * * 5 exécutions succeeded : 18→22/06/2026 timeout_milliseconds := 30000 ⚠️ Lien avec notifyDocumentExpiry (notify* non branchée) non vérifié — session 2.14 Wallet topup : ✅ Mécanisme honnête opérationnel — session 2.13 — requestWalletTopup() (statut pending, aucune modification directe du solde par le chauffeur) Reconfirmé intact après session 2.14 Realtime transactions/notifications : ✅ subscribeToNewTransactions branché — session 2.14 (INSERT uniquement) ✅ NotificationBell/Center montés 3 rôles — session 2.14 ⚠️ Anomalie #1 : bouton retour manquant sur NotificationCenterScreen — voir Section 15
 
----
+15. BUGS RÉSIDUELS
 
-## 15. BUGS RÉSIDUELS
+⚠️ CORS send-push-notification Edge Function bloquée par CORS policy sur web net::ERR_FAILED — non bloquant sur web Fonctionnel sur device physique À corriger pour production
 
-⚠️ CORS send-push-notification
-   Edge Function bloquée par CORS policy sur web
-   net::ERR_FAILED — non bloquant sur web
-   Fonctionnel sur device physique
-   À corriger pour production
+⚠️ Filtres AdminMissionsScreen Affichés ✅ mais aucune mission en base Cause CONFIRMÉE (session 2.8) : pickupCoords=null, géolocalisation bloquée en environnement web/Codespaces → reporté phase 4.x avec TEST 1/2/3
 
-⚠️ Filtres AdminMissionsScreen
-   Affichés ✅ mais aucune mission en base
-   Cause CONFIRMÉE (session 2.8) : pickupCoords=null,
-   géolocalisation bloquée en environnement web/Codespaces
-   → reporté phase 4.x avec TEST 1/2/3
+⚠️ Realtime driver end-to-end Navigation directe DriverHomeScreen ✅ Mais flux avec 2 fenêtres simultanées non testé explicitement
 
-⚠️ Realtime driver end-to-end
-   Navigation directe DriverHomeScreen ✅
-   Mais flux avec 2 fenêtres simultanées
-   non testé explicitement
+⚠️ AdminMissions pagination Non testée — 0 missions en base (même cause que ci-dessus)
 
-⚠️ AdminMissions pagination
-   Non testée — 0 missions en base
-   (même cause que ci-dessus)
+⚠️ voice-messages non testé fonctionnellement (session 2.8) — audioService.ts non intégré UI, voir item 4.4 RLS voice-messages toujours permissive — conception prévue session 2.18, déploiement et test en Phase 4.4
 
-⚠️ voice-messages non testé fonctionnellement
-   (session 2.8) — audioService.ts non intégré UI,
-   voir item 4.4
-   RLS voice-messages toujours permissive — conception
-   prévue session 2.18, déploiement et test en Phase 4.4
+⚠️ DocumentReviewScreen.tsx — rafraîchissement modal (découvert session 2.12) : après validation du 4e/dernier document en attente d'un chauffeur, le modal ne se rafraîchit pas visuellement (reste "En attente") — cause : getPendingDrivers() ne retourne plus ce chauffeur une fois tous documents validés, drivers.find() ne le retrouve donc plus dans la liste rafraîchie par loadDrivers(). Donnée en base correcte (verifiedDrivers bien incrémenté) — bug d'état React côté client, distinct des limitations web déjà documentées (GPS, ancien bug "Suspendre"). Rattaché au traitement secondaire et optionnel de la session 2.13 (décision porteur) — non traité faute de temps — reporté à une session ultérieure, à assigner.
 
-⚠️ DocumentReviewScreen.tsx — rafraîchissement modal
-   (découvert session 2.12) : après validation du 4e/dernier
-   document en attente d'un chauffeur, le modal ne se
-   rafraîchit pas visuellement (reste "En attente") — cause :
-   getPendingDrivers() ne retourne plus ce chauffeur une fois
-   tous documents validés, drivers.find() ne le retrouve donc
-   plus dans la liste rafraîchie par loadDrivers(). Donnée en
-   base correcte (verifiedDrivers bien incrémenté) — bug
-   d'état React côté client, distinct des limitations web
-   déjà documentées (GPS, ancien bug "Suspendre"). Rattaché
-   au traitement secondaire et optionnel de la session 2.13
-   (décision porteur) — non traité faute de temps — reporté
-   à une session ultérieure, à assigner.
+⚠️ Driver test actif (confirmé intact session 2.14) driverId : 2ec2b439-fcdb-443d-8de0-5bee268d30f6 +212600000000 → DRIVER — is_verified : true wallet_id : 58b2b8e7-190a-4cbb-8f09-8340feecf498 wallet_balance réel : 800.00 DH 3 demandes en pending (200/500/1000 DH) — à ne pas valider ni supprimer sans décision explicite (preuve de fonctionnement du correctif RÉSOLU 38)
 
-⚠️ Driver test actif (session 2.13, mis à jour)
-   driverId : 2ec2b439-fcdb-443d-8de0-5bee268d30f6
-   +212600000000 → DRIVER — is_verified : true (passé à
-   true durant la session 2.13, précédemment false depuis
-   sa création en session 2.12)
-   wallet_id : 58b2b8e7-190a-4cbb-8f09-8340feecf498
-   wallet_balance réel : 800.00 DH
-   3 demandes en pending (200/500/1000 DH) — à ne pas
-   valider ni supprimer sans décision explicite (preuve de
-   fonctionnement du correctif RÉSOLU 38)
+⚠️ Dossiers Storage orphelins (session 2.12) driver-documents : 8 dossiers orphelins + 1 actif (2ec2b439-...) = 9 au total Signalé pour information — aucune session de nettoyage planifiée ; à réévaluer si croissance significative ou politique de rétention nécessaire avant production
 
-⚠️ Dossiers Storage orphelins (session 2.12)
-   driver-documents : 8 dossiers orphelins + 1 actif
-   (2ec2b439-...) = 9 au total
-   Signalé pour information — aucune session de nettoyage
-   planifiée ; à réévaluer si croissance significative ou
-   politique de rétention nécessaire avant production
+⚠️ COMPORTEMENT NON EXPLIQUÉ — repr() vs terminal (session 2.9) — statut INCONNU Plusieurs vérifications via repr() affichaient 'CRONjob' collé alors que VS Code montrait 'CRON job' avec espace Hypothèse : décalage entre exécutions successives Cause exacte inconnue Fichier final validé correct par repr() frais et Ctrl+F VS Code Règle : toujours valider avec repr() frais après chaque modification
 
-⚠️ COMPORTEMENT NON EXPLIQUÉ — repr() vs terminal
-   (session 2.9) — statut INCONNU
-   Plusieurs vérifications via repr() affichaient
-   'CRONjob' collé alors que VS Code montrait
-   'CRON job' avec espace
-   Hypothèse : décalage entre exécutions successives
-   Cause exacte inconnue
-   Fichier final validé correct par repr() frais
-   et Ctrl+F VS Code
-   Règle : toujours valider avec repr() frais
-   après chaque modification
+⚠️ Navigation cross-stack PendingVerification → DriverHome navigation.replace('DriverHome') cible écran absent du stack DriverPendingStack Navigation actuelle via onAuthStateChange/initializeApp() — pas via Realtime ⚠️ NON traité en session 2.13 ni 2.14 — distinct du correctif de l'alerte Realtime (RÉSOLU 42, session 2.14) et du bouton "Recharger mon wallet" (RÉSOLU 40, session 2.13). Ce bug de navigation cross-stack reste entier — à traiter, session à assigner
 
-⚠️ Navigation cross-stack PendingVerification → DriverHome
-   navigation.replace('DriverHome') cible écran absent
-   du stack DriverPendingStack
-   Navigation actuelle via onAuthStateChange/initializeApp()
-   — pas via Realtime
-   ⚠️ NON traité en session 2.13 — distinct du bouton
-   "Recharger mon wallet" (route WalletRecharge), lui bien
-   supprimé en 2.13 (voir RÉSOLU 40). Ce bug de navigation
-   cross-stack reste entier — à traiter, session à assigner
+⚠️ NotificationBell — ✅ MONTÉE — session 2.14 (voir Section 6 bloc session 2.14, Volet 3). Ancien item "jamais monté dans l'app" désormais obsolète.
 
-⚠️ NotificationBell — jamais monté dans l'app
-   Composant prêt — NotificationCenter absent
-   de RootNavigator
-   À intégrer — session 2.14
+⚠️ subscribeToNewTransactions — ✅ BRANCHÉ — session 2.14 (voir Section 6 bloc session 2.14, Volet 2). Ancien item "jamais appelé" désormais obsolète. ⚠️ Limitation résiduelle : écoute INSERT uniquement, pas UPDATE — un passage pending → completed ne rafraîchit pas automatiquement TransactionHistoryScreen
 
-⚠️ subscribeToNewTransactions — jamais appelé
-   Défini dans walletService.ts
-   À brancher dans TransactionHistoryScreen
-   À intégrer — session 2.14
+⚠️ TrackingDetailScreen — souscription commentée Manque requête mission_id depuis tracking_number À compléter — session 2.15
 
-⚠️ TrackingDetailScreen — souscription commentée
-   Manque requête mission_id depuis tracking_number
-   À compléter — session 2.15
+⚠️ AdminUsersScreen.tsx — Alert.alert sans Platform.OS (découvert session 2.13) : le correctif de session 2.8 (window.confirm/window.alert) ne comporte aucune distinction Platform.OS — fonctionne sur web mais planterait probablement sur mobile natif (fonctions inexistantes en React Native). Non corrigé (hors périmètre 2.13) — candidat à l'audit Alert.alert proposé (session 2.19)
 
-⚠️ AdminUsersScreen.tsx — Alert.alert sans Platform.OS
-   (découvert session 2.13) : le correctif de session 2.8
-   (window.confirm/window.alert) ne comporte aucune
-   distinction Platform.OS — fonctionne sur web mais
-   planterait probablement sur mobile natif (fonctions
-   inexistantes en React Native). Non corrigé (hors
-   périmètre 2.13) — candidat à l'audit Alert.alert
-   proposé (session 2.19)
+⚠️ WalletTopupScreen.tsx ligne 66 — message d'erreur non vérifié (découvert session 2.13) : probablement affecté par le même mécanisme Alert.alert/web que la ligne 70 (corrigée, RÉSOLU 41), mais non confirmé par test direct. Laissé inchangé (Option A) — candidat à l'audit Alert.alert proposé (session 2.19)
 
-⚠️ WalletTopupScreen.tsx ligne 66 — message d'erreur
-   non vérifié (découvert session 2.13) : probablement
-   affecté par le même mécanisme Alert.alert/web que la
-   ligne 70 (corrigée, RÉSOLU 41), mais non confirmé par
-   test direct. Laissé inchangé (Option A) — candidat à
-   l'audit Alert.alert proposé (session 2.19)
+⚠️ Coexistence total_commissions / commissions_current_month (découvert session 2.13) : deux mécanismes de calcul non harmonisés sur WalletDashboardScreen.tsx (cumul stocké vs calcul mensuel à la volée) — pas confirmé comme un bug, risque de confusion pour un chauffeur avec historique multi-mois, non observable avec le driver test actuel (aucune mission complétée). À surveiller lors du chantier de refonte du reporting financier (voir Section 17)
 
-⚠️ Alerte Realtime de validation non observée
-   (découvert session 2.13) : PendingVerificationScreen.tsx
-   contient un abonnement Realtime censé afficher une alerte
-   de validation de dossier et rediriger automatiquement vers
-   DriverHome dès que is_verified passe à true — ne s'est pas
-   déclenché de façon visible lors des tests session 2.13.
-   Deux hypothèses non départagées (alerte affichée puis
-   fermée trop vite, ou dysfonctionnement réel). À vérifier
-   en priorité — session 2.14
+⚠️ Risque de pagination totalCredit/totalDebit (découvert session 2.13) : TransactionHistoryScreen.tsx — calcul limité aux transactions chargées en mémoire (pagination 20/page), sans filtre de mois — pourrait ne représenter qu'une fraction de l'historique réel pour un chauffeur à activité prolongée. À surveiller lors du chantier de refonte du reporting financier (voir Section 17)
 
-⚠️ Coexistence total_commissions / commissions_current_month
-   (découvert session 2.13) : deux mécanismes de calcul non
-   harmonisés sur WalletDashboardScreen.tsx (cumul stocké vs
-   calcul mensuel à la volée) — pas confirmé comme un bug,
-   risque de confusion pour un chauffeur avec historique
-   multi-mois, non observable avec le driver test actuel
-   (aucune mission complétée). À surveiller lors du chantier
-   de refonte du reporting financier (voir Section 17)
+⚠️ Anomalie #1 — Absence de bouton "← Retour" sur NotificationCenterScreen.tsx (découvert session 2.14) : composant partagé entre les 3 rôles, oubli de convention (window.history.back() non fiable sur web, convention du projet = bouton explicite). Non bloquant (composant navigable autrement) — à corriger avant Phase 3, candidat à l'audit session 2.19 (portée élargie, voir Section 17)
 
-⚠️ Risque de pagination totalCredit/totalDebit
-   (découvert session 2.13) : TransactionHistoryScreen.tsx —
-   calcul limité aux transactions chargées en mémoire
-   (pagination 20/page), sans filtre de mois — pourrait ne
-   représenter qu'une fraction de l'historique réel pour un
-   chauffeur à activité prolongée. À surveiller lors du
-   chantier de refonte du reporting financier (voir Section 17)
+⚠️ 4 fonctions notify* mission non testées fonctionnellement (découvert session 2.14) : notifyMissionStarted, notifyMissionAccepted, notifyMissionCompleted, notifyMissionCancelled — branchées mais jamais exercées en conditions réelles (contrainte numéro de test partagé, aucun parcours de mission complet réalisable sans sacrifier l'identité driver test). Nécessite un second numéro de test dédié au rôle client — voir Section 17
 
----
+⚠️ Cloche NotificationBell côté Client non testée (découvert session 2.14) : montée dans CreateMissionScreen mais jamais vérifiée en conditions réelles, même isolément — reportée avec le test du Volet 4 pour la même raison de contrainte du numéro partagé
 
-## 16. TESTS DE NON-RÉGRESSION
+⚠️ Chemin natif (hors web) non testé — Alert.alert/ Platform.OS (découvert session 2.14) : le correctif RÉSOLU 42 (PendingVerificationScreen.tsx) n'a pu être testé que sur web — le chemin Alert.alert() natif (bouton "Commencer") reste non vérifié, environnement de développement limité au web (Codespaces) — à vérifier en Phase 4 (device physique)
 
-EFFECTUÉS ET CONFIRMÉS ✅ — SESSION 2.7 :
-AUTH CLIENT  +212600000000 → CreateMissionScreen  ✅
-AUTH ADMIN   +212600000001 → AdminDashboardScreen ✅
-AUTH DRIVER  +212600000000 → DriverHomeScreen     ✅
-             Solde wallet : 200 DH ✅
+⚠️ Point de sécurité cancelMission/userId (découvert session 2.11, renommage _userId → userId en session 2.14 sans traitement de la logique d'autorisation) : aucune vérification que l'appelant de cancelMission() est bien client_id ou driver_id de la mission annulée — rattaché à la session 2.17 (décision actée par le porteur en session 2.14)
 
-ÉCRANS ADMIN TESTÉS ✅ :
-Documents en attente  → DocumentReviewScreen  ✅
-                         Validation 4 docs ✅
-                         Driver fully verified ✅
-Toutes les missions   → AdminMissionsScreen   ✅
-                         6 filtres sans erreur ✅
-Gestion utilisateurs  → AdminUsersScreen      ✅
-                         Driver visible ✅
-Wallets & Transactions → WalletManagementScreen ✅
-                         adminTopupDriverWallet ✅
-                         balanceBefore: 0
-                         balanceAfter: 200 DH ✅
+⚠️ notifyDocumentExpiry — en attente (découvert session 2.14) : lien avec l'Edge Function check-document-reminders non vérifié — voir annexe Section 18 pour le contexte du tri des fonctions notify*
 
-TESTS PARTIELS — CONFIRMÉS SUR WEB ✅ :
-CreateMissionScreen :
-  Formulaire affiché ✅
-  Champs remplissables ✅
-  Véhicule sélectionnable ✅
-  Commission calculée ✅
-  Toggle manutention ✅
+⚠️ Bug de reconnexion clientProfileId vide (découvert session 2.14, RootNavigator.tsx) : découverte annexe, hors périmètre de la session 2.14 — à documenter pour une session future non encore assignée
 
-TESTS REPORTÉS — Session 4.x ⏳ :
-  (nécessitent GPS + device physique)
-TEST 1 — Bouton "Trouver un chauffeur"
-TEST 2 — MissionTrackingScreen
-TEST 3 — RatingScreen
-⚠️ Ces 3 tests forment une chaîne indissociable
-⚠️ Session 2.8 : TEST 1 — cause CONFIRMÉE par logs directs
-   [FTM-DEBUG] GPS - Client location permission denied
-   Bouton désactivé tant que pickupCoords===null
-   Persiste même après changement permission navigateur
-   → limitation environnement Codespaces/iframe confirmée
+⚠️ Robustesse topupWallet/refundWallet (découvert session 2.14, préexistant) : échec silencieux possible de l'insertion de la transaction après UPDATE du solde — à documenter et vérifier lors de la lecture directe prévue en tout début de session 2.17
 
-TESTS EFFECTUÉS ET CONFIRMÉS ✅ — SESSION 2.8 :
-AdminUsersScreen — bouton Suspendre/Activer :
-  "Annuler" ×2 → aucune action ✅
-  "Suspendre"+OK → badge "Suspendu" ✅
-  "Activer"+OK → badge "Actif" ✅
-CreateMissionScreen — formulaire complet rempli
-  et fonctionnel ✅ (bouton soumission bloqué par
-  limitation GPS — voir ci-dessus)
+⚠️ VoiceChatScreen.tsx orphelin + dossier ecommerce/ (découvert session 2.14) : composant de messages vocaux jamais monté dans aucun navigator, dossier ecommerce/ (ParcelConfirmationScreen.tsx, parcelService.ts, ParcelMissionDetailScreen.tsx) non exploré en profondeur — pertinents pour la Piste 3 de l'annexe Section 18 (communication texte sécurisée)
 
-TESTS EFFECTUÉS ET CONFIRMÉS ✅ — SESSION 2.9 :
-Edge Function check-document-reminders :
-  Appel via bouton "Test" Dashboard ✅
-  {sent: 3, errors: 0} ✅
-  Flags reminder_30/15/7_days_sent → true ✅
-  3 notifications document_expiry créées ✅
-CRON job jobid=2 :
-  5 exécutions succeeded : 18→22/06/2026 ✅
-  active = true, timeout_milliseconds := 30000 ✅
-net.http_post avec bonne clé Vault :
-  status_code = 200, timed_out = false ✅
-Driver onboarding complet :
-  +212600000000 → 4 pages onboarding ✅
-  Validation admin → is_verified = true ✅
-  document_reminders créées automatiquement ✅
+16. TESTS DE NON-RÉGRESSION
 
-TESTS EFFECTUÉS ET CONFIRMÉS ✅ — SESSION 2.10 :
-Migration 20260504000012 déployée ✅
-5 tables supabase_realtime activées ✅
-WalletDashboardScreen — SUBSCRIBED confirmé
-  en console DevTools ✅
-Flux onboarding driver complet — 4 pages ✅
-Flux validation admin via DocumentReviewScreen ✅
-DriverHomeScreen direct si is_verified=true
-  via initializeApp() ✅
-Solde wallet 200 DH affiché après recharge admin ✅
-Non-régression driver ✅
-Non-régression admin ✅
-CORS send-push-notification — comportement
-  attendu — non bloquant ✅
+EFFECTUÉS ET CONFIRMÉS ✅ — SESSION 2.7 : AUTH CLIENT +212600000000 → CreateMissionScreen ✅ AUTH ADMIN +212600000001 → AdminDashboardScreen ✅ AUTH DRIVER +212600000000 → DriverHomeScreen ✅ Solde wallet : 200 DH ✅
 
-TESTS PROBABLES ⏳ — non observés directement (session 2.10) :
-PendingVerificationScreen — navigation automatique
-  via Realtime drivers
-  → nécessite 2 fenêtres ou device physique
-WalletDashboardScreen — mise à jour solde
-  en temps réel
-  → nécessite 2 fenêtres ou device physique
+ÉCRANS ADMIN TESTÉS ✅ : Documents en attente → DocumentReviewScreen ✅ Validation 4 docs ✅ Driver fully verified ✅ Toutes les missions → AdminMissionsScreen ✅ 6 filtres sans erreur ✅ Gestion utilisateurs → AdminUsersScreen ✅ Driver visible ✅ Wallets & Transactions → WalletManagementScreen ✅ adminTopupDriverWallet ✅ balanceBefore: 0 balanceAfter: 200 DH ✅
 
-TESTS NON TESTABLES — limitation web/GPS (session 2.10) :
-DriverHomeScreen — réception nouvelles missions
-  → GPS bloqué Codespaces
-MissionTrackingScreen — suivi mission temps réel
-  → nécessite mission active + GPS
+TESTS PARTIELS — CONFIRMÉS SUR WEB ✅ : CreateMissionScreen : Formulaire affiché ✅ Champs remplissables ✅ Véhicule sélectionnable ✅ Commission calculée ✅ Toggle manutention ✅
 
-TESTS EFFECTUÉS ET CONFIRMÉS ✅ — SESSION 2.12 :
-DRIVER — création profil, upload 4 documents (INSERT),
-  ré-upload d'un document existant (UPDATE/upsert) ✅
-ADMIN — dashboard, validation des 4 documents ✅
-Accès croisé Storage (fetch() vers dossier orphelin
-  d'un autre chauffeur, doit échouer) → STATUS 400 ✅
-CLIENT — connexion basique, navigation "Nouvelle
-  mission" ✅
-transactions_insert_own — insertion légitime
-  (wallet_id propre) → STATUS 201 ✅
-transactions_insert_own — insertion illégitime
-  (wallet_id fictif) → STATUS 403, code 42501 ✅
-Aucune régression détectée ✅
+TESTS REPORTÉS — Session 4.x ⏳ : (nécessitent GPS + device physique) TEST 1 — Bouton "Trouver un chauffeur" TEST 2 — MissionTrackingScreen TEST 3 — RatingScreen ⚠️ Ces 3 tests forment une chaîne indissociable ⚠️ Session 2.8 : TEST 1 — cause CONFIRMÉE par logs directs [FTM-DEBUG] GPS - Client location permission denied Bouton désactivé tant que pickupCoords===null Persiste même après changement permission navigateur → limitation environnement Codespaces/iframe confirmée
 
-TESTS EFFECTUÉS ET CONFIRMÉS ✅ — SESSION 2.13 :
-DRIVER — Test 1 : recharges_current_month vérifié via
-  requête SQL directe sur driver_dashboard → 300 DH ✅
-DRIVER — Test 2 : demande de recharge 500 DH → transaction
-  pending insérée, solde inchangé (300 DH) ✅
-DRIVER — Test 3 : demande de recharge 1000 DH après
-  correctif Alert.alert → boîte de dialogue affichée,
-  navigation de retour fonctionnelle, transaction pending
-  confirmée en base (800.00 → 800.00) ✅
-ADMIN — adminTopupDriverWallet (500 DH) → solde 300→800 DH,
-  updated_at mis à jour, logs cohérents ✅ Aucune
-  régression confirmée
-driver_dashboard — recherche exhaustive des usages
-  (grep) : un seul point d'accès confirmé
-  (WalletDashboardScreen.tsx via getDriverDashboard()) ✅
+TESTS EFFECTUÉS ET CONFIRMÉS ✅ — SESSION 2.8 : AdminUsersScreen — bouton Suspendre/Activer : "Annuler" ×2 → aucune action ✅ "Suspendre"+OK → badge "Suspendu" ✅ "Activer"+OK → badge "Actif" ✅ CreateMissionScreen — formulaire complet rempli et fonctionnel ✅ (bouton soumission bloqué par limitation GPS — voir ci-dessus)
 
-TEST NON EFFECTUÉ — SESSION 2.13 :
-CLIENT — non testé, justification : rotation du numéro
-  partagé +212600000000 aurait détruit l'état du driver
-  test (wallet 800 DH, historique constitué) ; aucune
-  modification de cette session ne touche au parcours
-  client — risque jugé disproportionné par rapport au
-  bénéfice d'un simple test de connexion basique
+TESTS EFFECTUÉS ET CONFIRMÉS ✅ — SESSION 2.9 : Edge Function check-document-reminders : Appel via bouton "Test" Dashboard ✅ {sent: 3, errors: 0} ✅ Flags reminder_30/15/7_days_sent → true ✅ 3 notifications document_expiry créées ✅ CRON job jobid=2 : 5 exécutions succeeded : 18→22/06/2026 ✅ active = true, timeout_milliseconds := 30000 ✅ net.http_post avec bonne clé Vault : status_code = 200, timed_out = false ✅ Driver onboarding complet : +212600000000 → 4 pages onboarding ✅ Validation admin → is_verified = true ✅ document_reminders créées automatiquement ✅
 
----
+TESTS EFFECTUÉS ET CONFIRMÉS ✅ — SESSION 2.10 : Migration 20260504000012 déployée ✅ 5 tables supabase_realtime activées ✅ WalletDashboardScreen — SUBSCRIBED confirmé en console DevTools ✅ Flux onboarding driver complet — 4 pages ✅ Flux validation admin via DocumentReviewScreen ✅ DriverHomeScreen direct si is_verified=true via initializeApp() ✅ Solde wallet 200 DH affiché après recharge admin ✅ Non-régression driver ✅ Non-régression admin ✅ CORS send-push-notification — comportement attendu — non bloquant ✅
 
-## 17. ÉTAPES RESTANTES
+TESTS PROBABLES ⏳ — non observés directement (session 2.10) : PendingVerificationScreen — navigation automatique via Realtime drivers → nécessite 2 fenêtres ou device physique WalletDashboardScreen — mise à jour solde en temps réel → nécessite 2 fenêtres ou device physique
 
-PHASE 2 — TESTS & DEBUGGING
-2.1  ✅ OTP sans Twilio résolu
-2.2  ✅ Page blanche web résolue
-2.3  ✅ Auth client et admin confirmés
-2.4  ✅ Flux driver testé bout en bout
-2.5  ✅ Bugs corrigés + écrans client
-2.6  ✅ Tests écrans driver réalisés
-2.7  ✅ COMPLET — Tests écrans admin
-     → BUG A wallet RLS corrigé ✅ (d420007)
-     → SIGNED_IN loop admin corrigé ✅ (6ee89b1)
-     → Navigation admin 4 menus corrigée ✅ (4ff3499)
-     → 403 notifications corrigé ✅ (2351bf3 + 445bdcb)
-     → AdminMissions + AdminUsers créés ✅ (626e851)
-     → Enum mission_status corrigé ✅ (750db88)
-     → adminTopupDriverWallet confirmé ✅
-     → Non-régression CLIENT + DRIVER + ADMIN ✅
-     → BUG 4 INFIRMÉ ✅
-2.8  ✅ COMPLET — Bugs résiduels session 2.7
-     → Bug "Suspendre" AdminUsers corrigé et testé ✅
-       (Alert.alert → window.confirm, commit aed0bee)
-     → Bucket voice-messages créé + RLS ✅ (commit 5ee383e)
-     → Test AdminMissions avec missions réelles : cause
-       GPS confirmée par logs, reporté phase 4.x ✅
-     → Point sécurité 6.6 identifié (RLS Storage permissif)
-     → Driver test supprimé (cascade, test client) —
-       voir §2 procédure recréation
-2.9  ✅ COMPLET — CRON reminders opérationnel
-     → Extensions pg_cron 1.6.4 + pg_net 0.19.5 activées ✅
-     → Secret Vault supabase_service_role_key corrigé ✅
-       (244 → 219 caractères, ordre args vault.create_secret)
-     → CRON job jobid=2, 0 8 * * *, active=true ✅
-       timeout_milliseconds := 30000
-     → Migration 20260504000011 déployée ✅ (commit 34b32c1)
-     → 5 exécutions succeeded confirmées (18→22/06/2026) ✅
-     → Driver test recréé 29849a0a-... is_verified=true ✅
-     → Base nettoyée (reminders + notifications test) ✅
-2.10 ✅ COMPLET — Realtime tables activé
-     → Migration 20260504000012 déployée ✅ (commit b65eb9d)
-     → 5 tables activées : drivers, missions,
-       wallet, transactions, notifications ✅
-     → WalletDashboardScreen SUBSCRIBED ✅
-     → Constats identifiés : navigation cross-stack,
-       revenue_current_month, NotificationBell,
-       subscribeToNewTransactions,
-       TrackingDetailScreen ⚠️
-     → Non-régression CLIENT + DRIVER + ADMIN ✅
-2.11 ✅ COMPLET — Planification sessions complémentaires
-     → 11 points investigués en profondeur, fiches validées
-     → Sessions 2.12 à 2.17 planifiées avec objectif précis
-     → Découverte sécurité RLS transactions_insert_own
-       ajoutée au périmètre 2.12
-2.12 ✅ COMPLET — RLS Storage (driver-documents) +
-     transactions_insert_own
-     → Migration 20260504000013 déployée ✅ (commit 67e9e65)
-     → Ownership chain Storage : STATUS 400 sur accès
-       croisé confirmé ✅
-     → Ownership chain transactions : STATUS 201 (légitime)
-       + STATUS 403 (illégitime) confirmés ✅
-     → Fichier de rollback créé (supabase/rollbacks/) ✅
-     → voice-messages exclu du périmètre — session 2.18
-       décidée pour sa conception RLS
-     → Anomalie mineure découverte : DocumentReviewScreen.tsx
-       rafraîchissement modal — rattachée au traitement
-       secondaire de la session 2.13 (décision porteur)
-     → Dossiers orphelins Storage signalés (9 au total) —
-       aucun nettoyage planifié
-     → Non-régression CLIENT + DRIVER + ADMIN ✅
-2.13 ✅ COMPLET — Cause racine RLS wallet + mécanisme de
-     recharge honnête + correction nommage dashboard +
-     correction navigation cassée
-     → Fonction requestWalletTopup() créée (statut pending,
-       aucune modification directe du solde par le
-       chauffeur) ✅ (commit 2e76429) — voir RÉSOLU 38
-     → revenue_current_month → recharges_current_month
-       (vue + code + libellé UI) ✅ (migration 20260504000014,
-       commit 2e76429) — voir RÉSOLU 39
-     → Bouton navigation cassé "Recharger mon wallet"
-       (route WalletRecharge inexistante) supprimé ✅
-       (commit 2e76429) — voir RÉSOLU 40
-     → Bug Alert.alert/web (WalletTopupScreen ligne 70)
-       corrigé ✅ (commit 480130d) — voir RÉSOLU 41
-     → 3 tests DRIVER + 1 test ADMIN confirmés, aucune
-       régression détectée ✅
-     → Volet CLIENT non testé (justifié, risque
-       disproportionné)
-     → Bug DocumentReviewScreen.tsx (session 2.12) : rattaché
-       au traitement secondaire de cette session (décision
-       porteur) — non traité faute de temps, reporté à une
-       session ultérieure à assigner
-     → Découvertes annexes documentées : AdminUsersScreen
-       Platform.OS, WalletTopupScreen ligne 66, alerte
-       Realtime non observée, coexistence
-       total_commissions/commissions_current_month, risque
-       pagination TransactionHistoryScreen
-     → Vigilances transmises à la session 2.17 (fondation
-       requestWalletTopup, refundWallet() non vérifiée,
-       champ note temporaire, notification admin temps réel,
-       clarification métier commission/paiement hors-app)
+TESTS NON TESTABLES — limitation web/GPS (session 2.10) : DriverHomeScreen — réception nouvelles missions → GPS bloqué Codespaces MissionTrackingScreen — suivi mission temps réel → nécessite mission active + GPS
 
-PHASE 3 — SERVICES EXTERNES
-3.1 ⏳ Twilio SMS
-3.2 ⏳ FCM Android
-3.3 ⏳ APNs iOS
+TESTS EFFECTUÉS ET CONFIRMÉS ✅ — SESSION 2.12 : DRIVER — création profil, upload 4 documents (INSERT), ré-upload d'un document existant (UPDATE/upsert) ✅ ADMIN — dashboard, validation des 4 documents ✅ Accès croisé Storage (fetch() vers dossier orphelin d'un autre chauffeur, doit échouer) → STATUS 400 ✅ CLIENT — connexion basique, navigation "Nouvelle mission" ✅ transactions_insert_own — insertion légitime (wallet_id propre) → STATUS 201 ✅ transactions_insert_own — insertion illégitime (wallet_id fictif) → STATUS 403, code 42501 ✅ Aucune régression détectée ✅
 
-PHASE 4 — TESTS DEVICE PHYSIQUE
-4.1 ⏳ Tests Expo Go Android
-4.2 ⏳ Tests Expo Go iOS
-4.3 ⏳ Tests utilisateurs réels
-4.4 ⏳ Intégrer messages vocaux dans MissionTrackingScreen
-    (audioService.ts + bucket voice-messages prêts —
-    session 2.8) — UI à construire : bouton enregistrement,
-    liste lecture — à traiter avec TEST 2 (nécessite
-    device physique + mission active)
-    → Inclut également le déploiement ET le test immédiat
-    de la clause RLS voice-messages conçue en session 2.18
+TESTS EFFECTUÉS ET CONFIRMÉS ✅ — SESSION 2.13 : DRIVER — Test 1 : recharges_current_month vérifié via requête SQL directe sur driver_dashboard → 300 DH ✅ DRIVER — Test 2 : demande de recharge 500 DH → transaction pending insérée, solde inchangé (300 DH) ✅ DRIVER — Test 3 : demande de recharge 1000 DH après correctif Alert.alert → boîte de dialogue affichée, navigation de retour fonctionnelle, transaction pending confirmée en base (800.00 → 800.00) ✅ ADMIN — adminTopupDriverWallet (500 DH) → solde 300→800 DH, updated_at mis à jour, logs cohérents ✅ Aucune régression confirmée driver_dashboard — recherche exhaustive des usages (grep) : un seul point d'accès confirmé (WalletDashboardScreen.tsx via getDriverDashboard()) ✅
 
-PHASE 5 — BUILD EAS
-5.1 ⏳ Configurer app.json + eas.json
-5.2 ⏳ Build Android (.aab)
-5.3 ⏳ Build iOS (.ipa)
-⏳ Environnement de staging à évaluer avant cette phase
-    (proposé session 2.13) — distinct de main/production,
-    pour absorber le risque de manipulation directe sur
-    l'environnement réel (second projet Supabase, branche
-    Git dédiée, discipline de synchronisation) — décision et
-    calendrier à trancher par le porteur, non déclenché dans
-    l'immédiat
+TEST NON EFFECTUÉ — SESSION 2.13 : CLIENT — non testé, justification : rotation du numéro partagé +212600000000 aurait détruit l'état du driver test (wallet 800 DH, historique constitué) ; aucune modification de cette session ne touche au parcours client — risque jugé disproportionné par rapport au bénéfice d'un simple test de connexion basique
 
-PHASE 6 — AMÉLIORATIONS POST-TESTS
-6.1 ⏳ Modes de paiement multiples wallet
-    REPRIS PAR ANTICIPATION — voir session 2.17
-6.2 ⏳ Workflow validation recharge admin
-    chauffeur soumet demande + pièce justificative
-    admin valide — solde crédité après validation
-    REPRIS PAR ANTICIPATION — voir session 2.17
-    ✅ Fondation posée session 2.13 (demande pending)
-6.3 ⏳ Remboursements — flux dédié
-    REPRIS PAR ANTICIPATION — voir session 2.17
-6.4 ⏳ Bouton déconnexion CLIENT + DRIVER + ADMIN
-    REPRIS PAR ANTICIPATION — voir session 2.16
-6.5 ✅/⏳ Refonte WalletTopupScreen
-    Partie 1 (statut pending honnête) ✅ traitée
-    session 2.13 (commits 2e76429 + 480130d)
-    Partie 2 (upload justificatif, écran admin dédié)
-    REPRIS PAR ANTICIPATION — voir session 2.17
-6.6 ✅/⏳ SÉCURITÉ — Renforcer RLS Storage
-    driver-documents ✅ traité session 2.12 (commit 67e9e65)
-    voice-messages ⏳ conception session 2.18, déploiement
-    et test en Phase 4.4
+TESTS EFFECTUÉS ET CONFIRMÉS ✅ — SESSION 2.14 : DRIVER — connexion +212600000000, cloche affichée avec badge "6", logs Push - Fetching/Subscribing/Fetched notifications confirmés ✅ DRIVER — NotificationCenterScreen : 5 notifications historiques affichées, cohérence total: 6, unread: 6 ✅ DRIVER — wallet 800 DH + 3 transactions pending confirmés intacts après cycle déconnexion/reconnexion complet (localStorage.clear()) ✅ DRIVER — TransactionHistoryScreen : 3 pending (200/500/1000 DH) visibles et intacts, count: 7, totalCount: 7 ✅ DRIVER — log "Wallet - Subscribing to new transactions" confirmé au montage de l'écran (Volet 2 en conditions réelles) ✅ ADMIN — connexion +212600000001, cloche affichée sans badge (total: 0, unread: 0) ✅ ADMIN — NotificationCenterScreen affiche état vide ("Aucune notification") ✅ Vérification différée : git fetch + comparaison HEAD..origin/main → absence de changement distant confirmée avant déploiement ✅ Aucune régression détectée sur les volets testés (Driver, Admin) ✅
 
-PHASE 7 — PUBLICATION
-7.1 ⏳ Google Play Store (25$)
-7.2 ⏳ Apple App Store (99$/an)
+TESTS NON EFFECTUÉS — SESSION 2.14 (justifiés, contrainte numéro de test partagé) : CLIENT — aucun test effectué (ni cloche isolée, ni parcours complet) : le seul numéro de test disponible (+212600000000) doit rester occupé par le driver test à préserver ; le test isolé de la cloche avait été identifié comme faisable, mais renoncé sur décision finale du porteur, reporté avec le test du Volet 4 VOLET 4 (4 fonctions notify* mission) — non testé : impossible de tester un parcours de mission complet (création client → acceptation/démarrage/complétion driver) sans sacrifier l'accès à l'identité driver test constituée → Nécessite un second numéro de test dédié au rôle client (recommandation transmise, voir Section 17)
 
----
+17. ÉTAPES RESTANTES
 
-### RECOMMANDATIONS STRATÉGIQUES EN ATTENTE D'ARBITRAGE PORTEUR
-(issues de la session 2.13, non déclenchées dans l'immédiat)
+PHASE 2 — TESTS & DEBUGGING 2.1 ✅ OTP sans Twilio résolu 2.2 ✅ Page blanche web résolue 2.3 ✅ Auth client et admin confirmés 2.4 ✅ Flux driver testé bout en bout 2.5 ✅ Bugs corrigés + écrans client 2.6 ✅ Tests écrans driver réalisés 2.7 ✅ COMPLET — Tests écrans admin → BUG A wallet RLS corrigé ✅ (d420007) → SIGNED_IN loop admin corrigé ✅ (6ee89b1) → Navigation admin 4 menus corrigée ✅ (4ff3499) → 403 notifications corrigé ✅ (2351bf3 + 445bdcb) → AdminMissions + AdminUsers créés ✅ (626e851) → Enum mission_status corrigé ✅ (750db88) → adminTopupDriverWallet confirmé ✅ → Non-régression CLIENT + DRIVER + ADMIN ✅ → BUG 4 INFIRMÉ ✅ 2.8 ✅ COMPLET — Bugs résiduels session 2.7 → Bug "Suspendre" AdminUsers corrigé et testé ✅ (Alert.alert → window.confirm, commit aed0bee) → Bucket voice-messages créé + RLS ✅ (commit 5ee383e) → Test AdminMissions avec missions réelles : cause GPS confirmée par logs, reporté phase 4.x ✅ → Point sécurité 6.6 identifié (RLS Storage permissif) → Driver test supprimé (cascade, test client) — voir §2 procédure recréation 2.9 ✅ COMPLET — CRON reminders opérationnel → Extensions pg_cron 1.6.4 + pg_net 0.19.5 activées ✅ → Secret Vault supabase_service_role_key corrigé ✅ (244 → 219 caractères, ordre args vault.create_secret) → CRON job jobid=2, 0 8 * * , active=true ✅ timeout_milliseconds := 30000 → Migration 20260504000011 déployée ✅ (commit 34b32c1) → 5 exécutions succeeded confirmées (18→22/06/2026) ✅ → Driver test recréé 29849a0a-... is_verified=true ✅ → Base nettoyée (reminders + notifications test) ✅ 2.10 ✅ COMPLET — Realtime tables activé → Migration 20260504000012 déployée ✅ (commit b65eb9d) → 5 tables activées : drivers, missions, wallet, transactions, notifications ✅ → WalletDashboardScreen SUBSCRIBED ✅ → Constats identifiés : navigation cross-stack, revenue_current_month, NotificationBell, subscribeToNewTransactions, TrackingDetailScreen ⚠️ → Non-régression CLIENT + DRIVER + ADMIN ✅ 2.11 ✅ COMPLET — Planification sessions complémentaires → 11 points investigués en profondeur, fiches validées → Sessions 2.12 à 2.17 planifiées avec objectif précis → Découverte sécurité RLS transactions_insert_own ajoutée au périmètre 2.12 2.12 ✅ COMPLET — RLS Storage (driver-documents) + transactions_insert_own → Migration 20260504000013 déployée ✅ (commit 67e9e65) → Ownership chain Storage : STATUS 400 sur accès croisé confirmé ✅ → Ownership chain transactions : STATUS 201 (légitime) + STATUS 403 (illégitime) confirmés ✅ → Fichier de rollback créé (supabase/rollbacks/) ✅ → voice-messages exclu du périmètre — session 2.18 décidée pour sa conception RLS → Anomalie mineure découverte : DocumentReviewScreen.tsx rafraîchissement modal — rattachée au traitement secondaire de la session 2.13 (décision porteur) → Dossiers orphelins Storage signalés (9 au total) — aucun nettoyage planifié → Non-régression CLIENT + DRIVER + ADMIN ✅ 2.13 ✅ COMPLET — Cause racine RLS wallet + mécanisme de recharge honnête + correction nommage dashboard + correction navigation cassée → Fonction requestWalletTopup() créée (statut pending, aucune modification directe du solde par le chauffeur) ✅ (commit 2e76429) — voir RÉSOLU 38 → revenue_current_month → recharges_current_month (vue + code + libellé UI) ✅ (migration 20260504000014, commit 2e76429) — voir RÉSOLU 39 → Bouton navigation cassé "Recharger mon wallet" (route WalletRecharge inexistante) supprimé ✅ (commit 2e76429) — voir RÉSOLU 40 → Bug Alert.alert/web (WalletTopupScreen ligne 70) corrigé ✅ (commit 480130d) — voir RÉSOLU 41 → 3 tests DRIVER + 1 test ADMIN confirmés, aucune régression détectée ✅ → Volet CLIENT non testé (justifié, risque disproportionné) → Bug DocumentReviewScreen.tsx (session 2.12) : rattaché au traitement secondaire de cette session (décision porteur) — non traité faute de temps, reporté à une session ultérieure à assigner → Découvertes annexes documentées : AdminUsersScreen Platform.OS, WalletTopupScreen ligne 66, alerte Realtime non observée, coexistence total_commissions/commissions_current_month, risque pagination TransactionHistoryScreen → Vigilances transmises à la session 2.17 (fondation requestWalletTopup, refundWallet() non vérifiée, champ note temporaire, notification admin temps réel, clarification métier commission/paiement hors-app) 2.14 ✅ COMPLET (avec réserves) — Realtime transactions + Notification Center + branchement notify mission → Alerte Realtime PendingVerificationScreen corrigée ✅ (commit afba878) — voir RÉSOLU 42 — ⚠️ chemin natif non testé → subscribeToNewTransactions branché ✅ — écoute INSERT uniquement, limitation UPDATE documentée → NotificationBell/NotificationCenterScreen montés sur les 3 rôles ✅ — Driver et Admin testés et validés, ⚠️ Client non testé (contrainte numéro partagé) → 4 fonctions notify* mission branchées (notifyMissionStarted/Accepted/Completed/Cancelled) ✅ — ⚠️ non testées fonctionnellement (même contrainte) → 9 fonctions notify* recensées au total (2 préexistantes + 4 nouvelles + 3 non retenues : notifyNewMission incompatible structurellement, notifyDocumentExpiry en attente, notifyWalletLowBalance sans déclencheur) → Incident bash (!) diagnostiqué et résolu (heredoc quoté) — règle consolidée en Section 2 → Anomalie #1 découverte : bouton "← Retour" absent de NotificationCenterScreen.tsx — non bloquant, reporté → Driver test reconfirmé intact (wallet 800 DH, 3 pending, badge cohérent 6/6) après cycle déconnexion/reconnexion ✅ → Aucune migration SQL — session purement applicative → Découvertes annexes documentées : clientProfileId vide, robustesse topupWallet/refundWallet, VoiceChatScreen orphelin, dossier ecommerce/ → Annexe complète "Investigation processus de création de mission" produite avec l'Assistant Général FTM — voir Section 18 2.14 bis ⏳ Lecture, investigation et planification de l'amélioration du processus de création de mission (positionnée entre 2.14 et 2.15, sur décision du porteur). Session sans implémentation : à partir du processus actuel documenté en annexe (Section 18) et des 4 pistes identifiées (diffusion optimisée, planification date/ heure, communication texte sécurisée, négociation de prix structurée), examen détaillé de chaque piste, avec possibilité de compléter/enrichir l'état des lieux si l'investigation le justifie. Livrable attendu : pas de code — une vision cohérente du processus amélioré et un découpage proposé en une ou plusieurs sessions ultérieures (2.14 ter, 2.14 quater...), dont le nombre et le contenu exact dépendront des résultats de cette investigation.
 
-1. **Audit systématique Alert.alert()** — tous les usages du
-   projet, pas seulement les fichiers touchés en session
-   2.13 — idéalement en session 2.19, à réaliser avant que
-   la Phase 3 (services extérieurs) ne devienne active.
-2. **Environnement de staging** — à évaluer avant la Phase 5
-   (Build EAS) : distinct de main/production, pour absorber
-   le risque de manipulation directe sur l'environnement
-   réel. Chantier à part entière (second projet Supabase,
-   branche Git dédiée, discipline de synchronisation) —
-   décision et calendrier à trancher par le porteur.
-3. **Refonte du reporting financier** — trois mécanismes de
-   calcul distincts et non harmonisés identifiés
-   (total_earned/total_commissions cumulatifs,
-   recharges_current_month/commissions_current_month
-   mensuels à la volée, totalCredit/totalDebit côté client
-   sans filtre de mois). Étude de faisabilité à programmer
-   pour un reporting unifié (solde courant, cumul
-   historique, vue mensuelle/annuelle), hors périmètre de
-   la session 2.13.
-4. **Notification admin en temps réel** sur nouvelle demande
-   de recharge (suggestion du porteur) : renvoyée
-   intégralement à la session 2.17, à concevoir avec
-   l'ensemble du workflow de traitement admin plutôt
-   qu'isolément.
+PHASE 3 — SERVICES EXTERNES 3.1 ⏳ Twilio SMS 3.2 ⏳ FCM Android 3.3 ⏳ APNs iOS
 
----
+PHASE 4 — TESTS DEVICE PHYSIQUE 4.1 ⏳ Tests Expo Go Android 4.2 ⏳ Tests Expo Go iOS 4.3 ⏳ Tests utilisateurs réels ⚠️ Inclut désormais (session 2.14) : test du chemin natif Alert.alert() pour RÉSOLU 42 (PendingVerificationScreen), test complet du Volet 4 (4 notify* mission) et de la cloche côté Client si un second numéro de test dédié n'a pas été mis en place avant cette phase 4.4 ⏳ Intégrer messages vocaux dans MissionTrackingScreen (audioService.ts + bucket voice-messages prêts — session 2.8) — UI à construire : bouton enregistrement, liste lecture — à traiter avec TEST 2 (nécessite device physique + mission active) → Inclut également le déploiement ET le test immédiat de la clause RLS voice-messages conçue en session 2.18 ⚠️ VoiceChatScreen.tsx (orphelin, confirmé session 2.14) pertinent pour ce chantier — voir aussi Piste 3, annexe Section 18
 
-## 18. TEMPLATE DÉBUT DE SESSION CLAUDE
-PROJET : Fast Trans Maroc (FTM)
-STACK  : Expo SDK 50 / React Native / TypeScript
-SUPABASE : ustckqnecsilxqlyjute
-GITHUB : ELALAMIGIT61/FAST-TRANS-MAROC-FTM
+PHASE 5 — BUILD EAS 5.1 ⏳ Configurer app.json + eas.json 5.2 ⏳ Build Android (.aab) 5.3 ⏳ Build iOS (.ipa) ⏳ Environnement de staging à évaluer avant cette phase (proposé session 2.13) — distinct de main/production, pour absorber le risque de manipulation directe sur l'environnement réel (second projet Supabase, branche Git dédiée, discipline de synchronisation) — décision et calendrier à trancher par le porteur, non déclenché dans l'immédiat
+
+PHASE 6 — AMÉLIORATIONS POST-TESTS 6.1 ⏳ Modes de paiement multiples wallet REPRIS PAR ANTICIPATION — voir session 2.17 6.2 ⏳ Workflow validation recharge admin chauffeur soumet demande + pièce justificative admin valide — solde crédité après validation REPRIS PAR ANTICIPATION — voir session 2.17 ✅ Fondation posée session 2.13 (demande pending) 6.3 ⏳ Remboursements — flux dédié REPRIS PAR ANTICIPATION — voir session 2.17 6.4 ⏳ Bouton déconnexion CLIENT + DRIVER + ADMIN REPRIS PAR ANTICIPATION — voir session 2.16 6.5 ✅/⏳ Refonte WalletTopupScreen Partie 1 (statut pending honnête) ✅ traitée session 2.13 (commits 2e76429 + 480130d) Partie 2 (upload justificatif, écran admin dédié) REPRIS PAR ANTICIPATION — voir session 2.17 6.6 ✅/⏳ SÉCURITÉ — Renforcer RLS Storage driver-documents ✅ traité session 2.12 (commit 67e9e65) voice-messages ⏳ conception session 2.18, déploiement et test en Phase 4.4
+
+PHASE 7 — PUBLICATION 7.1 ⏳ Google Play Store (25$) 7.2 ⏳ Apple App Store (99$/an)
+
+RECOMMANDATIONS STRATÉGIQUES EN ATTENTE D'ARBITRAGE PORTEUR
+
+(issues des sessions 2.13 et 2.14, non déclenchées dans l'immédiat)
+
+Audit systématique Alert.alert() — tous les usages du projet, pas seulement les fichiers touchés en session 2.13/2.14 — idéalement en session 2.19, à réaliser avant que la Phase 3 (services extérieurs) ne devienne active. ⚠️ Portée élargie session 2.14 : inclut désormais également un audit du chemin natif (non testé à ce jour) pour les 3 fichiers déjà corrigés (AdminUsersScreen, WalletTopupScreen, PendingVerificationScreen).
+Environnement de staging — à évaluer avant la Phase 5 (Build EAS) : distinct de main/production, pour absorber le risque de manipulation directe sur l'environnement réel. Chantier à part entière (second projet Supabase, branche Git dédiée, discipline de synchronisation) — décision et calendrier à trancher par le porteur.
+Refonte du reporting financier — trois mécanismes de calcul distincts et non harmonisés identifiés (total_earned/total_commissions cumulatifs, recharges_current_month/commissions_current_month mensuels à la volée, totalCredit/totalDebit côté client sans filtre de mois). Étude de faisabilité à programmer pour un reporting unifié (solde courant, cumul historique, vue mensuelle/annuelle), hors périmètre de la session 2.13.
+Notification admin en temps réel sur nouvelle demande de recharge (suggestion du porteur) : renvoyée intégralement à la session 2.17, à concevoir avec l'ensemble du workflow de traitement admin plutôt qu'isolément.
+Second numéro de test dédié au rôle client (session 2.14) : nécessaire pour permettre le test complet du Volet 4 (4 fonctions notify* mission) et de la cloche NotificationBell côté client, sans jamais avoir à sacrifier l'identité driver test constituée. Décision et calendrier à trancher par le porteur.
+Anomalie #1 — bouton "← Retour" manquant sur NotificationCenterScreen.tsx (session 2.14) : non bloquante, à corriger avant que la Phase 3 ne devienne active — rattachement à la session 2.19 (audit Alert.alert()) ou traitement en point autonome, décision du porteur au moment venu.
+notifyDocumentExpiry (session 2.14) : lien avec l'Edge Function check-document-reminders non vérifié — à statuer lors d'une session future, éventuellement en marge de 2.14 bis si le sujet s'y prête, ou isolément.
+Bug de reconnexion clientProfileId vide (RootNavigator.tsx, découverte annexe session 2.14) — à documenter et rattacher à une session future non encore assignée.
+Robustesse topupWallet/refundWallet (découverte annexe session 2.14, préexistante) : échec silencieux possible de l'insertion de la transaction après UPDATE du solde — à vérifier par lecture directe en tout début de session 2.17.
+18. ANNEXE — INVESTIGATION SESSION 2.14 — PROCESSUS DE CRÉATION DE MISSION : ÉTAT ACTUEL ET PISTES D'AMÉLIORATION
+
+(base de référence pour toute session future traitant de ce sujet, notamment la session 2.14 bis — menée par le porteur et l'Assistant Général FTM, hors du fil direct de la session 2.14, reproduite ici telle que transmise, sans reformulation ni résumé)
+
+Investigation menée conjointement par le porteur et l'Assistant Général FTM, suite à la découverte que notifyNewMission était structurellement incompatible avec le processus de diffusion des missions (Volet 4). Sert de base factuelle vérifiée pour toute session future touchant au processus de mission.
+
+── MÉTHODE ── Chaque fait ci-dessous est étiqueté CONFIRMÉ (vérifié par lecture directe du fichier réel du dépôt, commande exécutée dans Codespaces par le porteur) ou PROBABLE (déduction non vérifiée par lecture directe). Fichiers cités avec chemin complet pour permettre une revérification rapide sans avoir à les relocaliser.
+
+── 1. CRÉATION (côté client) ── Fichiers investigués :
+
+frontend/src/screens/client/CreateMissionScreen.tsx (lu intégralement)
+frontend/src/services/missionService.ts, fonction createMission (lignes 75-121)
+supabase/migrations/20260220155500_initial_schema.sql (grep ciblé + lecture des triggers concernés)
+
+CONFIRMÉ (lecture directe CreateMissionScreen.tsx) : le formulaire collecte trajet, catégorie de véhicule, description optionnelle, aide au chargement, et negotiatedPrice (champ libre optionnel, placeholder "Prix proposé en DH (optionnel)", ligne ~182). Un encart séparé affiche la commission FTM (selectedVehicle.commission), visuellement distinct du champ de prix. CONFIRMÉ (lecture directe missionService.ts, createMission) : insertion avec status: 'pending', sans driver_id. CONFIRMÉ (grep exhaustif sur CreateMissionScreen.tsx, recherche "scheduled|DatePicker|date|Date" → aucune occurrence) : aucun champ de date/heure n'est proposé au client. Le champ scheduled_pickup_time existe dans l'interface Mission (missionService.ts) mais n'est jamais renseigné à la création. CONFIRMÉ (lecture directe supabase/migrations/ 20260220155500_initial_schema.sql, fonctions set_commission_amount / set_estimated_distance, triggers trigger_set_commission / trigger_set_distance, BEFORE INSERT ON missions) : commission_amount et estimated_distance_km sont calculés automatiquement côté base de données, invisibles au code applicatif — ils apparaissent déjà renseignés dans les logs de createMission sans jamais être envoyés dans l'insert. PROBABLE (aucun mécanisme de contre-proposition trouvé dans CreateMissionScreen.tsx ni missionService.ts, mais recherche non exhaustive sur l'ensemble du dépôt) : negotiated_price ne dispose d'aucun retour possible du chauffeur (acceptation, refus, contre-offre) — le client propose un chiffre unique.
+
+── 2. DIFFUSION AUX CHAUFFEURS ── Fichiers investigués :
+
+frontend/src/services/realtimeService.ts (lu intégralement, 105 lignes)
+frontend/src/screens/driver/NewMissionModal.tsx (lu intégralement, 213 lignes)
+frontend/src/services/missionService.ts, fonction acceptMission (lignes 168-204)
+supabase/migrations/*.sql (grep "expire|timeout|cron| pending" combiné à "mission", sur l'ensemble des fichiers de migration)
+
+CONFIRMÉ (lecture directe realtimeService.ts, subscribeToNewMissions) : filtre event: 'INSERT' sur la table missions, filter: vehicle_category=eq.${vehicleCategory}. Aucun autre critère de filtrage dans ce fichier (distance, note, disponibilité fine). CONFIRMÉ (lecture directe NewMissionModal.tsx) : COUNTDOWN_SECONDS = 30, affichage local (Animated.timing), déclenche onDismiss() côté client à expiration — sans appel réseau, sans changement du statut de la mission en base. CONFIRMÉ (lecture directe acceptMission, missionService.ts) : protection .eq('status', 'pending') empêchant une double acceptation ; message d'erreur explicite si déjà prise. CONFIRMÉ (grep exhaustif sur l'ensemble de supabase/ migrations/*.sql, motifs "expire", "timeout" combinés à "mission" → aucune occurrence pertinente) : aucun mécanisme d'expiration serveur pour une mission pending non acceptée. CONFIRMÉ (lecture directe pushNotificationService.ts, fonction insertNotification, ligne ~154 : await dispatchPushNotification(...)) : chaque insertion de notification déclenche systématiquement une tentative d'envoi push réel — donc notifier individuellement chaque chauffeur éligible à chaque mission créée générerait un volume de push proportionnel au nombre de chauffeurs.
+
+── 3. ACCEPTATION → DÉMARRAGE → CLÔTURE ── Fichiers investigués :
+
+frontend/src/services/missionService.ts, fonctions startMission (205-235), completeMission (236-271), submitClientRating (307-339, avant modification session 2.14)
+supabase/migrations/20260220155500_initial_schema.sql, fonction process_commission_payment, trigger trigger_process_commission (AFTER UPDATE ON missions)
+
+CONFIRMÉ (lecture directe des fonctions citées) : passages successifs de statut via UPDATE, avec conditions .eq() empêchant les transitions invalides (ex. compléter une mission non in_progress). CONFIRMÉ (lecture directe du trigger trigger_process_commission) : le prélèvement de la commission sur le solde du chauffeur à la clôture est entièrement automatique côté base de données — aucune fonction applicative dédiée ne l'effectue. CONFIRMÉ (lecture directe submitClientRating) : une fois la mission completed, le client peut soumettre une note (client_rating) et un avis (client_review). Aucune notification n'est déclenchée par cette action — ni vers le chauffeur noté, ni vers quiconque.
+
+── 4. ANNULATION ── Fichier investigué : frontend/src/services/missionService.ts, fonction cancelMission (272-306, avant modification session 2.14)
+
+CONFIRMÉ (lecture directe, avant branchement du Volet 4) : le paramètre _userId était reçu mais jamais utilisé dans le corps de la fonction (convention TypeScript de préfixe underscore confirmant l'intention). Aucune vérification que l'appelant est bien client_id ou driver_id de la mission annulée. → Point de sécurité rattaché à la session 2.17 (décision actée par le porteur en session 2.14).
+
+── 5. COMMUNICATION CLIENT/CHAUFFEUR ── Fichiers investigués :
+
+frontend/src/screens/mission/VoiceChatScreen.tsx (lu intégralement, 214 lignes)
+frontend/src/components/VoiceMicButton.tsx (identifié par grep, non lu en détail)
+grep -rln "VoiceChatScreen" sur l'ensemble de frontend/src/ → aucune occurrence hors sa propre définition
+
+CONFIRMÉ (lecture directe VoiceChatScreen.tsx) : mécanisme d'échange de messages vocaux scellé à un missionId, via loadVoiceMessages/playVoiceMessage/stopPlayback (audioService.ts). Aucune mention de téléphone/email/contact dans ce fichier. CONFIRMÉ (grep exhaustif) : VoiceChatScreen n'est importé nulle part — composant orphelin, jamais monté dans aucun navigator, inaccessible aux utilisateurs à ce jour. PROBABLE (non vérifié par lecture du contenu réel de VoiceMicButton.tsx) : aucun mécanisme de filtrage empêchant la prononciation orale de coordonnées de contact dans un message vocal — techniquement plus difficile à filtrer que du texte.
+
+── DÉCOUVERTE ANNEXE, HORS PÉRIMÈTRE DE CETTE INVESTIGATION ── Fichiers repérés par grep (contenu non investigué en profondeur) : frontend/src/screens/ecommerce/ ParcelConfirmationScreen.tsx, frontend/src/services/ parcelService.ts, frontend/src/screens/driver/ ParcelMissionDetailScreen.tsx. Probablement liés au type mission_type: 'ecommerce_parcel' (confirmé existant dans missionService.ts) et au type de notification parcel_status (NOTIF_ICONS, orphelin, sans fonction notify* dédiée). État d'avancement réel non exploré.
+
+── TRI — AMÉLIORATION DE L'EXISTANT (PAS UNE REFONTE) ──
+
+Piste 1 — Diffusion optimisée (flux et coût) : cibler plus finement les chauffeurs et/ou introduire une expiration serveur, en tenant compte du volume de push (cf. § 2).
+
+Piste 2 — Planification par date/heure : exposer scheduled_pickup_time au client (cf. § 1), définir l'impact sur le moment de la diffusion.
+
+Piste 3 — Communication texte sécurisée (rigueur de sécurité requise) : remplacer/compléter VoiceChatScreen.tsx (cf. § 5) par un canal texte avec filtrage anti-partage de coordonnées.
+
+Piste 4 — Négociation de prix structurée (cf. § 1) : mécanisme de proposition/contre-proposition, principe « paiement hors app » impératif (FTM ne prélève que la commission, jamais le prix du transport).
+
+→ Voir l'annexe ci-dessus (Section 18) pour l'état complet des lieux (CONFIRMÉ/PROBABLE), les découvertes détaillées, et le tri des 4 pistes d'amélioration servant de base à toute session future traitant de ce sujet — notamment la session 2.14 bis (voir Section 17), dont le rôle est précisément d'examiner ces 4 pistes en détail et de proposer un découpage en sessions ultérieures.
+
+19. TEMPLATE DÉBUT DE SESSION CLAUDE
+
+PROJET : Fast Trans Maroc (FTM) STACK : Expo SDK 50 / React Native / TypeScript SUPABASE : ustckqnecsilxqlyjute GITHUB : ELALAMIGIT61/FAST-TRANS-MAROC-FTM
 
 RÈGLES CRITIQUES :
-- NE JAMAIS npm audit fix --force
-- SDK 50 stable — 39 vulnerabilities outils dev
-- .env dans frontend/
-- 1 terminal de travail uniquement
-- Vérifier pwd avant tout npx expo start
-- Vérifier texte exact via sed avant replace()
-- Si replace() échoue → réécrire fichier entier
-- Vérifier contenu exact via repr() Python (jamais cat)
-- git pull --rebase avant tout push
-- Migrations via GitHub uniquement
-- NE JAMAIS modifier authService.ts
-- NE JAMAIS modifier ProfileSetupScreen.tsx
-- NE JAMAIS modifier driverService.ts
-- NE JAMAIS modifier wallet_update_admin (privilège admin exclusif)
-- Backup obligatoire avant toute modification
-- Ne jamais retester ce qui est écarté
-- Ne jamais modifier ce qui fonctionne
-- vault.create_secret(valeur, nom, desc) — valeur EN PREMIER
-- timeout_milliseconds := 30000 pour net.http_post
-- cron.unschedule() WHERE EXISTS avant tout cron.schedule()
-- Alert.alert() ne s'affiche pas sur web — toujours prévoir
-  Platform.OS === 'web' ? window.alert(...) : Alert.alert(...)
-- Prochain timestamp migration : 20260504000015
 
-OBJECTIF SESSION :
-[Décrire précisément]
+NE JAMAIS npm audit fix --force
+SDK 50 stable — 39 vulnerabilities outils dev
+.env dans frontend/
+1 terminal de travail uniquement
+Vérifier pwd avant tout npx expo start
+Vérifier texte exact via sed avant replace()
+Si replace() échoue → réécrire fichier entier
+Vérifier contenu exact via repr() Python (jamais cat)
+Tout texte avec caractère spécial bash (!, `, $, ) → heredoc à délimiteur quoté, jamais python3 -c "..." (règle consolidée session 2.14, suite incident réel)
+git pull --rebase avant tout push
+Migrations via GitHub uniquement
+NE JAMAIS modifier authService.ts
+NE JAMAIS modifier ProfileSetupScreen.tsx
+NE JAMAIS modifier driverService.ts
+NE JAMAIS modifier wallet_update_admin (privilège admin exclusif)
+Backup obligatoire avant toute modification
+Ne jamais retester ce qui est écarté
+Ne jamais modifier ce qui fonctionne
+vault.create_secret(valeur, nom, desc) — valeur EN PREMIER
+timeout_milliseconds := 30000 pour net.http_post
+cron.unschedule() WHERE EXISTS avant tout cron.schedule()
+Alert.alert() ne s'affiche pas sur web — toujours prévoir Platform.OS === 'web' ? window.alert(...) : Alert.alert(...) (3 fichiers déjà corrigés : AdminUsersScreen, WalletTopupScreen, PendingVerificationScreen — chemin natif non testé sur aucun)
+Numéro de test partagé +212600000000 : un seul rôle actif à la fois — envisager un second numéro dédié au rôle Client avant toute session nécessitant un parcours de mission complet
+Prochain timestamp migration : 20260504000015
 
-ERREUR ACTUELLE :
-[Coller l'erreur si applicable]
+OBJECTIF SESSION : [Décrire précisément]
+
+ERREUR ACTUELLE : [Coller l'erreur si applicable]
