@@ -27,6 +27,7 @@ export interface CreateMissionData {
   needs_loading_help?: boolean;
   negotiated_price?: number;
   client_notes?: string;
+  scheduled_pickup_time: string;
 }
 
 export interface Mission {
@@ -103,6 +104,7 @@ export async function createMission(
       needs_loading_help: missionData.needs_loading_help ?? false,
       negotiated_price: missionData.negotiated_price ?? null,
       client_notes: missionData.client_notes ?? null,
+      scheduled_pickup_time: missionData.scheduled_pickup_time,
       payment_method: 'cash',
       status: 'pending',
     })

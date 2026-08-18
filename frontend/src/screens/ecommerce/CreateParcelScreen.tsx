@@ -20,6 +20,7 @@ import {
 } from '../../utils/parcelCalculations';
 import { createParcelMission } from '../../services/parcelService';
 import { supabase } from '../../lib/supabaseClient';
+import DateTimeField from '../../components/DateTimeField';
 
 type VehicleCategory = 'vul' | 'n2_medium' | 'n2_large';
 
@@ -48,6 +49,7 @@ interface FormState {
   negotiatedPrice: string;
   dimensionErrors: Record<string, string> | null;
   isLoading: boolean;
+  scheduledPickupTime: Date | null;
 }
 
 const VEHICLE_LABELS: Record<VehicleCategory, string> = {
@@ -83,6 +85,7 @@ export default function CreateParcelScreen(): JSX.Element {
     negotiatedPrice: '',
     dimensionErrors: null,
     isLoading: false,
+    scheduledPickupTime: null,
   });
 
   useEffect(() => {
@@ -143,7 +146,8 @@ export default function CreateParcelScreen(): JSX.Element {
     state.weightKg.trim() &&
     state.contentDescription.trim() &&
     state.pickupCity.trim() &&
-    state.dropoffCity.trim();
+    state.dropoffCity.trim() &&
+    !!state.scheduledPickupTime;
 
   async function handleSubmit() {
     const dimErrors = validateParcelDimensions(
@@ -187,6 +191,7 @@ export default function CreateParcelScreen(): JSX.Element {
       dropoff_lat: state.dropoffLat ?? undefined,
       dropoff_lng: state.dropoffLng ?? undefined,
       negotiated_price: state.negotiatedPrice || null,
+      scheduled_pickup_time: state.scheduledPickupTime!.toISOString(),
     });
 
     setState(prev => ({ ...prev, isLoading: false }));
@@ -319,6 +324,14 @@ export default function CreateParcelScreen(): JSX.Element {
         placeholder="🏁 Ville d'arrivée *"
         value={state.dropoffCity}
         onChangeText={v => setState(prev => ({ ...prev, dropoffCity: v }))}
+      />
+
+      {/* DATE / HEURE DE PRISE EN CHARGE */}
+      <Text style={styles.sectionTitle}>Date et heure de prise en charge</Text>
+      <DateTimeField
+        label="Quand souhaitez-vous être pris en charge ?"
+        value={state.scheduledPickupTime}
+        onChange={d => setState(prev => ({ ...prev, scheduledPickupTime: d }))}
       />
 
       {/* VÉHICULE RECOMMANDÉ */}

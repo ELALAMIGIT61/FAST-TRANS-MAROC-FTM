@@ -27,6 +27,7 @@ export interface ParcelData {
   dropoff_city?: string;
   negotiated_price?: string | null;
   client_notes?: string | null;
+  scheduled_pickup_time: string;
 }
 
 /**
@@ -69,6 +70,7 @@ export async function createParcelMission(
     needs_loading_help: false,
     negotiated_price: parcelData.negotiated_price || null,
     client_notes: parcelData.client_notes || null,
+    scheduled_pickup_time: parcelData.scheduled_pickup_time,
   });
 
   if (missionResult.error) {

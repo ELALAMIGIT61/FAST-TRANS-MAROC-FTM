@@ -17,6 +17,7 @@ import { getClientCurrentLocation, reverseGeocode } from '../../services/locatio
 import { createMission, VehicleCategory } from '../../services/missionService';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import NotificationBell from '../../components/NotificationBell';
+import DateTimeField from '../../components/DateTimeField';
 
 type RootStackParamList = {
   CreateMission: { clientProfileId: string };
@@ -40,6 +41,7 @@ export default function CreateMissionScreen({ route, navigation }: Props) {
   const [dropoffAddress, setDropoffAddress] = useState('');
   const [dropoffCity, setDropoffCity] = useState('');
   const [dropoffCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [scheduledPickupTime, setScheduledPickupTime] = useState<Date | null>(null);
   const [vehicleCategory, setVehicleCategory] = useState<VehicleCategory | null>(null);
   const [needsLoading, setNeedsLoading] = useState(false);
   const [description, setDescription] = useState('');
@@ -66,7 +68,7 @@ export default function CreateMissionScreen({ route, navigation }: Props) {
   }, [locateClient]);
 
   const selectedVehicle = VEHICLE_OPTIONS.find((v) => v.key === vehicleCategory);
-  const canSubmit = !!pickupCoords && !!dropoffAddress && !!vehicleCategory && !isLoading;
+  const canSubmit = !!pickupCoords && !!dropoffAddress && !!vehicleCategory && !!scheduledPickupTime && !isLoading;
 
   const handleSubmit = async () => {
     if (!canSubmit || !pickupCoords) return;
@@ -85,6 +87,7 @@ export default function CreateMissionScreen({ route, navigation }: Props) {
       description: description || undefined,
       needs_loading_help: needsLoading,
       negotiated_price: negotiatedPrice ? parseFloat(negotiatedPrice) : undefined,
+      scheduled_pickup_time: scheduledPickupTime!.toISOString(),
     });
 
     setIsLoading(false);
@@ -160,6 +163,14 @@ export default function CreateMissionScreen({ route, navigation }: Props) {
             </TouchableOpacity>
           ))}
         </View>
+
+        {/* DATE / HEURE DE PRISE EN CHARGE */}
+        <Text style={styles.sectionLabel}>DATE ET HEURE DE PRISE EN CHARGE</Text>
+        <DateTimeField
+          label="Quand souhaitez-vous être pris en charge ?"
+          value={scheduledPickupTime}
+          onChange={setScheduledPickupTime}
+        />
 
         {/* OPTIONS */}
         <Text style={styles.sectionLabel}>OPTIONS</Text>
