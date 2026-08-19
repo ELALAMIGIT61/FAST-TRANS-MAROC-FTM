@@ -10,11 +10,13 @@ interface DateTimeFieldProps {
   error?: string | null;
 }
 
-export default function DateTimeField({ label, value, onChange, error }: DateTimeFieldProps) {
+function DateTimeField({ label, value, onChange, error }: DateTimeFieldProps) {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [pendingDate, setPendingDate] = useState<Date | null>(null);
   const [internalError, setInternalError] = useState<string | null>(null);
+  const [localDateStr, setLocalDateStr] = useState<string | null>(null);
+  const [localTimeStr, setLocalTimeStr] = useState<string | null>(null);
 
   function openPicker() {
     setInternalError(null);
@@ -58,6 +60,85 @@ export default function DateTimeField({ label, value, onChange, error }: DateTim
 
   const displayError = error ?? internalError;
 
+  if (Platform.OS === 'web') {
+    const dateStr = localDateStr ?? (value ? value.toISOString().split('T')[0] : '');
+    const timeStr = localTimeStr ?? (value
+      ? `${String(value.getHours()).padStart(2, '0')}:${String(value.getMinutes()).padStart(2, '0')}`
+      : '');
+
+    const applyCombined = (combined: Date) => {
+      if (combined < new Date()) {
+        setInternalError('La date et l\'heure sélectionnées sont déjà passées. Merci de recommencer.');
+        return;
+      }
+      setInternalError(null);
+      onChange(combined);
+    };
+
+    const onDateInputChange = (newDateStr: string) => {
+      setLocalDateStr(newDateStr);
+    };
+
+    const onTimeInputChange = (newTimeStr: string) => {
+      setLocalTimeStr(newTimeStr);
+    };
+
+    const handleWebDateChange = (newDateStr: string) => {
+      if (!newDateStr) return;
+      const [y, m, d] = newDateStr.split('-').map(Number);
+      const base = value ?? new Date();
+      applyCombined(new Date(y, m - 1, d, base.getHours(), base.getMinutes(), 0, 0));
+      setLocalDateStr(null);
+    };
+
+    const handleWebTimeChange = (newTimeStr: string) => {
+      if (!newTimeStr) return;
+      const [h, min] = newTimeStr.split(':').map(Number);
+      const base = value ?? new Date();
+      applyCombined(new Date(base.getFullYear(), base.getMonth(), base.getDate(), h, min, 0, 0));
+      setLocalTimeStr(null);
+    };
+
+    return (
+      <View style={styles.wrapper}>
+        <Text style={styles.label}>{label}</Text>
+        <input
+          type="date"
+          min={new Date().toISOString().split('T')[0]}
+          value={dateStr}
+          onChange={e => onDateInputChange((e.target as any).value)}
+          onBlur={e => handleWebDateChange((e.target as any).value)}
+          style={{
+            border: displayError ? '1px solid #DC3545' : '1px solid #DDD',
+            borderRadius: 10,
+            padding: 14,
+            fontSize: 15,
+            backgroundColor: '#FAFAFA',
+            width: '100%',
+            boxSizing: 'border-box',
+            marginBottom: 8,
+          } as any}
+        />
+        <input
+          type="time"
+          value={timeStr}
+          onChange={e => onTimeInputChange((e.target as any).value)}
+          onBlur={e => handleWebTimeChange((e.target as any).value)}
+          style={{
+            border: displayError ? '1px solid #DC3545' : '1px solid #DDD',
+            borderRadius: 10,
+            padding: 14,
+            fontSize: 15,
+            backgroundColor: '#FAFAFA',
+            width: '100%',
+            boxSizing: 'border-box',
+          } as any}
+        />
+        {displayError ? <Text style={styles.errorText}>{displayError}</Text> : null}
+      </View>
+    );
+  }
+
   return (
     <View style={styles.wrapper}>
       <Text style={styles.label}>{label}</Text>
@@ -93,6 +174,8 @@ export default function DateTimeField({ label, value, onChange, error }: DateTim
     </View>
   );
 }
+
+export default React.memo(DateTimeField);
 
 const styles = StyleSheet.create({
   wrapper: { marginBottom: 14 },
