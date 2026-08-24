@@ -1,0 +1,19 @@
+-- Rollback de la migration 20260504000018
+-- LIMITATION TECHNIQUE IMPORTANTE : PostgreSQL ne permet pas de retirer
+-- une valeur d'un type ENUM via une commande simple (pas de ALTER TYPE
+-- ... DROP VALUE). Un rollback complet necessiterait de recreer le type
+-- mission_status sans la valeur expired, ce qui echouerait si une
+-- seule ligne de la table missions utilise deja ce statut.
+--
+-- Si un rollback est reellement necessaire, procedure manuelle :
+-- 1. Verifier qu'aucune ligne de missions n'a status = 'expired' :
+--    SELECT count(*) FROM missions WHERE status = 'expired';
+-- 2. Si count = 0, recreer le type manuellement (procedure a valider
+--    au cas par cas, non automatisable en toute securite dans ce
+--    fichier).
+-- 3. Si count > 0, le rollback n'est pas possible sans decision
+--    explicite sur le devenir de ces lignes (changement de statut
+--    manuel requis au prealable, hors de ce fichier).
+--
+-- Ce fichier est intentionnellement documentaire et ne contient aucune
+-- instruction SQL executable automatiquement.
