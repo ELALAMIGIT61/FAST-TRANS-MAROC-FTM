@@ -4,9 +4,17 @@
 -- Périmètre initial de la session élargi sur décision explicite du porteur — voir rapport de synthèse
 
 -- ============================================================
--- 1. Retrait de phone_number de la vue available_drivers
+-- 0. Suppression préalable de la fonction dépendante et de la vue
+--    (CREATE OR REPLACE VIEW ne permet pas de retirer une colonne
+--    existante — SQLSTATE 42P16 — nécessite DROP puis CREATE)
 -- ============================================================
-CREATE OR REPLACE VIEW available_drivers AS
+DROP FUNCTION IF EXISTS public.find_nearby_drivers(text, integer, vehicle_category);
+DROP VIEW IF EXISTS available_drivers;
+
+-- ============================================================
+-- 1. Recréation de la vue available_drivers sans phone_number
+-- ============================================================
+CREATE VIEW available_drivers AS
 SELECT d.id,
   d.profile_id,
   p.full_name,
@@ -23,10 +31,9 @@ FROM drivers d
 WHERE d.is_verified = true AND d.is_available = true AND p.is_active = true;
 
 -- ============================================================
--- 2. Retrait de phone_number de la RPC find_nearby_drivers
---    (dépend de la vue ci-dessus, mise à jour obligatoire en parallèle)
+-- 2. Recréation de la RPC find_nearby_drivers sans phone_number
 -- ============================================================
-CREATE OR REPLACE FUNCTION public.find_nearby_drivers(
+CREATE FUNCTION public.find_nearby_drivers(
   client_point text,
   radius_meters integer,
   p_vehicle_category vehicle_category

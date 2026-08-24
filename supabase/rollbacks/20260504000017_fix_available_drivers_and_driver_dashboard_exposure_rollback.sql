@@ -1,5 +1,5 @@
 -- Rollback de la migration 20260504000017
--- AVERTISSEMENT CRITIQUE : l'exécution de ce rollback reintroduit sciemment
+-- AVERTISSEMENT CRITIQUE : l'execution de ce rollback reintroduit sciemment
 -- la faille de securite corrigee par la migration 20260504000017 - exposition
 -- publique (anon) du numero de telephone des chauffeurs (available_drivers) et
 -- des donnees financieres individuelles des chauffeurs (driver_dashboard).
@@ -26,9 +26,17 @@ GRANT SELECT ON available_drivers TO anon;
 GRANT SELECT ON available_drivers TO authenticated;
 
 -- ============================================================
--- 4. Restauration de la RPC find_nearby_drivers avec phone_number
+-- 4. Suppression prealable de la fonction et de la vue actuelles
+--    (necessaire pour recreer avec phone_number, meme raison
+--    technique que dans la migration : DROP puis CREATE, pas REPLACE)
 -- ============================================================
-CREATE OR REPLACE FUNCTION public.find_nearby_drivers(
+DROP FUNCTION IF EXISTS public.find_nearby_drivers(text, integer, vehicle_category);
+DROP VIEW IF EXISTS available_drivers;
+
+-- ============================================================
+-- 5. Recreation de la RPC find_nearby_drivers avec phone_number
+-- ============================================================
+CREATE FUNCTION public.find_nearby_drivers(
   client_point text,
   radius_meters integer,
   p_vehicle_category vehicle_category
@@ -57,9 +65,9 @@ END;
 $function$;
 
 -- ============================================================
--- 5. Restauration de la vue available_drivers avec phone_number
+-- 6. Recreation de la vue available_drivers avec phone_number
 -- ============================================================
-CREATE OR REPLACE VIEW available_drivers AS
+CREATE VIEW available_drivers AS
 SELECT d.id,
   d.profile_id,
   p.full_name,
