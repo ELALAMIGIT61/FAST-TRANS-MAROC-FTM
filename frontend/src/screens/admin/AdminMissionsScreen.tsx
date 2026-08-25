@@ -38,8 +38,9 @@ const STATUS_LABELS: Record<string, string> = {
   completed: '🏁 Terminée',
   cancelled_client: '❌ Annulée (client)',
   cancelled_driver: '❌ Annulée (chauffeur)',
+  expired: '⏱️ Expirée',
 };
-
+const STATUS_FILTERS = ['all', 'pending', 'in_progress', 'completed', 'cancelled_client', 'cancelled_driver', 'expired'];
 const STATUS_FILTERS = ['all', 'pending', 'in_progress', 'completed', 'cancelled_client', 'cancelled_driver'];
 const FILTER_LABELS: Record<string, string> = {
   all: 'Toutes',
@@ -48,6 +49,7 @@ const FILTER_LABELS: Record<string, string> = {
   completed: 'Terminées',
   cancelled_client: 'Annulées (client)',
   cancelled_driver: 'Annulées (chauffeur)',
+  expired: 'Expirées',
 };
 
 export default function AdminMissionsScreen() {
