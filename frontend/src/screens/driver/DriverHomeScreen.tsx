@@ -10,7 +10,7 @@ import {
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../constants/theme';
 import { startBackgroundTracking, stopBackgroundTracking } from '../../services/locationService';
-import { subscribeToNewMissions, unsubscribeChannel } from '../../services/realtimeService';
+import { subscribeToNewMissions, subscribeToMissionUpdates, unsubscribeChannel } from '../../services/realtimeService';
 import { supabase } from '../../lib/supabaseClient';
 import NewMissionModal from './NewMissionModal';
 import NotificationBell from '../../components/NotificationBell';
@@ -32,6 +32,7 @@ export default function DriverHomeScreen({ route, navigation }: Props) {
   const [walletBalance, setWalletBalance] = useState<number | null>(null);
   const [pendingMission, setPendingMission] = useState<Mission | null>(null);
   const missionChannelRef = useRef<RealtimeChannel | null>(null);
+  const pendingMissionUpdateChannelRef = useRef<RealtimeChannel | null>(null);
 
   useEffect(() => {
     const fetchWallet = async () => {
@@ -45,9 +46,15 @@ export default function DriverHomeScreen({ route, navigation }: Props) {
     fetchWallet();
   }, [driverId]);
 
+  const clearPendingMissionWatch = useCallback(async () => {
+    if (pendingMissionUpdateChannelRef.current) {
+      await unsubscribeChannel(pendingMissionUpdateChannelRef.current);
+      pendingMissionUpdateChannelRef.current = null;
+    }
+  }, []);
+
   const handleToggleAvailability = useCallback(async () => {
     const newStatus = !isAvailable;
-
     if (newStatus) {
       const trackResult = await startBackgroundTracking(driverId);
       if (trackResult.error) {
@@ -60,37 +67,51 @@ export default function DriverHomeScreen({ route, navigation }: Props) {
         await unsubscribeChannel(missionChannelRef.current);
         missionChannelRef.current = null;
       }
+      await clearPendingMissionWatch();
+      setPendingMission(null);
     }
-
     const { error } = await supabase
       .from('drivers')
       .update({ is_available: newStatus })
       .eq('id', driverId);
-
     if (error) {
       Alert.alert('Erreur', error.message);
       if (newStatus) await stopBackgroundTracking();
       return;
     }
-
     console.log('[FTM-DEBUG] Driver - Availability updated', { driverId, isAvailable: newStatus });
     setIsAvailable(newStatus);
-
     if (newStatus) {
       missionChannelRef.current = subscribeToNewMissions(
         vehicleCategory,
         null,
         (missionData) => {
-          setPendingMission(missionData as unknown as Mission);
+          const mission = missionData as unknown as Mission;
+          setPendingMission(mission);
+          pendingMissionUpdateChannelRef.current = subscribeToMissionUpdates(
+            mission.id,
+            (updated) => {
+              const updatedStatus = (updated as Record<string, unknown>).status;
+              if (updatedStatus !== 'pending') {
+                console.log('[FTM-DEBUG] Driver - Mission no longer pending, dismissing modal', {
+                  missionId: mission.id,
+                  status: updatedStatus,
+                });
+                setPendingMission(null);
+                clearPendingMissionWatch();
+              }
+            }
+          );
         }
       );
     }
-  }, [isAvailable, driverId, vehicleCategory]);
+  }, [isAvailable, driverId, vehicleCategory, clearPendingMissionWatch]);
 
   useEffect(() => {
     return () => {
       stopBackgroundTracking();
       unsubscribeChannel(missionChannelRef.current);
+      unsubscribeChannel(pendingMissionUpdateChannelRef.current);
     };
   }, []);
 
@@ -108,7 +129,6 @@ export default function DriverHomeScreen({ route, navigation }: Props) {
         </View>
         <NotificationBell />
       </View>
-
       {walletBalance !== null && (
         <TouchableOpacity
           style={[styles.walletCard, { borderColor: walletColor }]}
@@ -120,7 +140,6 @@ export default function DriverHomeScreen({ route, navigation }: Props) {
           </Text>
         </TouchableOpacity>
       )}
-
       <View style={styles.toggleCard}>
         <Text style={styles.toggleCardTitle}>JE SUIS</Text>
         <View style={styles.toggleRow}>
@@ -135,23 +154,25 @@ export default function DriverHomeScreen({ route, navigation }: Props) {
           />
         </View>
       </View>
-
       <TouchableOpacity
         style={styles.documentsButton}
         onPress={() => navigation.navigate('DocumentStatus')}
       >
         <Text style={styles.documentsButtonText}>📄 Mes documents</Text>
       </TouchableOpacity>
-
       {pendingMission && (
         <NewMissionModal
           mission={pendingMission}
           driverId={driverId}
           onAccepted={(acceptedMission) => {
             setPendingMission(null);
+            clearPendingMissionWatch();
             navigation.navigate('MissionActive', { mission: acceptedMission as unknown as Record<string, unknown> });
           }}
-          onDismiss={() => setPendingMission(null)}
+          onDismiss={() => {
+            setPendingMission(null);
+            clearPendingMissionWatch();
+          }}
         />
       )}
     </View>
