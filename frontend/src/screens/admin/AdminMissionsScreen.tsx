@@ -41,7 +41,6 @@ const STATUS_LABELS: Record<string, string> = {
   expired: '⏱️ Expirée',
 };
 const STATUS_FILTERS = ['all', 'pending', 'in_progress', 'completed', 'cancelled_client', 'cancelled_driver', 'expired'];
-const STATUS_FILTERS = ['all', 'pending', 'in_progress', 'completed', 'cancelled_client', 'cancelled_driver'];
 const FILTER_LABELS: Record<string, string> = {
   all: 'Toutes',
   pending: 'En attente',
