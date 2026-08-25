@@ -15,7 +15,7 @@ import {
   subscribeToDriverLocation,
   unsubscribeChannel,
 } from '../../services/realtimeService';
-import { cancelMission } from '../../services/missionService';
+import { cancelMission, expireMission } from '../../services/missionService';
 import type { Mission } from '../../services/missionService';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
@@ -26,6 +26,8 @@ type RootStackParamList = {
 };
 
 type Props = NativeStackScreenProps<RootStackParamList, 'MissionTracking'>;
+
+const EXPIRATION_CHECK_INTERVAL_MS = 30000;
 
 export default function MissionTrackingScreen({ route, navigation }: Props) {
   const initialMission = route.params.mission as unknown as Mission;
@@ -69,6 +71,32 @@ export default function MissionTrackingScreen({ route, navigation }: Props) {
       );
     }
   }, [mission.driver_id]);
+
+  useEffect(() => {
+    if (mission.status !== 'pending' || !mission.scheduled_pickup_time) {
+      return;
+    }
+
+    const checkExpiration = async () => {
+      const scheduledTime = new Date(mission.scheduled_pickup_time as string).getTime();
+      const now = Date.now();
+
+      if (now > scheduledTime) {
+        console.log('[FTM-DEBUG] Mission - Detected expiration client-side', {
+          missionId: mission.id,
+          scheduledTime: mission.scheduled_pickup_time,
+        });
+        const result = await expireMission(mission.id);
+        if (result.success && result.mission) {
+          setMission(result.mission);
+        }
+      }
+    };
+
+    checkExpiration();
+    const interval = setInterval(checkExpiration, EXPIRATION_CHECK_INTERVAL_MS);
+    return () => clearInterval(interval);
+  }, [mission.status, mission.scheduled_pickup_time, mission.id]);
 
   const handleCancel = async () => {
     Alert.alert('Annuler la mission', 'Êtes-vous sûr de vouloir annuler ?', [
@@ -157,6 +185,21 @@ export default function MissionTrackingScreen({ route, navigation }: Props) {
           <View style={styles.statusContainer}>
             <Text style={styles.errorIcon}>❌</Text>
             <Text style={styles.statusTitle}>Mission annulée par le chauffeur</Text>
+            <TouchableOpacity
+              style={styles.primaryButton}
+              onPress={() => navigation.replace('CreateMission', { clientProfileId: mission.client_id ?? '' })}
+            >
+              <Text style={styles.primaryButtonText}>Créer une nouvelle mission</Text>
+            </TouchableOpacity>
+          </View>
+        );
+
+      case 'expired':
+        return (
+          <View style={styles.statusContainer}>
+            <Text style={styles.errorIcon}>⏱️</Text>
+            <Text style={styles.statusTitle}>Mission expirée</Text>
+            <Text style={styles.subText}>Aucun chauffeur n'était disponible avant l'heure prévue.</Text>
             <TouchableOpacity
               style={styles.primaryButton}
               onPress={() => navigation.replace('CreateMission', { clientProfileId: mission.client_id ?? '' })}

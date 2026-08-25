@@ -10,7 +10,8 @@ export type MissionStatus =
   | 'in_progress'
   | 'completed'
   | 'cancelled_client'
-  | 'cancelled_driver';
+  | 'cancelled_driver'
+  | 'expired';
 
 export interface CreateMissionData {
   mission_type?: MissionType;
@@ -423,6 +424,37 @@ export async function submitClientRating(
   console.log('[FTM-DEBUG] Mission - Rating submitted', {
     missionId,
     rating,
+  });
+
+  return { success: true, mission: data as Mission };
+}
+
+export async function expireMission(
+  missionId: string
+): Promise<{ success?: boolean; mission?: Mission; error?: string }> {
+  console.log('[FTM-DEBUG] Mission - Expiring mission', { missionId });
+
+  const { data, error } = await supabase
+    .from('missions')
+    .update({ status: 'expired' })
+    .eq('id', missionId)
+    .eq('status', 'pending')
+    .select()
+    .single();
+
+  if (error) {
+    console.log('[FTM-DEBUG] Mission - Expire error', { error: error.message });
+    return { error: error.message };
+  }
+
+  if (!data) {
+    console.log('[FTM-DEBUG] Mission - Expire skipped: mission no longer pending', { missionId });
+    return { error: 'Cette mission a déjà changé de statut.' };
+  }
+
+  console.log('[FTM-DEBUG] Mission - Expired successfully', {
+    missionId: data.id,
+    missionNumber: data.mission_number,
   });
 
   return { success: true, mission: data as Mission };
