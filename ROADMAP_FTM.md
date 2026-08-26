@@ -1,7 +1,7 @@
-ROADMAP-DOCUMENT DE REFERENCE SESSION CLAUDE — FAST TRANS MAROC — VERSION 20/08/2026
+ROADMAP-DOCUMENT DE REFERENCE SESSION CLAUDE — FAST TRANS MAROC — VERSION 25/08/2026
 
 Fast Trans Maroc — Application Mobile Marocaine
-Dernière mise à jour : 20/08/2026
+Dernière mise à jour : 25/08/2026
 
 # INFORMATIONS PROJET
 
@@ -18,7 +18,7 @@ Codespaces : zany-disco-jj95647gqv473pj9
 ✅ Toujours utiliser npx expo install pour packages Expo
 ✅ .env doit être dans frontend/ (pas à la racine)
 ✅ Migrations : timestamps uniques obligatoires
-   Prochain timestamp ≥ 20260504000017
+   Prochain timestamp ≥ 20260504000019
    Jamais via SQL Editor directement
    Toujours via GitHub Actions
 ✅ 1 session Claude = 1 objectif précis
@@ -39,6 +39,7 @@ Codespaces : zany-disco-jj95647gqv473pj9
 ✅ NE JAMAIS exécuter une commande SQL de modification de schéma (DROP POLICY, CREATE POLICY, ALTER TABLE, etc.) directement en SQL Editor, même à titre de "préparation" ou "test rapide" — toujours l'intégrer d'abord au fichier de migration, puis déployer via le canal standard (GitHub Actions). Règle renforcée session 2.14 ter, suite à l'Incident 1 (DROP POLICY exécuté hors circuit, voir Section 6, bloc session 2.14 ter) : le risque de confusion entre "commande proposée à discuter" et "commande prête à exécuter" est réel dès lors que plusieurs blocs SQL sont présentés à la suite dans une même interface — ne jamais présenter une commande de modification de schéma comme une action isolée sans préciser explicitement qu'elle doit d'abord être intégrée à la migration.
 ✅ Indexation storage.foldername() : l'indice du segment de dossier recherché n'est PAS systématiquement [1] — il dépend du nombre de segments fixes précédant l'identifiant recherché dans la convention de chemin du bucket concerné (ex. driver-documents : {driver_id}/... → [1] ; voice-messages : missions/{missionId}/... → [2]). Règle consolidée session 2.14 ter : toujours vérifier par simulation directe (storage.foldername('chemin/exemple')) plutôt que de copier l'indice utilisé dans un pattern de référence différent.
 ✅ La discipline de lecture intégrale d'un fichier avant modification s'applique aussi aux fichiers de référence/modèle de conception (pas seulement aux fichiers directement modifiés) — règle renforcée session 2.14 quater, suite à un gap d'investigation réel : une lecture en deux extraits disjoints de LegalDocumentsScreen.tsx (fichier de référence, non modifié) a laissé un angle mort de ~25 lignes exactement sur la branche Platform.OS === 'web', découvert seulement lors de l'implémentation, provoquant un retour en arrière évitable (voir Section 6, bloc session 2.14 quater).
+✅ NOUVEAU — Un statut CI vert (workflow "Vérification Qualité Code") ne constitue pas une garantie suffisante que le code compile et s'exécute réellement — règle consolidée session 2.14 quinquies, suite à l'incident de duplication de STATUS_FILTERS (commit 69273c0) : une séquence de trois commandes sed appliquées successivement sur un même fichier a produit une déclaration dupliquée (SyntaxError bloquante à l'exécution), passée inaperçue du linting TypeScript. Après toute séquence de plusieurs sed sur un même fichier, effectuer systématiquement une relecture structurelle complète du fichier, ET un test d'exécution réel (lancement effectif du serveur), avant de committer — ne jamais se contenter d'un CI vert comme validation finale sur une session touchant du code applicatif.
 ✅ git pull --rebase origin main avant tout push (ROADMAP mise à jour directement sur GitHub)
 ✅ Backup obligatoire avant chaque modification
 ✅ Test non-régression CLIENT + ADMIN + DRIVER après chaque étape de modification
@@ -61,8 +62,8 @@ Codespaces : zany-disco-jj95647gqv473pj9
    Même entre les tests
 ⚠️ NUMÉRO PARTAGÉ +212600000000 — CLIENT OU DRIVER (exclusif)
    Le même numéro ne peut avoir qu'UN profil actif à la fois (recherche par user_id, suppression Auth = cascade profil/driver)
-   ⚠️ ÉTAT ACTUEL (depuis session 2.14 quater) : rôle CLIENT ("TEST CLIENT FTM") — voir bloc dédié Section 3. Le profil DRIVER historique (2ec2b439-..., wallet 800 DH, 4 transactions pending) n'a plus d'accès Auth mais ses données restent intactes en base — récupérable via un futur onboarding DRIVER + validation admin.
-   ⚠️ Limitation confirmée à nouveau sessions 2.14, 2.14 ter et 2.14 quater : absence de second numéro de test dédié au rôle client — a empêché tout test du Volet 4 (notify* mission), de la cloche côté client, du test fonctionnel RLS voice-messages en conditions réelles, et du parcours transport complet — recommandation transmise en Section 17
+   ⚠️ ÉTAT ACTUEL (depuis session 2.14 quinquies) : rôle DRIVER — nouveau profil créé via un nouvel onboarding complet durant la session 2.14 quinquies, is_verified = true, wallet 300.00 DH (recharge admin validée), catégorie véhicule VUL, 4 documents légaux soumis et validés. Ce nouveau profil est distinct du profil DRIVER historique (2ec2b439-..., wallet 800 DH, 4 transactions pending) : il ne s'agit PAS d'une reconstitution de ce dernier, mais d'un profil entièrement nouveau. Le profil historique reste orphelin de tout accès Auth, ses données restant intactes en base — voir bloc dédié Section 3.
+   ⚠️ Limitation confirmée à nouveau sessions 2.14, 2.14 ter et 2.14 quater : absence de second numéro de test dédié au rôle client — a empêché tout test du Volet 4 (notify* mission), de la cloche côté client, du test fonctionnel RLS voice-messages en conditions réelles, et du parcours transport complet — recommandation transmise en Section 17. Point réactualisé session 2.14 quinquies : le numéro partagé étant redevenu DRIVER, cette limitation demeure pleinement d'actualité pour tout test nécessitant simultanément un profil CLIENT et un profil DRIVER distincts.
 
 Historique des rotations du numéro partagé (chronologique) :
 Session 2.8 : profil DRIVER (1b6e684e-..., wallet 200 DH, vérifié) → SUPPRIMÉ pour tester CLIENT (ordre DRIVER→ADMIN→CLIENT)
@@ -78,6 +79,7 @@ Session 2.14 : aucune rotation du numéro — même profil DRIVER (2ec2b439-...)
 Session 2.14 bis : session sans code ni accès applicatif — aucune rotation, aucun impact sur le numéro partagé ni sur l'état du driver test (voir confirmation de compatibilité, bloc session 2.14 bis, Section 6)
 Session 2.14 ter : aucune rotation du numéro — session strictement RLS Storage, aucune table métier touchée. Driver test reconfirmé intact par lecture directe, avec une clarification : 4 transactions pending recensées (50/200/500/1000 DH), et non 3 comme le résumait le document jusqu'alors — la transaction de 50 DH (14/07/2026) est une donnée de test antérieure à la session 2.12, confirmée non anormale et sans lien avec cette session (voir bloc dédié Section 3 et Section 6)
 Session 2.14 quater : ROTATION — le compte Auth DRIVER (+212600000000) a été supprimé pour les besoins des tests de la session, puis recréé en rôle CLIENT ("TEST CLIENT FTM"). Le profil DRIVER historique (2ec2b439-...) n'a pas été reconstitué à l'issue de la session ; ses données (wallet, transactions) restent intactes en base, seul l'accès Auth a été supprimé. Décision de reconstitution laissée à la discrétion du porteur / d'une session future — voir bloc dédié Section 3 et Section 17
+Session 2.14 quinquies : ROTATION — le compte Auth CLIENT ("TEST CLIENT FTM") a été supprimé dans le cadre des tests de non-régression, et un nouvel onboarding DRIVER complet a été réalisé sur le numéro partagé. Nouveau profil DRIVER créé et validé (is_verified = true, wallet 300 DH, catégorie VUL, 4 documents validés) — distinct du profil DRIVER historique 2ec2b439-..., toujours orphelin d'accès Auth et inchangé. Un seul profil DRIVER est aujourd'hui opérationnel (le nouveau) — voir bloc dédié Section 3.
 
 Si un test DRIVER est à nouveau nécessaire (depuis l'état CLIENT actuel) :
    Supprimer +212600000000 dans Supabase Auth
@@ -89,6 +91,7 @@ Si un test DRIVER est à nouveau nécessaire (depuis l'état CLIENT actuel) :
 Si un test CLIENT est à nouveau nécessaire depuis un état DRIVER :
    Supprimer +212600000000 dans Supabase Auth
    Reconnexion → ProfileSetupScreen → sélectionner "Client"
+   ⚠️ Depuis session 2.14 quinquies, l'état actuel du numéro partagé est DRIVER (nouveau profil) — cette procédure sera nécessaire pour tout futur test CLIENT.
 
 ⚠️ window.history.back() ne fonctionne pas toujours sur web
    Utiliser le bouton "← Retour" (navigation.goBack())
@@ -108,8 +111,8 @@ Si un test CLIENT est à nouveau nécessaire depuis un état DRIVER :
    Table pg_cron contenant l'historique des exécutions avec statut et timestamps — consulter pour vérifier le fonctionnement réel du CRON
 ✅ RLS Storage / conception ownership
    Privilégier la chaîne de propriété complète (storage.foldername(name)[n]::uuid = <table pivot>.id → ... → profiles.user_id = auth.uid()) plutôt qu'un raccourci type owner = auth.uid() — session 2.12, confirmé et étendu session 2.14 ter (double chaîne client + chauffeur via UNION, voir Section 6)
-✅ Fichier de rollback obligatoire pour toute migration RLS sensible : à placer dans supabase/rollbacks/ (hors du dossier migrations/, pour éviter toute exécution automatique non désirée) — convention introduite session 2.12, reconduite systématiquement depuis (2.13, 2.14 ter, 2.14 quater)
-✅ Convention étendue session 2.13 : rollback créé par précaution même pour une migration non-RLS (renommage de vue, contrainte NOT NULL), avec commentaire explicite précisant qu'un rollback SQL seul est insuffisant en cas de déploiement partiel et nécessite un git revert coordonné du code applicatif. Précision session 2.14 quater : pour une contrainte NOT NULL, l'ordre des opérations en cas de rollback complet est impératif — SQL d'abord (retrait de la contrainte), git revert du code applicatif ensuite, jamais l'inverse, sous peine de bloquer toute création de mission.
+✅ Fichier de rollback obligatoire pour toute migration RLS sensible : à placer dans supabase/rollbacks/ (hors du dossier migrations/, pour éviter toute exécution automatique non désirée) — convention introduite session 2.12, reconduite systématiquement depuis (2.13, 2.14 ter, 2.14 quater, 2.14 quinquies)
+✅ Convention étendue session 2.13 : rollback créé par précaution même pour une migration non-RLS (renommage de vue, contrainte NOT NULL), avec commentaire explicite précisant qu'un rollback SQL seul est insuffisant en cas de déploiement partiel et nécessite un git revert coordonné du code applicatif. Précision session 2.14 quater : pour une contrainte NOT NULL, l'ordre des opérations en cas de rollback complet est impératif — SQL d'abord (retrait de la contrainte), git revert du code applicatif ensuite, jamais l'inverse, sous peine de bloquer toute création de mission. Précision session 2.14 quinquies : pour un ajout de valeur d'enum (ALTER TYPE ... ADD VALUE), un rollback complet (retrait de la valeur) n'est pas trivialement automatisable en toute sécurité par PostgreSQL — rollback documentaire uniquement, procédure manuelle à documenter en cas de besoin réel.
 ⚠️ Isoler une clause RLS via fetch() authentifié direct (sans passer par le code applicatif, ex. topupWallet()) peut produire des valeurs déclaratives trompeuses (ex. balance_after renseigné manuellement dans une ligne de test) — toujours vérifier la valeur réelle en base (ex. wallet.balance) plutôt que de se fier au contenu de la ligne insérée manuellement — session 2.12
 ⚠️ Alert.alert() (React Native) ne s'affiche pas sur web
    Toujours prévoir Platform.OS === 'web' ? window.alert(...) : Alert.alert(...) pour tout message destiné à s'afficher aussi sur web — bug redécouvert session 2.13 (WalletTopupScreen.tsx ligne 70, cf. RÉSOLU 41) après un premier correctif partiel en session 2.8 (AdminUsersScreen.tsx, sans généralisation Platform.OS) — voir audit recommandé section 17
@@ -117,7 +120,9 @@ Si un test CLIENT est à nouveau nécessaire depuis un état DRIVER :
 ⚠️ Chemin natif (hors web) toujours non testé à ce jour sur aucun des fichiers concernés — environnement de développement limité au web (Codespaces) — audit systématique proposé (session 2.19) reste pertinent
 ⚠️ CLARIFICATION MÉTIER FONDAMENTALE (rappelée sessions 2.13, 2.14, 2.14 bis, à ne jamais perdre) : le paiement de la course est TOUJOURS hors application — le client paie directement le chauffeur (espèces ou autre moyen), sans jamais transiter par FTM. Seule la COMMISSION (montant fixe selon catégorie de véhicule) est prélevée automatiquement sur le wallet du chauffeur à chaque mission terminée (trigger process_commission_payment). Le wallet n'est donc alimenté QUE par les recharges (jamais par un paiement client), et diminué QUE par les commissions. Cette clarification est la raison structurelle du renommage revenue_current_month → recharges_current_month (RÉSOLU 39) — à garder impérativement en tête pour toute session touchant au workflow financier (notamment 2.17), pour éviter de reproduire la même confusion de nommage ou de conception ailleurs.
 ⚠️ negotiated_price (CreateMissionScreen.tsx) ne représente jamais un montant transitant par FTM, uniquement une base d'accord hors app entre client et chauffeur — principe reconfirmé session 2.14 bis (Piste 2, négociation de prix structurée), quel que soit le mécanisme de négociation retenu.
-✅ NOUVEAU — Composant DateTimeField.tsx (session 2.14 quater) : sur le modèle des composants Alert.alert()/Platform.OS, ce composant nécessite lui aussi un traitement différencié web/natif (@react-native-community/datetimepicker strictement natif, aucun support web). Toujours vérifier avant tout usage : (1) mémoïsation React.memo si le composant contrôle un champ de saisie texte, pour éviter la corruption de saisie par re-rendu en boucle ; (2) séparation onChange (état local) / onBlur (validation finale) pour tout <input type="date"/"time"> HTML, le navigateur déclenchant onChange dès qu'une valeur techniquement complète est formée, avant la fin de la saisie utilisateur — voir RÉSOLU 44/45/46, session 2.14 quater.
+✅ Composant DateTimeField.tsx (session 2.14 quater) : sur le modèle des composants Alert.alert()/Platform.OS, ce composant nécessite lui aussi un traitement différencié web/natif (@react-native-community/datetimepicker strictement natif, aucun support web). Toujours vérifier avant tout usage : (1) mémoïsation React.memo si le composant contrôle un champ de saisie texte, pour éviter la corruption de saisie par re-rendu en boucle ; (2) séparation onChange (état local) / onBlur (validation finale) pour tout <input type="date"/"time"> HTML, le navigateur déclenchant onChange dès qu'une valeur techniquement complète est formée, avant la fin de la saisie utilisateur — voir RÉSOLU 44/45/46, session 2.14 quater.
+✅ NOUVEAU — Vues Supabase exposées sans authentification (session 2.14 quinquies) : toute vue simple (non protégée par RLS, à la différence des tables) accessible en SELECT par les rôles anon/authenticated expose intégralement son contenu, y compris des colonnes sensibles (ex. phone_number sur available_drivers, solde wallet et commissions sur driver_dashboard) — une vue n'hérite pas automatiquement des protections RLS des tables sous-jacentes sauf activation explicite de security_invoker = true (PostgreSQL 17.6, confirmé compatible sur ce projet). Toute nouvelle vue exposant des données issues de tables protégées par RLS doit systématiquement faire l'objet d'une revue de permissions (GRANT) et d'une activation de security_invoker si applicable — voir RÉSOLU 48, session 2.14 quinquies.
+✅ NOUVEAU — CREATE OR REPLACE VIEW ne permet pas de retirer une colonne existante (SQLSTATE 42P16 — cannot drop columns from view) — pour retirer une colonne d'une vue, procéder par DROP (et DROP des objets dépendants dans l'ordre, ex. RPC SECURITY DEFINER s'appuyant sur la vue) puis CREATE — session 2.14 quinquies, RÉSOLU 49.
 
 # ÉTAT TECHNIQUE ACTUEL
 
@@ -137,17 +142,20 @@ Bundle web : ✅ 1173ms
 Auth CLIENT : ✅ confirmé — session 2.3
    Navigation → CreateMissionScreen
    ⚠️ Non re-testé sessions 2.13, 2.14, 2.14 bis, 2.14 ter (contrainte numéro partagé)
-   ⚠️ Session 2.14 quater : le numéro partagé est désormais un profil CLIENT ("TEST CLIENT FTM"), mais le parcours complet (CreateMissionScreen jusqu'à l'insertion en base) reste NON testé — bloqué par l'absence de géolocalisation fonctionnelle en environnement Codespaces/iframe (limitation déjà documentée, hors périmètre, reportée Phase 4.x). Table missions confirmée vide (0 ligne) à l'issue de la session 2.14 quater.
+   ⚠️ Session 2.14 quater : test complet resté bloqué (GPS Codespaces/iframe), table missions confirmée vide à l'issue de la session
+   ⚠️ Session 2.14 quinquies : le compte Auth CLIENT ("TEST CLIENT FTM") a été supprimé en cours de session pour permettre un nouvel onboarding DRIVER — le numéro partagé n'occupe donc plus le rôle CLIENT depuis cette session (voir Section 2)
 
 Auth ADMIN : ✅ confirmé — session 2.7
    Navigation → AdminDashboardScreen
    5 écrans dans AdminNavigator : AdminHome ✅ DocumentReview ✅ WalletManagement ✅ AdminMissions ✅ AdminUsers ✅
+   ✅ Reconfirmé en conditions réelles session 2.14 quinquies (tests de non-régression) : dashboard, gestion missions, validation documents 4/4, gestion wallet (recharge 300 DH validée)
 
-Auth DRIVER : ✅ COMPLET (historique) — session 2.4 suite
-   Flux complet testé et validé à l'époque : Étape 1 → VehicleInfoScreen ✅ / Étape 2 → LegalDocumentsScreen ✅ / Étape 3 → DocumentUploadScreen ✅ / Étape 4 → PendingVerification ✅ / Validation admin → DriverHome ✅
+Auth DRIVER : ✅ OPÉRATIONNEL — nouveau profil créé session 2.14 quinquies
+   Flux complet historique testé et validé à l'époque (session 2.4 suite) : Étape 1 → VehicleInfoScreen ✅ / Étape 2 → LegalDocumentsScreen ✅ / Étape 3 → DocumentUploadScreen ✅ / Étape 4 → PendingVerification ✅ / Validation admin → DriverHome ✅
    Realtime Supabase ✅
-   ⚠️ ÉTAT ACTUEL (depuis session 2.14 quater) : le compte Auth DRIVER du numéro partagé a été supprimé — le rôle DRIVER n'est PLUS accessible tant qu'un nouvel onboarding n'a pas été effectué. Voir Section 2, bloc "numéro partagé".
+   ⚠️ ÉTAT ACTUEL (depuis session 2.14 quinquies) : le rôle DRIVER est de nouveau accessible sur le numéro partagé — un nouvel onboarding complet a été réalisé et validé durant cette session (nouveau profil, distinct du profil historique 2ec2b439-...). Voir Section 2, bloc "numéro partagé", et Section 3.
    ⚠️ Alerte Realtime de validation sur PendingVerificationScreen.tsx : ✅ CORRIGÉE session 2.14 (RÉSOLU 42) — chemin web uniquement, chemin natif non testé
+   ✅ Reconfirmé fonctionnel en conditions réelles session 2.14 quinquies : onboarding complet réalisé (nouveau profil, 4 documents soumis et validés), validation admin réussie, recharge wallet fonctionnelle (0 → 300 DH), accès à DriverHomeScreen (fichier modifié pour le Volet 1 de diffusion) réussi
 
 Bugs session 2.5 : ✅ 3 bugs corrigés (BUG 1 SIGNED_IN onboarding, BUG 2 wallet 404, BUG 3 document_reminders)
 Bugs session 2.7 : ✅ 5 bugs corrigés (BUG A wallet RLS récursion, navigation admin 4 menus, SIGNED_IN loop admin, 403 notifications, enum mission_status) — BUG 4 → INFIRMÉ ✅
@@ -171,7 +179,7 @@ Extensions Supabase : ✅ pg_cron 1.6.4 — installée session 2.9 / ✅ pg_net 
 CRON reminders : ✅ OPÉRATIONNEL — session 2.9
    jobid=2, 0 8 * * *, active=true — timeout_milliseconds := 30000
    5 exécutions succeeded : 18→22/06/2026 — check-document-reminders appelée quotidiennement
-   ⚠️ Lien avec notifyDocumentExpiry non vérifié — voir Section 15/17 (en attente depuis session 2.14, non traité en 2.14 bis, 2.14 ter, ni 2.14 quater — hors périmètre de chacune)
+   ⚠️ Lien avec notifyDocumentExpiry non vérifié — voir Section 15/17 (en attente depuis session 2.14, non traité en 2.14 bis, 2.14 ter, 2.14 quater, ni 2.14 quinquies — hors périmètre de chacune)
 
 Vault Supabase : ✅ Secret supabase_service_role_key — 219 caractères — identique Dashboard — Créé session 2.9
 
@@ -179,7 +187,8 @@ Realtime Supabase : ✅ OPÉRATIONNEL — session 2.10
    5 tables activées : drivers, missions, wallet, transactions, notifications — Migration 20260504000012 déployée
    WalletDashboardScreen SUBSCRIBED ✅
    transactions ✅ écoute branchée — session 2.14
-   notifications : Realtime actif — non branché UI directement, remplacé par NotificationBell/Center (résolution du profil via getCurrentProfileId(), déclenché par événement Realtime — PRÉCISION session 2.14 quater : le mécanisme réel n'est PAS un polling par setInterval comme le documentait une version antérieure du présent document, mais bien un abonnement Realtime Supabase déclenché par événement — divergence documentaire corrigée)
+   notifications : Realtime actif — non branché UI directement, remplacé par NotificationBell/Center (résolution du profil via getCurrentProfileId(), déclenché par événement Realtime — divergence documentaire corrigée session 2.14 quater)
+   ✅ NOUVEAU (session 2.14 quinquies) — canal subscribeToMissionUpdates (déjà existant, déjà utilisé dans MissionTrackingScreen.tsx) désormais également exploité côté DriverHomeScreen.tsx : abonnement immédiat dès réception d'une nouvelle mission (Volet 1 diffusion), fermeture automatique du modal de proposition si le statut de la mission change avant acceptation
 
 RLS transactions : ✅ transactions_insert_own corrigée — session 2.12 (commit 67e9e65) — voir RÉSOLU 37
    ✅ Fondation confirmée fonctionnelle en usage réel session 2.13 : requestWalletTopup() insère des transactions status: 'pending' via cette même politique — RÉSOLU 38
@@ -191,8 +200,10 @@ Wallet topup : ✅ Mécanisme honnête — session 2.13 (commit 2e76429) — req
    ⚠️ Robustesse topupWallet/refundWallet (échec silencieux possible de l'insertion de la transaction après UPDATE du solde) — découverte annexe session 2.14, préexistante, hors périmètre — à documenter pour session future (voir Section 15/17)
    ✅ Reconfirmé sans modification — sessions 2.14 bis et 2.14 ter (aucune de ces deux sessions ne touche au code applicatif wallet)
    ⚠️ Session 2.14 quater : aucune modification non plus (hors périmètre strict, code wallet non touché) — mais le profil DRIVER porteur de ce wallet (2ec2b439-...) a perdu son accès Auth (voir Section 3, bloc numéro partagé) ; les données wallet/transactions elles-mêmes restent inchangées en base
+   ✅ Session 2.14 quinquies : validation fonctionnelle croisée obtenue en conditions réelles sur le nouveau profil DRIVER — recharge admin de 300 DH testée et confirmée (0 → 300 DH), et le chauffeur ne voit que son propre solde (jamais celui d'un autre profil), confirmant au passage le bon fonctionnement de security_invoker sur driver_dashboard (voir RÉSOLU 48)
 
 Dashboard driver : ✅ recharges_current_month — session 2.13 (commit 2e76429, migration 20260504000014) — voir RÉSOLU 39
+   ✅ Vue driver_dashboard désormais protégée : SELECT anon révoqué, security_invoker = true activé — session 2.14 quinquies (voir RÉSOLU 48)
 
 Bug Alert.alert/web : ⚠️ Statut par fichier — mis à jour session 2.14 :
    WalletTopupScreen.tsx ligne 70 (succès) → ✅ CORRIGÉ (commit 480130d, session 2.13) — RÉSOLU 41
@@ -209,16 +220,16 @@ Realtime transactions/notifications (Volets 2-3, session 2.14) :
 Fonctions notify mission (Volet 4, session 2.14) : 9 fonctions notify* inventoriées au total
    2 déjà branchées avant 2.14 (notifyDocumentVerified, notifyDocumentRejected)
    4 nouvelles branchées session 2.14 : notifyMissionStarted, notifyMissionAccepted, notifyMissionCompleted (Option C), notifyMissionCancelled
-   ⛔ 3 non retenues : notifyNewMission (incompatibilité structurelle), notifyDocumentExpiry (en attente), notifyWalletLowBalance (écartée)
-   ⚠️ NON TESTÉES fonctionnellement à ce jour — la rotation du numéro partagé vers CLIENT en session 2.14 quater n'a pas permis de test de bout en bout (absence de GPS fonctionnel en environnement Codespaces, aucune mission insérée en base) — voir Section 15/17
+   ⛔ 3 non retenues : notifyNewMission (incompatibilité structurelle, exclusion reconfirmée sans réserve session 2.14 quinquies — aucun appelant dans tout le projet, confirmé par grep global), notifyDocumentExpiry (en attente), notifyWalletLowBalance (écartée)
+   ⚠️ NON TESTÉES fonctionnellement à ce jour — le retour du numéro partagé au rôle DRIVER en session 2.14 quinquies ne permet toujours pas de test de bout en bout côté Client (absence de second numéro dédié CLIENT) — voir Section 15/17
 
 ⚠️ Compte ADMIN test :
    Numéro : +212600000001 — Rôle admin défini via SQL Editor — NE PAS SUPPRIMER CE PROFIL
-   Reconfirmé intact — sessions 2.14 bis, 2.14 ter, 2.14 quater (aucune modification)
+   Reconfirmé intact — sessions 2.14 bis, 2.14 ter, 2.14 quater, 2.14 quinquies (aucune modification)
 
-⚠️ DRIVER TEST HISTORIQUE — état à date de la session 2.14 ter (dernière vérification par lecture directe avant la rotation de 2.14 quater) :
+⚠️ DRIVER TEST HISTORIQUE — état à date de la session 2.14 ter (dernière vérification par lecture directe avant la rotation de 2.14 quater), TOUJOURS ORPHELIN D'ACCÈS AUTH à l'issue de la session 2.14 quinquies :
    driverId : 2ec2b439-fcdb-443d-8de0-5bee268d30f6
-   Numéro : +212600000000 (ACCÈS AUTH DÉSORMAIS SUPPRIMÉ — voir ci-dessous)
+   Numéro : +212600000000 (ACCÈS AUTH DÉSORMAIS OCCUPÉ PAR UN AUTRE PROFIL — voir ci-dessous)
    role : 'driver' (données conservées en base)
    is_verified : true (inchangé depuis session 2.13)
    wallet_id : 58b2b8e7-190a-4cbb-8f09-8340feecf498
@@ -232,18 +243,24 @@ Fonctions notify mission (Volet 4, session 2.14) : 9 fonctions notify* inventori
      94322b67-... | failed (requalifiée) | 300 DH | 0→0 | ~16/07 (transaction fantôme originale, corrigée session 2.13)
      42b73573-... | pending | 50 DH | 0→50 | 14/07 (donnée de test antérieure à la session 2.12 — CLARIFICATION session 2.14 ter : cette transaction, jusqu'alors non mentionnée dans le résumé synthétique du présent document, est confirmée par lecture directe de sa date de création comme non anormale et sans lien avec les sessions ultérieures)
    ⚠️ CORRECTION DE COHÉRENCE (session 2.14 ter) : le document mentionnait jusqu'ici "3 demandes de recharge en pending (200, 500, 1000 DH)". Le chiffre exact et confirmé est **4 demandes en pending (50, 200, 500, 1000 DH)**. Cette correction s'applique à toutes les mentions de ce compte dans le présent document (badge NotificationBell, Section 15, etc.).
-   ⚠️ ÉTAT DEPUIS SESSION 2.14 quater : l'accès Auth du numéro +212600000000 a été supprimé (le numéro est désormais un profil CLIENT — voir ci-dessous). Le profil DRIVER 2ec2b439-... et l'intégralité de ses données (wallet 800 DH, 4 transactions pending, is_verified=true) restent en base, orphelines de tout accès Auth actif, récupérables sur décision future (voir Section 17).
+   ⚠️ ÉTAT DEPUIS SESSION 2.14 quinquies : l'accès Auth du numéro +212600000000 est désormais occupé par un tout NOUVEAU profil DRIVER (créé cette même session), distinct de ce profil historique. Le profil DRIVER 2ec2b439-... et l'intégralité de ses données (wallet 800 DH, 4 transactions pending, is_verified=true) restent en base, toujours orphelines de tout accès Auth, récupérables sur décision future (voir Section 17). Il ne s'agit PAS de deux profils DRIVER équivalents actifs simultanément — un seul est aujourd'hui opérationnel (le nouveau).
 
-⚠️ NOUVEAU PROFIL CLIENT ACTIF — depuis session 2.14 quater :
+⚠️ NOUVEAU PROFIL DRIVER ACTIF — depuis session 2.14 quinquies :
    Numéro : +212600000000
-   Profil : "TEST CLIENT FTM"
-   role : 'client'
-   Créé pour les besoins des tests de la session 2.14 quater (validation UI du champ scheduled_pickup_time)
-   Aucune mission créée par ce profil à ce jour (table missions confirmée vide, 0 ligne, à l'issue de la session 2.14 quater)
+   Créé via un nouvel onboarding complet (VehicleInfo → LegalDocuments → DocumentUpload → PendingVerification), dans le cadre des tests de non-régression de la session 2.14 quinquies (l'ancien profil CLIENT "TEST CLIENT FTM" ayant été supprimé pour l'occasion)
+   role : 'driver'
+   is_verified : true (validation admin réalisée durant la session)
+   Catégorie véhicule : VUL
+   wallet_balance : 300.00 DH (recharge admin de 300 DH validée durant la session)
+   Documents légaux : 4/4 soumis et validés (Permis, Carte grise, Assurance, Visite technique)
+   ⚠️ driverId non communiqué dans le compte-rendu source — INCONNU, à vérifier par lecture directe en base lors d'une prochaine session si nécessaire.
+
+⚠️ ANCIEN PROFIL CLIENT "TEST CLIENT FTM" — état à l'issue de la session 2.14 quinquies :
+   Créé en session 2.14 quater sur le numéro partagé, SUPPRIMÉ en session 2.14 quinquies pour permettre le nouvel onboarding DRIVER. Aucune mission n'avait été créée par ce profil durant son existence (table missions confirmée vide, 0 ligne, à l'issue de la session 2.14 quater, situation inchangée à l'issue de la session 2.14 quinquies — aucune mission insérée en base durant cette dernière non plus).
 
 ⚠️ SIGNED_IN répétés en console admin : Comportement normal Supabase web via refresh token périodique — Non bloquant
 
-⚠️ État du dépôt — HEAD : 829f31e (session 2.14 quater), synchronisé avec origin/main, aucune modification en attente de commit. ~55+ fichiers untracked de type .bak* identifiés comme mécanisme de traçabilité délibéré (dont 4 nouveaux ajoutés en session 2.14 quater : CreateMissionScreen.tsx, missionService.ts, CreateParcelScreen.tsx, parcelService.ts, suffixe .bak.session2.14quater) — à préserver tel quel, cohérent avec la politique déjà établie.
+⚠️ État du dépôt — HEAD : 8941e0a (session 2.14 quinquies), synchronisé avec origin/main, aucune modification en attente de commit hors des .bak* déjà identifiés. ~59+ fichiers untracked de type .bak* identifiés comme mécanisme de traçabilité délibéré (dont 4 nouveaux ajoutés en session 2.14 quinquies : DriverHomeScreen.tsx, missionService.ts, MissionTrackingScreen.tsx, AdminMissionsScreen.tsx, suffixe .bak.session2.14quinquies, en complément des 4 déjà ajoutés en session 2.14 quater) — à préserver tel quel, cohérent avec la politique déjà établie.
 
 # GITHUB SECRETS CONFIGURÉS
 
@@ -255,6 +272,13 @@ SUPABASE_URL ✅
 
 # HISTORIQUE COMMITS CLÉS
 
+8941e0a fix: correct duplicated STATUS_FILTERS declaration in AdminMissionsScreen (post-test critical bug) — session 2.14 quinquies ✅
+69273c0 feat: add expired status to AdminMissionsScreen filters (STATUS_LABELS, STATUS_FILTERS, FILTER_LABELS) — session 2.14 quinquies ⚠️ (bug critique introduit, corrigé par 8941e0a)
+b1d2540 feat: mission expiration detection (expireMission in missionService.ts) + expired UI state (MissionTrackingScreen.tsx) — session 2.14 quinquies ✅
+d1869e4 feat: auto-close pending mission modal on status change via subscribeToMissionUpdates (DriverHomeScreen.tsx) — session 2.14 quinquies ✅
+ffd62e8 feat: add expired value to mission_status enum (migration 20260504000018) — session 2.14 quinquies ✅
+70b02f0 fix: correct available_drivers/driver_dashboard security migration (SQLSTATE 42P16, DROP+CREATE) — session 2.14 quinquies ✅
+3bf1c09 fix: remove phone_number exposure + restrict permissions on available_drivers, driver_dashboard, find_nearby_drivers (migration 20260504000017) — session 2.14 quinquies ✅
 829f31e fix: web support for DateTimeField (Platform.OS branch, React.memo, onChange/onBlur split) — session 2.14 quater ✅
 0da3e07 feat: scheduled_pickup_time mandatory (NOT NULL) — transport + e-commerce flows, DateTimeField component — session 2.14 quater ✅
 9c36d84 fix: RLS ownership chain voice-messages bucket - mission-scoped client+driver access — session 2.14 ter ✅
@@ -299,7 +323,7 @@ e7beed2 fix: BORDER_RADIUS ajouté theme.ts ✅
 
 # MODIFICATIONS COMMITÉES — DÉTAIL
 
-[Sections SESSION 2.4 INITIALE à SESSION 2.14 bis — inchangées, reprises intégralement à l'identique de la version du 11/08/2026. Voir blocs détaillés ci-dessous pour les deux nouvelles sessions.]
+[Sections SESSION 2.4 INITIALE à SESSION 2.14 bis — inchangées, reprises intégralement à l'identique de la version du 11/08/2026. Voir blocs détaillés ci-dessous pour les nouvelles sessions.]
 
 ## SESSION 2.4 INITIALE — commits c318a92 + 8acc64c
 
@@ -410,7 +434,8 @@ PLANIFICATION DES SESSIONS (historique, mise à jour continue — voir Section 1
 2.14 bis ✅ Investigation/planification processus de mission
 2.14 ter ✅ Correction sécurité RLS voice-messages
 2.14 quater ✅ Piste 3 — planification par date/heure (avec réserves)
-2.14 quinquies ⏳ Piste 1 — diffusion optimisée (dépendance envers 2.14 quater désormais LEVÉE, voir ci-dessous)
+2.14 quinquies ✅ Piste 1 — sécurisation infrastructure diffusion + Volets 1/2 expiration (avec réserves — branchement filtrage réel géospatial reporté)
+2.14 quinquies bis ⏳ Piste 1 (suite) — branchement effectif de la diffusion géospatiale par distance réelle
 2.14 sexies ⏳ Piste 2 — négociation de prix structurée
 2.14 septies ⏳ Piste 4 — activation canal vocal sécurisé
 2.15 ⏳ TrackingDetailScreen
@@ -420,15 +445,15 @@ PLANIFICATION DES SESSIONS (historique, mise à jour continue — voir Section 1
 2.19 ⏳ Audit systématique Alert.alert()
 2.20 ⏳ NOUVELLE — Correction route CreateParcel manquante + test flux e-commerce complet (voir Section 6, bloc 2.14 quater)
 
-⚠️ MISE À JOUR DE DÉPENDANCE (session 2.14 quater → 2.14 quinquies) : la dépendance du Volet 2 de la Piste 1 (expiration d'une mission jamais acceptée) envers la Piste 3 (scheduled_pickup_time) est désormais LEVÉE — le champ est disponible et obligatoire en base depuis le déploiement de la migration 20260504000016. 2.14 quinquies peut démarrer sans prérequis bloquant restant, son Volet 1 (expiration mission acceptée) n'ayant de toute façon jamais eu de dépendance entrante.
+⚠️ MISE À JOUR DE DÉPENDANCE (session 2.14 quater → 2.14 quinquies) : la dépendance du Volet 2 de la Piste 1 (expiration d'une mission jamais acceptée) envers la Piste 3 (scheduled_pickup_time) est désormais LEVÉE — le champ est disponible et obligatoire en base depuis le déploiement de la migration 20260504000016. Volets 1 et 2 intégralement réalisés en session 2.14 quinquies.
 
-Ordre logique actualisé : 2.12 → 2.13 → 2.14 → 2.14 bis → 2.14 ter → 2.14 quater → 2.14 quinquies (débloquée) → 2.14 sexies → 2.14 septies → 2.15 (parallélisable) → 2.16 (glissable) → 2.17 (dernière du chantier wallet) → 2.18 (test fonctionnel voice-messages, Phase 4.4) → 2.19 (glissable, avant Phase 3) → 2.20 (nouvelle, fin de séquence chantier processus de mission, sans dépendance avec les pistes suivantes)
+Ordre logique actualisé : 2.12 → 2.13 → 2.14 → 2.14 bis → 2.14 ter → 2.14 quater → 2.14 quinquies (Volets 1/2 + sécurité, complétée) → 2.14 quinquies bis (branchement diffusion réelle, nouvelle priorité immédiate du chantier) → 2.14 sexies → 2.14 septies → 2.15 (parallélisable) → 2.16 (glissable) → 2.17 (dernière du chantier wallet) → 2.18 (test fonctionnel voice-messages, Phase 4.4) → 2.19 (glissable, avant Phase 3) → 2.20 (nouvelle, fin de séquence chantier processus de mission, sans dépendance avec les pistes suivantes)
 
 LISTE DE SUIVI — ANOMALIES/OBSERVATIONS DOCUMENTAIRES (à corriger dans le présent document) :
 1. ID driver test coquille → CORRIGÉ session 2.12
 2-3. Chemins onboarding → confirmés sous frontend/src/screens/driver/onboarding/
 4. Bug WalletRecharge → CORRIGÉ session 2.13 (RÉSOLU 40)
-5. Filtrage géographique absent → RPC find_nearby_drivers identifiée session 2.14 bis, réutilisation prévue 2.14 quinquies
+5. Filtrage géographique absent → RPC find_nearby_drivers identifiée session 2.14 bis, infrastructure sécurisée session 2.14 quinquies, branchement réel prévu 2.14 quinquies bis
 6. Convention de chemins non documentée (sous-dossiers thématiques)
 7. RLS transactions INSERT sans restriction → CORRIGÉ session 2.12 (RÉSOLU 37)
 8. RLS voice-messages sans clause de propriété → CORRIGÉ session 2.14 ter (RÉSOLU 46)
@@ -436,8 +461,11 @@ LISTE DE SUIVI — ANOMALIES/OBSERVATIONS DOCUMENTAIRES (à corriger dans le pr�
 10. NOUVEAU (session 2.14 quater) — Divergence documentaire NotificationBell : mécanisme réel = Realtime événementiel, pas polling par setInterval — corrigé Section 3
 11. NOUVEAU (session 2.14 quater) — Fichier applicatif du canal vocal : confirmé frontend/src/services/audioService.ts (déjà corrigé session 2.14 ter)
 12. NOUVEAU (session 2.14 quater) — Route de navigation CreateParcel manquante (bug préexistant découvert, sans rapport avec la session) — voir Section 15, session 2.20 assignée
+13. NOUVEAU (session 2.14 quinquies) — Ambiguïté sur la définition du « Volet 2 » entre le prompt de passation (expiration) et le prompt de mission 2.14 quater (rappel 24h) — levée par lecture directe de la ROADMAP : le Volet 2 concerne bien l'expiration liée à scheduled_pickup_time. Le rappel 24h est un mécanisme distinct, hors périmètre, affectation future non figée.
+14. NOUVEAU (session 2.14 quinquies) — Nombre de profils DRIVER opérationnels : clarifié — un seul profil DRIVER est actif à la fois (le nouveau, créé en 2.14 quinquies), le profil historique 2ec2b439-... étant une donnée orpheline dormante, pas un second profil équivalent utilisable.
+15. NOUVEAU (session 2.14 quinquies) — Statut CI comme garantie de fonctionnement du code : infirmé par l'incident du bug de duplication STATUS_FILTERS, passé inaperçu du linting TypeScript alors qu'il provoquait une erreur de compilation bloquante à l'exécution. Voir RÉSOLU 50 et règle consolidée Section 2.
 
-Prochain timestamp migration disponible : 20260504000017 (consommé : 015 par session 2.14 ter, 016 par session 2.14 quater)
+Prochain timestamp migration disponible : 20260504000019 (consommé : 015 par session 2.14 ter, 016 par session 2.14 quater, 017 et 018 par session 2.14 quinquies)
 
 ## REQUALIFICATION PHASE 6 — AMÉLIORATIONS POST-TESTS
 
@@ -469,235 +497,235 @@ Prochain timestamp migration disponible : 20260504000017 (consommé : 015 par se
 
 ## SESSION 2.14 ter — commit 9c36d84
 
-Correction RLS bucket Storage voice-messages
+[Contenu inchangé — reprise intégrale de la version du 20/08/2026 : correction RLS bucket Storage voice-messages, Partie 1 investigation, Partie 2 implémentation, 2 incidents (DROP hors circuit, échec réseau transitoire), synthèse finale. Voir RÉSOLU 43.]
+
+## SESSION 2.14 quater — commits 0da3e07 + 829f31e
+
+[Contenu inchangé — reprise intégrale de la version du 20/08/2026 : planification par date/heure, arbitrage Option B, composant DateTimeField.tsx, 3 bugs web corrigés, gap d'investigation méthodologique, tests de non-régression, points opérationnels. Voir RÉSOLU 44/45/46/47.]
+
+## SESSION 2.14 quinquies — commits 3bf1c09 → 8941e0a
 
 ### Objectif et périmètre
 
-Corriger la faille de sécurité RLS active sur le bucket Storage voice-messages (accès non restreint par propriété), en suivant le pattern éprouvé driver-documents (RÉSOLU 36, session 2.12), adapté à la complexité du double accès légitime (client + chauffeur de la mission). Session mixte : investigation ciblée (Partie 1) + implémentation (Partie 2), avec point de validation explicite obligatoire entre les deux.
+**Objectif initial du prompt de mission** : brancher la RPC géospatiale existante find_nearby_drivers (catégorie VUL, rayon 60 km depuis pickup_location), traiter le Volet 1 (retrait d'une mission de la diffusion dès acceptation) et le Volet 2 (expiration d'une mission pending à scheduled_pickup_time dépassé), avec vérification préalable du contenu de la vue available_drivers.
 
-### Partie 1 — Synthèse des vérifications (toutes CONFIRMÉES par lecture directe)
+**⚠️ Périmètre final réellement livré — différent de l'objectif initial, sur décisions explicites et tracées du porteur en cours de session :**
+- Le branchement final de la diffusion géospatiale (filtrage réel par distance) est reporté à une session dédiée future (2.14 quinquies bis, créée durant cette session).
+- Une faille de sécurité majeure, découverte fortuitement en cours d'investigation (Étape 1.3), a été traitée en priorité — élargissement conscient et documenté du périmètre initial.
+- Les Volets 1 et 2 ont été intégralement réalisés, avec un complément (filtre admin pour le statut expired) intégré à cette même session car relevant directement de son périmètre d'origine.
 
-| Étape | Élément vérifié | Résultat |
+« Le périmètre initial a été élargi en cours de Partie 1, sur décision explicite du porteur, pour intégrer la correction d'une faille de sécurité découverte fortuitement — hors de l'objet initial de la session. »
+
+Session mixte investigation approfondie (Partie 1, très longue) + implémentation (Partie 2), avec plusieurs points de validation explicite du porteur tout au long du processus.
+
+### Partie 1 — Investigation (synthèse)
+
+Vérification préliminaire (Étape 1.0) : HEAD réel du dépôt confirmé e9a720c (écart avec HEAD CODE attendu 829f31e, expliqué par un commit ROADMAP antérieur à la session — non porteur d'information nouvelle pour la présente actualisation).
+
+Diffusion géospatiale — investigation complète :
+
+Vue available_drivers (CONFIRMÉ par lecture directe) : filtres is_verified = true, is_available = true, is_active = true déjà appliqués. Colonnes exposées incluant à l'origine phone_number (point critique découvert plus loin). Aucun chauffeur ne satisfaisait les filtres au moment de l'investigation (table vide).
+
+RPC find_nearby_drivers (CONFIRMÉ) : paramètres client_point (WKT), radius_meters (mètres), p_vehicle_category (enum, valeur vul en minuscule confirmée). Filtre de fraîcheur last_location_update > NOW() - INTERVAL '5 minutes', non documenté auparavant. SECURITY DEFINER.
+
+Wrapper findNearbyDrivers() (missionService.ts, CONFIRMÉ) : fonctionnel, jamais appelé (« code mort » confirmé par lecture intégrale). Rayon par défaut dans sa signature : 15 km, pas 60 — écart avec le paramètre validé, origine INCONNUE, à corriger au futur branchement (voir Section 16, bloc 2.14 quinquies bis).
+
+Mécanisme de diffusion actuel cartographié intégralement : createMission() → trigger Realtime sur INSERT → subscribeToNewMissions(vehicleCategory, null, callback) (filtre catégorie uniquement) → DriverHomeScreen.tsx → NewMissionModal.tsx. Découverte clé : le paramètre _driverLocation de subscribeToNewMissions() existe dans la signature mais n'est jamais rempli ni utilisé — point d'insertion identifié pour un futur branchement (voir Section 16, bloc 2.14 quinquies bis).
+
+Investigation du mécanisme de géolocalisation chauffeur (locationService.ts, lu en profondeur en cours de Partie 2) : startBackgroundTracking() utilise Location.watchPositionAsync — suivi continu (intervalle 15 secondes ou 50 mètres de déplacement, le premier atteint), écrivant current_location/last_location_update en base à chaque déclenchement. Cette découverte explique a posteriori le filtre de fraîcheur de 5 minutes de la RPC (marge de sécurité cohérente avec un rafraîchissement toutes les 15s).
+
+### ⚠️ Découverte de sécurité majeure, hors périmètre initial
+
+En investiguant l'exposition de phone_number par la RPC (Étape 1.3), une cartographie complète des permissions a révélé :
+
+| Élément | Accès anon | Protection RLS |
 |---|---|---|
-| 1.0 | État git initial | HEAD 163c545 (roadmap), HEAD CODE afba878 inchangé, RAS |
-| 1.2 | Structure missions | client_id uuid NULL, driver_id uuid NULL — noms confirmés, nullable (mission créée sans chauffeur) |
-| 1.3 | Contenu bucket voice-messages | Vide (0 ligne) — canal jamais utilisé, UI orpheline |
-| 1.4 | Policies RLS existantes | 4 policies (authenticated_{read,upload,update,delete}_voice_messages), aucune ne vérifie la propriété — uniquement bucket_id = 'voice-messages' |
-| 1.5 | Pattern driver-documents (RÉSOLU 36) | 4 policies identiques : (bucket_id = 'driver-documents') AND (get_my_role()='admin' OR storage.foldername(name)[1]::uuid IN (SELECT drivers.id via profiles.user_id = auth.uid())) |
-| FK | Clés étrangères missions | client_id → profiles.id, driver_id → drivers.id — confirmées |
-| 1.7 | Indexation storage.foldername() | Point critique détecté : pour voice-messages, le chemin missions/{missionId}/{senderProfileId}_{timestamp}.ext produit un tableau à 2 segments (['missions', missionId]). L'indice correct est [2], pas [1] comme dans driver-documents (un seul segment de dossier). Vérifié par simulation directe. |
-| — | Convention de chemin (code source) | Confirmée dans frontend/src/services/audioService.ts ligne 120 — écart de documentation identifié : le prompt de mission listait missionService.ts, VoiceChatScreen.tsx, VoiceMicButton.tsx, mais le code réel est dans audioService.ts |
-| — | Rôle des policies (TO authenticated) | Confirmé identique sur les 8 policies existantes (driver-documents + anciennes voice-messages) |
+| Fonction find_nearby_drivers | EXECUTE accordé | SECURITY DEFINER (contourne RLS) |
+| Vue available_drivers | SELECT accordé | Aucune (vue simple) — expose phone_number |
+| Vue driver_dashboard | SELECT accordé | Aucune (vue simple) — expose solde wallet, commissions, recharges |
+| Vue public_parcel_tracking | SELECT accordé (voulu) | Téléphone tronqué à la conception — correctement conçue |
+| Table drivers | GRANT large | Presque stricte, sauf drivers_select_available (aucune condition d'identité) |
+| Tables profiles, wallet, transactions | GRANT large | Strictes (chaîne de propriété complète vers auth.uid()) |
+| Autres fonctions SECURITY DEFINER (schéma public) | — | Aucune autre à risque (get_my_role() légitime, reste PostGIS interne) |
 
-3 points d'arbitrage tranchés par le porteur :
-1. Accès admin dans la clause RLS : exclu. Aucun besoin métier documenté ne justifie qu'un admin lise du contenu audio privé.
-2. Modalité de test (Étape 2.6) : Option 1 (test partiel, sans rotation du numéro de test partagé +212600000000).
-3. Structure SQL : duplication littérale sur les 4 policies (fidèle au pattern RÉSOLU 36), pas de factorisation via fonction SQL partagée.
+Conclusion de l'investigation : problème strictement circonscrit à deux vues (available_drivers, driver_dashboard), toutes deux non exploitées par le code applicatif actuel au moment de la découverte (sauf driver_dashboard, utilisée légitimement par walletService.ts avec un filtre côté application, non protégé côté base), mais accessibles depuis l'extérieur de l'application sans authentification. Les tables sous-jacentes correctement protégées ; le défaut localisé aux vues elles-mêmes.
+
+### Ambiguïté documentaire levée — définition du « Volet 2 »
+
+Deux formulations contradictoires existaient entre le prompt de passation (Volet 2 = expiration) et le prompt de mission 2.14 quater (Volet 2 = rappel 24h). Confirmé par lecture directe de la ROADMAP actuelle : le Volet 2 concerne bien l'expiration liée à scheduled_pickup_time. Le rappel 24h est un mécanisme distinct, hors périmètre de cette session, affectation future non figée.
+
+### Confirmation de la pertinence de notifyNewMission
+
+CONFIRMÉ par lecture directe (notificationTemplates.ts) : la fonction exige un driverProfileId individuel en premier paramètre, incompatible par construction avec le moment de création d'une mission (aucun chauffeur encore assigné). Décision d'exclusion (actée depuis session 2.14) reconfirmée sans réserve — fonction définie, aucun appelant dans tout le projet (grep global).
 
 ### Partie 2 — Implémentation
 
-Clause RLS finale (chaîne de propriété identique pour les 4 opérations) :
-```sql
-(bucket_id = 'voice-messages'::text) AND (
-  ((storage.foldername(name))[2])::uuid IN (
-    SELECT m.id FROM missions m
-    JOIN profiles p_client ON p_client.id = m.client_id
-    WHERE p_client.user_id = auth.uid()
-    UNION
-    SELECT m.id FROM missions m
-    JOIN drivers d ON d.id = m.driver_id
-    JOIN profiles p_driver ON p_driver.id = d.profile_id
-    WHERE m.driver_id IS NOT NULL AND p_driver.user_id = auth.uid()
-  )
-)
-```
+**2A — Correction de sécurité (priorité, traitée en premier)**
 
-Appliquée à 4 policies : voice_messages_read_own (SELECT), voice_messages_upload_own (INSERT, WITH CHECK), voice_messages_update_own (UPDATE), voice_messages_delete_own (DELETE). Chacune précédée d'un DROP POLICY IF EXISTS de l'ancienne policy correspondante.
+Arbitrage technique : CREATE OR REPLACE VIEW s'est révélé incapable de retirer une colonne existante (SQLSTATE 42P16 — cannot drop columns from view) — un premier déploiement a échoué (Deploy Supabase FTM #47). Correction : DROP FUNCTION + DROP VIEW puis CREATE (pas CREATE OR REPLACE), en respectant l'ordre des dépendances.
 
-Livrables :
-- supabase/migrations/20260504000015_fix_rls_voice_messages.sql (1049 octets, 4 blocs)
-- supabase/rollbacks/20260504000015_fix_rls_voice_messages_rollback.sql (1478 octets) — recrée fidèlement les 4 anciennes policies permissives, avertissement explicite sur l'insuffisance d'un rollback SQL seul en cas de déploiement partiel
+Contenu de la migration 20260504000017 (déployée avec succès après correction, commit 70b02f0) :
+1. Suppression préalable de la RPC dépendante, puis de la vue available_drivers.
+2. Recréation de la vue sans phone_number.
+3. Recréation de la RPC sans phone_number.
+4. Révocation SELECT anon/authenticated sur available_drivers.
+5. Révocation SELECT anon sur driver_dashboard + ALTER VIEW ... SET (security_invoker = true) (PostgreSQL 17.6, confirmé compatible).
+6. Révocation EXECUTE anon/PUBLIC sur la RPC, conservé pour authenticated uniquement.
 
-Commit et déploiement :
-- Commit 9c36d84 : « fix: RLS ownership chain voice-messages bucket - mission-scoped client+driver access », 2 fichiers, 125 insertions
-- Poussé sur origin/main (163c545..9c36d84)
-- Déploiement via deploy_supabase.yml (Deploy Supabase FTM #45)
+Rollback (supabase/rollbacks/20260504000017_..._rollback.sql) : restauration complète documentée, avec avertissement explicite sur la réintroduction sciente de la faille en cas d'exécution.
 
-État final vérifié en base (post-déploiement, par lecture directe) : 4 policies actives (voice_messages_{read,upload,update,delete}_own), aucune trace des anciennes authenticated_*_voice_messages. Git et base synchronisés.
+Vérifications post-déploiement, toutes par lecture directe en production :
+- pg_get_viewdef : phone_number absent de available_drivers ✅
+- role_table_grants : SELECT absent pour anon/authenticated sur available_drivers ✅ (2/5 rôles, contre 4/5 avant)
+- driver_dashboard : security_invoker=true confirmé, SELECT absent pour anon ✅
+- pg_get_functiondef : phone_number absent de la RPC ✅
+- routine_privileges : seuls postgres/authenticated/service_role conservent EXECUTE (contre 5 rôles avant) ✅
 
-### Incidents survenus durant la session
+Validation fonctionnelle en conditions réelles (test DRIVER, Partie tests) : le nouveau chauffeur test ne voit que son propre solde wallet (0 DH puis 300 DH après recharge), jamais celui d'un autre profil — confirmation pratique, à l'appui du RÉSOLU 48, que security_invoker fonctionne correctement en production.
 
-**Incident 1 — DROP manuel hors circuit GitHub**
+**2B — Volet 2, migration**
 
-Ce qui s'est passé : lors de la préparation de l'Étape 2.1, la commande DROP POLICY IF EXISTS "authenticated_read_voice_messages" ON storage.objects; a été exécutée directement dans le SQL Editor Supabase (production), avant validation explicite et avant l'écriture du fichier de migration — en contradiction avec la règle de migrations SQL exclusivement via GitHub Actions.
+Migration 20260504000018 (commit ffd62e8) : ALTER TYPE mission_status ADD VALUE IF NOT EXISTS 'expired'; — fichier volontairement minimal, isolé dans sa propre transaction (contrainte PostgreSQL anticipée : impossibilité d'utiliser une nouvelle valeur d'enum dans la transaction qui l'a créée).
 
-Pourquoi : enchaînement trop rapide entre la proposition d'une commande et son exécution, plusieurs commandes SQL affichées à proximité l'une de l'autre dans la même interface.
+Rollback : documentaire uniquement — retrait d'une valeur d'enum non trivialement automatisable en toute sécurité par PostgreSQL, procédure manuelle documentée en cas de besoin réel.
 
-Impact réel : nul sur les données (bucket vide) — mais rupture de traçabilité entre l'état de la base et l'état du dépôt Git pendant la fenêtre entre le DROP manuel et le commit 9c36d84. Fail-closed (aucune policy SELECT active pendant cette fenêtre), pas fail-open — pas d'exposition de données.
+Vérification post-déploiement : enum_range(NULL::mission_status) → {pending, accepted, in_progress, completed, cancelled_client, cancelled_driver, expired} — 6 valeurs d'origine intactes + expired ajoutée.
 
-Résolution : le DROP déjà survenu a été documenté explicitement en commentaire dans le fichier de migration lui-même (traçabilité rétroactive), puis le CREATE POLICY correspondant a été inclus dans le même bloc, déployé via le canal standard.
+**Volet 1 — Fermeture automatique du modal (commit d1869e4)**
 
-Leçon méthodologique consolidée en Section 2 : ne jamais présenter une commande SQL de modification de schéma comme une action isolée "à transmettre pour exécution" sans préciser explicitement qu'elle doit être intégrée au fichier de migration avant toute exécution réelle.
+Fichier modifié : DriverHomeScreen.tsx (backup .bak.session2.14quinquies).
 
-**Incident 2 — Échec du premier déploiement (socket hang up)**
+Modifications :
+- Import de subscribeToMissionUpdates (canal déjà existant, déjà utilisé dans MissionTrackingScreen.tsx — aucune nouvelle infrastructure).
+- Nouvelle ref pendingMissionUpdateChannelRef.
+- Fonction clearPendingMissionWatch centralisant le désabonnement.
+- Dans le callback de subscribeToNewMissions : abonnement immédiat à subscribeToMissionUpdates(mission.id, ...), fermeture automatique du modal (setPendingMission(null)) si le statut reçu n'est plus pending.
+- Désabonnement systématique à chaque point de sortie (bascule hors service, acceptation, refus, démontage du composant).
 
-Ce qui s'est passé : le run Deploy Supabase FTM #45 a échoué dès la première étape (Lint SQL Migrations, 35s), avec l'erreur socket hang up — coupure de connexion réseau transitoire, sans rapport avec le contenu du fichier SQL.
+Vérifications de fichier : taille, début/fin (Python), et présence exacte de la logique métier (grep ciblé, 13 occurrences réparties correctement).
 
-Vérification effectuée avant toute action corrective : requête sur pg_policy confirmant qu'aucune trace du déploiement raté n'était présente en base (le pipeline séquentiel s'était arrêté avant Deploy DB Migrations).
+**Volet 2 — Partie applicative (commit b1d2540)**
 
-Résolution : simple relance (Re-run all jobs) — succès complet au second essai (3m 2s, 4/4 étapes vertes). Confirmé a posteriori comme un incident réseau ponctuel, pas structurel — aucune règle nouvelle consolidée pour cet incident.
+missionService.ts (backup créé) :
+- Ajout de 'expired' au type MissionStatus.
+- Nouvelle fonction expireMission(missionId), sur le modèle de cancelMission(), avec garde-fou .eq('status', 'pending').
 
-### Étape 2.6 — Test en conditions réelles : reporté (décision explicite du porteur)
+MissionTrackingScreen.tsx (backup créé) :
+- Import de expireMission.
+- Constante EXPIRATION_CHECK_INTERVAL_MS = 30000.
+- Nouveau useEffect : actif uniquement si status === 'pending' et scheduled_pickup_time renseigné, vérification locale (comparaison de dates, sans coût réseau) toutes les 30 secondes, écriture réelle en base uniquement si expiration détectée.
+- Nouveau case 'expired' dans renderStatus() : message dédié + bouton de recréation de mission (réutilise le style existant).
 
-Décision : le test fonctionnel de la clause RLS n'a pas été exécuté dans cette session.
+Arbitrages techniques/métier, avec répartition explicite des responsabilités entre l'assistant et le porteur :
+- Mécanisme sans CRON pour cette phase du projet (décision métier, porteur).
+- Fréquence 30 secondes, après clarification que la vérification locale ne coûte rien en réseau — seule l'écriture en cas d'expiration détectée a un coût (décision métier, porteur, révisée après clarification technique de 1 heure vers 30 secondes).
+- Écran d'implémentation (MissionTrackingScreen.tsx) : décision technique.
+- Nouveau statut expired plutôt que réutilisation d'un statut existant : décision technique, pour ne pas déformer la sémantique de statuts déjà affichés ailleurs.
 
-Raison : construire un scénario de test aurait nécessité d'insérer une mission de test avec des données réelles (client_id/driver_id), le numéro de test partagé ne pouvant occuper les deux rôles simultanément (Option 1 retenue en Partie 1). Cette manipulation aurait fait sortir la session, pour la première fois, du registre strict "schéma/RLS" vers "données métier réelles, même factices" — avec risque de pollution de données pour un bénéfice limité.
+Limite assumée et documentée : une mission pending expirée reste techniquement en base tant qu'aucun écran client ne la consulte — compromis explicitement accepté pour cette phase (0 mission en base à ce jour), à réévaluer si le volume réel augmente.
 
-Cohérence documentaire : ce report est conforme à ce que prévoyait déjà le prompt de passation — le déploiement/test fonctionnel complet du canal reste rattaché à la Phase 4.4 / session 2.18, qui disposera d'un contexte de test représentatif (device physique, vraie mission active, vrai chauffeur).
+**Volet 2 — Filtre admin (commits 69273c0 puis 8941e0a)**
 
-Ce qui reste acquis, non remis en cause par ce report : la clause RLS est déployée et confirmée active en production par lecture directe.
+Décision d'intégration à cette session : proposée par le porteur, validée après vérification technique que la modification était simple (constantes génériques, aucune logique conditionnelle spécifique dans le rendu).
 
-### Écarts de documentation corrigés (intégrés au présent document)
+AdminMissionsScreen.tsx (backup créé, fichier lu intégralement pour la première fois durant cette session, 195 lignes) : ajout de expired aux trois constantes STATUS_LABELS, STATUS_FILTERS, FILTER_LABELS.
 
-- Fichier applicatif du canal vocal : confirmé frontend/src/services/audioService.ts (et non missionService.ts/VoiceChatScreen.tsx/VoiceMicButton.tsx comme listé précédemment) — corrigé dans l'arborescence (Section 12) et Section 3.
-- Indexation storage.foldername() : règle généralisée, consolidée en Section 2 — l'indice dépend du nombre de segments fixes de la convention de chemin, à vérifier systématiquement par simulation.
+### ⚠️ Incident critique — détecté et corrigé après la séquence de tests de non-régression
+
+Découverte : lors d'un test fonctionnel tardif et ciblé du filtre expired (motivé par une relecture rigoureuse post-clôture), le serveur de développement a révélé une erreur de compilation bloquante :
+
+SyntaxError: /workspaces/FAST-TRANS-MAROC-FTM/frontend/src/screens/admin/AdminMissionsScreen.tsx:
+Identifier 'STATUS_FILTERS' has already been declared. (44:6)
+
+Cause racine : une séquence de trois commandes sed appliquées successivement sur le fichier (une insertion, un remplacement de ligne, une seconde insertion) a provoqué un décalage de numérotation de lignes non anticipé après la première insertion ; le remplacement suivant, ciblant la ligne 43 avant recalcul, a produit une duplication de la déclaration STATUS_FILTERS (version correcte avec expired + résidu de l'ancienne version sans expired, jamais supprimé) plutôt qu'un remplacement propre.
+
+⚠️ Point méthodologique majeur : le workflow CI Vérification Qualité Code était passé au vert sur le commit fautif (69273c0) — le linting TypeScript n'a pas détecté cette erreur de syntaxe pourtant bloquante à l'exécution. Seul un test d'exécution réelle (lancement effectif du serveur Metro Bundler) l'a révélée immédiatement et sans ambiguïté. Un statut CI vert ne constitue donc pas, dans ce projet, une garantie suffisante que le code compile et s'exécute réellement.
+
+Correction (commit 8941e0a) : suppression de la ligne dupliquée (l'ancienne version, sans expired), conservation de la version correcte. Vérification par relecture complète (taille, grep ciblé confirmant une seule déclaration de chaque constante) puis validation par un vrai test d'exécution : serveur relancé avec succès, AdminMissionsScreen affichée avec les 7 filtres, "Expirées" visible et l'écran stable, sans erreur JavaScript.
+
+Ce qui reste non testé, assumé comme limite : le filtrage réel avec au moins une mission au statut expired — impossible en pratique, la table missions étant restée vide (0 ligne) tout au long de cette session.
+
+### Tests de non-régression
+
+Méthode : serveur de développement lancé (2 incidents réseau transitoires vers api.expo.dev — Client network socket disconnected before secure TLS connection was established — résolus par simple relance, cohérent avec l'Incident 2 déjà documenté en session 2.14 ter). Ordre choisi pragmatiquement : CLIENT (déjà connecté sur le numéro de test partagé) → ADMIN → DRIVER (occasion de reconnecter le profil, accès Auth perdu depuis 2.14 quater) — exception assumée à l'ordre standard DRIVER → ADMIN → CLIENT, justifiée par l'efficacité pratique.
+
+| Rôle | Résultat | Détail |
+|---|---|---|
+| CLIENT | ✅ Aucune régression | CreateMissionScreen (avec DateTimeField.tsx de 2.14 quater) fonctionnel. NotificationCenterScreen fonctionnel — Anomalie #1 déjà connue (bouton retour absent) reconfirmée en conditions réelles. GPS bloqué (limitation déjà documentée, confirmée : GPS - Client location permission denied). |
+| ADMIN | ✅ Aucune régression | Dashboard, gestion missions, validation documents (4/4), gestion wallet (recharge 300 DH validée) — tous fonctionnels. |
+| DRIVER | ✅ Aucune régression | Onboarding complet réalisé (nouveau profil créé, 4 documents soumis et validés). Validation admin réussie (erreur CORS sur send-push-notification confirmée — limitation déjà documentée, non liée à cette session). Recharge wallet fonctionnelle (0 → 300 DH). Accès à DriverHomeScreen (fichier modifié pour le Volet 1) réussi. Activation de disponibilité tentée : bloquée au niveau GPS comme attendu (GPS - Cannot start tracking: permissions denied) — le code réagit proprement à cet échec (if (trackResult.error) { Alert.alert(...); return; }), sans crash, mais empêche de tester le canal de diffusion jusqu'au bout. Vérification fonctionnelle croisée : le chauffeur test ne voit que son propre solde wallet, validant en conditions réelles security_invoker sur driver_dashboard. |
+
+### État du numéro de test partagé
+
+⚠️ Précision importante : il n'existe pas deux profils DRIVER équivalents. Un seul profil DRIVER est actif et opérationnel aujourd'hui — celui créé durant cette session, via un nouvel onboarding complet, sur le numéro de test partagé (+212600000000).
+
+Caractéristiques du nouveau profil DRIVER actif :
+- Créé et validé (is_verified = true) durant cette session.
+- Wallet : 300.00 DH (recharge de 300 DH validée par l'admin).
+- Catégorie véhicule : VUL.
+- Documents légaux soumis et validés (Permis, Carte grise, Assurance, Visite technique).
+
+Le profil DRIVER historique (2ec2b439-fcdb-443d-8de0-5bee268d30f6) reste orphelin d'accès Auth — données (wallet 800 DH, 4 transactions pending) intactes en base mais inaccessibles et inopérantes. Pas un second profil utilisable, seulement une donnée historique dormante. Décision sur son éventuelle réactivation ou son abandon toujours en attente d'arbitrage du porteur.
+
+### Écarts de documentation corrigés
+
+- Ambiguïté sur la définition du « Volet 2 » entre prompt de passation et prompt de mission 2.14 quater — levée par lecture directe de la ROADMAP.
+- Nombre de profils DRIVER — un seul profil actif (le nouveau), l'ancien étant orphelin, non un second profil équivalent.
+- Statut CI comme garantie de fonctionnement du code — infirmé par l'incident du bug de duplication non détecté par le linting.
 
 ### État final du dépôt et continuité inter-sessions
 
-HEAD : 9c36d84, synchronisé avec origin/main. Aucun fichier en attente de commit hors des .bak* déjà identifiés.
+Commits de cette session, dans l'ordre chronologique :
 
-Timestamp de migration consommé : 20260504000015. Le prochain disponible est désormais 20260504000016 (consommé à son tour par la session 2.14 quater — voir ci-dessous, prochain réellement disponible : 20260504000017).
+| Commit | Objet |
+|---|---|
+| 3bf1c09 | Correction sécurité initiale (migration + rollback 20260504000017) |
+| 70b02f0 | Correction de la migration précédente (SQLSTATE 42P16, DROP+CREATE) |
+| ffd62e8 | Ajout du statut expired à l'enum mission_status (migration 20260504000018) |
+| d1869e4 | Volet 1 — fermeture automatique du modal |
+| b1d2540 | Volet 2 — partie applicative (détection + écriture) |
+| 69273c0 | Volet 2 — filtre admin (contenait un bug critique) |
+| 8941e0a | Correctif du bug critique, validé par test d'exécution réel |
 
-### Confirmation de compatibilité et de non-régression
+HEAD final : 8941e0a, synchronisé avec origin/main, aucune modification en attente de commit hors des .bak* déjà identifiés.
 
-Aucune modification de code applicatif dans cette session — seule la couche RLS Storage (storage.objects, bucket voice-messages) a été touchée, via migration SQL exclusivement. Aucun fichier .ts/.tsx modifié (lecture seule sur audioService.ts, VoiceChatScreen.tsx, VoiceMicButton.tsx).
+Fichiers créés :
+- supabase/migrations/20260504000017_fix_available_drivers_and_driver_dashboard_exposure.sql
+- supabase/rollbacks/20260504000017_fix_available_drivers_and_driver_dashboard_exposure_rollback.sql
+- supabase/migrations/20260504000018_add_expired_status_to_mission_status.sql
+- supabase/rollbacks/20260504000018_add_expired_status_to_mission_status_rollback.sql
 
-Le test de non-régression multi-rôles classique (DRIVER → ADMIN → CLIENT) n'était pas applicable au sens où l'exigent les sessions touchant du code applicatif. Vérification faite par lecture directe de l'état des policies en base après déploiement — le test applicatif fonctionnel reste à faire en Phase 4.4.
+Fichiers modifiés : DriverHomeScreen.tsx, missionService.ts, MissionTrackingScreen.tsx, AdminMissionsScreen.tsx (modifié deux fois : ajout puis correctif du bug critique).
 
-Aucune des briques fonctionnelles à préserver (recharge wallet, Realtime transactions, NotificationBell/Center, fonctions notify*) n'a été touchée, directement ou indirectement, par cette session.
+Backups créés (.bak.session2.14quinquies) : DriverHomeScreen.tsx, missionService.ts, MissionTrackingScreen.tsx, AdminMissionsScreen.tsx — cohérent avec la politique de traçabilité déjà établie du projet (~59+ fichiers .bak* au total).
 
-### Vérification finale — État des comptes de test
+⚠️ Timestamps de migration consommés durant cette session : 20260504000017, 20260504000018.
 
-Driver test (2ec2b439-fcdb-443d-8de0-5bee268d30f6) — vérifié par lecture directe après clôture des Parties 1 et 2 :
-- wallet_id : 58b2b8e7-190a-4cbb-8f09-8340feecf498 — conforme
-- balance : 800.00 DH — conforme, inchangé
-- 4 transactions en statut pending, confirmées par lecture directe de created_at : 50.00 DH (14/07/2026, donnée de test préexistante non mentionnée dans le résumé synthétique du document jusqu'alors, confirmée non anormale) ; 500.00 DH (20/07/2026) ; 200.00 DH (20/07/2026) ; 1000.00 DH (21/07/2026)
-- Confirmation : aucune donnée wallet/transactions n'a été altérée par cette session
-
-Compte admin (+212600000001) : non supprimé, non modifié — conforme.
+⚠️ PROCHAIN TIMESTAMP DE MIGRATION DISPONIBLE : 20260504000019.
 
 ### Synthèse finale de la session
 
 | Élément | Statut |
 |---|---|
-| Partie 1 — Investigation | ✅ Complète, toutes vérifications par lecture directe |
-| Partie 2 — Migration + rollback | ✅ Écrits, vérifiés bloc par bloc (repr(), wc -c) |
-| Déploiement | ✅ Réussi (après relance suite incident réseau) |
-| Policies RLS finales | ✅ 4/4 actives, confirmées en base |
-| Test fonctionnel (Étape 2.6) | ⏸ Reporté à la Phase 4.4 / session 2.18, décision motivée et tracée |
-| Incidents | 2, tous deux documentés, résolus, sans impact final sur les données |
-| Comptes de test | ✅ Intacts, vérifiés par lecture directe |
-| État du dépôt | ✅ Propre, HEAD 9c36d84, synchronisé |
-
-Fichiers créés :
-- supabase/migrations/20260504000015_fix_rls_voice_messages.sql
-- supabase/rollbacks/20260504000015_fix_rls_voice_messages_rollback.sql
-
-## SESSION 2.14 quater — commits 0da3e07 + 829f31e
-
-Planification par date/heure — scheduled_pickup_time obligatoire (transport + e-commerce)
-
-### Objectif et périmètre
-
-Rendre scheduled_pickup_time obligatoire dans le flux de création de mission classique, avec arbitrage UI-only vs contrainte DB à trancher en Partie 1. Session multi-jours (13-20/08/2026), plusieurs pauses.
-
-### Partie 1 — Investigation (synthèse)
-
-CONFIRMÉ par lecture directe : scheduled_pickup_time absent de tous les points de création (écran, service missionService.ts) ; table missions vide (0 ligne) en début de session.
-
-Composant DateTimePicker natif existant (LegalDocumentsScreen.tsx) analysé comme référence : mode date seule, limitation Android confirmée par recherche externe (pas de mode="datetime" combiné natif), sous-composant DateField non exporté (privé au fichier).
-
-Découverte majeure : createMission() est également appelée par le flux e-commerce (parcelService.ts), hors périmètre initial du prompt de mission → dérogation actée explicitement par le porteur (Option B + extension de la contrainte au flux e-commerce, strictement limitée à ce champ).
-
-Triggers set_commission_amount et set_estimated_distance vérifiés par lecture directe : aucun conflit avec la future contrainte NOT NULL.
-
-### Partie 2 — Implémentation
-
-**Arbitrage tranché : Option B.** Contrainte NOT NULL en base de données, en complément (pas en remplacement) de la validation côté UI. Justification du porteur : robustesse contre tout point d'entrée non anticipé, présent ou futur.
-
-**Commit 1 — 0da3e07 : code applicatif + migration + rollback**
-
-Fichiers modifiés (5) :
-- frontend/src/components/DateTimeField.tsx (nouveau) — composant partagé pour la sélection date+heure. Structure inspirée du pattern DateField (bouton → picker → gestion d'erreur), mais dupliquée et réécrite indépendamment, sans modifier ni importer LegalDocumentsScreen.tsx (hors périmètre, aucune dérogation accordée pour ce fichier).
-- frontend/src/screens/client/CreateMissionScreen.tsx — intégration flux transport classique
-- frontend/src/services/missionService.ts — intégration flux transport classique
-- frontend/src/screens/ecommerce/CreateParcelScreen.tsx — intégration flux e-commerce (dérogation actée)
-- frontend/src/services/parcelService.ts — intégration flux e-commerce (dérogation actée)
-
-Migration + rollback SQL :
-- supabase/migrations/20260504000016_add_scheduled_pickup_time_not_null.sql — ALTER TABLE missions ALTER COLUMN scheduled_pickup_time SET NOT NULL;
-- supabase/rollbacks/20260504000016_add_scheduled_pickup_time_not_null_rollback.sql — rollback correspondant, avec avertissement explicite sur l'ordre des opérations en cas de rollback complet (SQL d'abord, git revert du code applicatif ensuite — jamais l'inverse, sous peine de bloquer toute création de mission)
-
-Déployés et vérifiés en production : is_nullable = NO confirmé par lecture directe du schéma réel (information_schema.columns), pas seulement par le statut du pipeline CI.
-
-**Commit 2 — 829f31e : correctif web de DateTimeField.tsx**
-
-Découvert et corrigé après le déploiement du commit 0da3e07, à l'occasion des premiers tests sur web. Trois causes racines distinctes, diagnostiquées séparément :
-
-1. **Absence totale de support web** de @react-native-community/datetimepicker (bibliothèque strictement native iOS/Android/Windows, confirmé par documentation officielle) → ajout d'une branche Platform.OS === 'web' avec <input type="date">/<input type="time">, inspirée du repli déjà existant dans LegalDocumentsScreen.tsx.
-2. **Re-rendu en boucle** du composant non mémoïsé, corrompant la saisie clavier (année transformée en 0002 par exemple) → correctif React.memo appliqué sur l'export du composant.
-3. **Validation prématurée** à chaque segment de frappe (le navigateur déclenche onChange sur <input type="date"> dès qu'une valeur techniquement complète est formée, avant la fin de la saisie de l'utilisateur — comportement standard HTML confirmé par recherche) → séparation onChange (mise à jour d'un état local, sans validation) / onBlur (validation finale via applyCombined).
-
-Chaque correctif a été validé empiriquement par instrumentation temporaire (console.log préfixés [FTM-DEBUG-TEMP]), retirée et vérifiée absente après confirmation du bon fonctionnement.
-
-Tous les workflows CI déclenchés sur les deux commits (Check Supabase Connection, Vérification Qualité Code, Deploy Supabase FTM) se sont terminés avec succès.
-
-### Leçon méthodologique — gap d'investigation
-
-Lors de l'Étape 1.3 (Partie 1), LegalDocumentsScreen.tsx a été lu en deux extraits disjoints (lignes 1-45 puis 70-110), laissant un angle mort de ~25 lignes exactement là où se trouvait la branche Platform.OS === 'web' — l'information la plus critique pour la conception du composant DateTimeField. Cette omission n'a été découverte qu'en Partie 2, lors du diagnostic du bug de non-support web (commit 829f31e), provoquant un retour en arrière évitable.
-
-Leçon consolidée en Section 2 : la discipline de lecture intégrale doit s'appliquer avec la même rigueur à tout fichier de référence technique servant de modèle de conception — pas seulement aux fichiers directement modifiés.
-
-### Tests de non-régression — bilan
-
-| Test | Statut | Détail |
-|---|---|---|
-| Validation UI — bouton désactivé sans date | ✅ Validé | Confirmé sur CreateMissionScreen.tsx |
-| Rejet d'une date passée | ✅ Validé | Message d'erreur affiché, logs confirmant le rejet sans corruption de l'affichage |
-| Acceptation d'une date future | ✅ Validé | Testé avec succès (25/08/2026, 16:25) |
-| Règle « aucun délai minimum requis » | ✅ Validé | Testé le 20/08/2026 : date du jour + heure proche de l'heure courante (~30-40 min d'écart), acceptée sans erreur au premier essai |
-| Vérification qu'aucun fichier tiers n'importe DateTimeField | ✅ Validé | grep confirmant exactement 3 fichiers : le composant lui-même + les deux écrans consommateurs prévus |
-| Soumission complète du flux transport (jusqu'à l'insertion en base) | ⚠️ Non testé | Bloqué par l'absence de géolocalisation fonctionnelle dans l'environnement Codespaces/iframe (limitation déjà documentée, hors périmètre, reportée Phase 4.x). Aucune mission n'a été insérée en base pendant cette session (table confirmée vide par requête directe). |
-| Flux e-commerce (CreateParcelScreen.tsx) | ⚠️ Non testé | Bug préexistant découvert, sans rapport avec cette session : la route 'CreateParcel' appelée par ParcelHistoryScreen.tsx (navigation.navigate('CreateParcel')) n'est déclarée dans aucun fichier du dossier frontend/src/navigation/, rendant l'écran inaccessible depuis l'UI normale. Décision du porteur : reporté à une nouvelle session, 2.20, positionnée en fin de séquence du chantier, sans dépendance avec les pistes suivantes. |
-| Tests DRIVER / ADMIN | ⚠️ Non réalisés | Non abordés dans cette session |
-| Test symétrique de la contrainte DB par insertion SQL directe | ➖ Retiré | Décision explicite du porteur de ne pas l'exécuter, pour éviter de polluer la base de données de production avec une ligne de test — jugé non nécessaire puisque le code applicatif transmettant scheduled_pickup_time a été vérifié à trois reprises distinctes (lecture de missionService.ts, lecture de parcelService.ts, vérification du schéma post-migration) |
-
-### Points opérationnels documentés
-
-**État du compte de test partagé (+212600000000)** : actuellement en rôle CLIENT (profil "TEST CLIENT FTM"), suite à la suppression du compte Auth DRIVER effectuée pour les besoins des tests de cette session. Le profil DRIVER (wallet 800 DH, 4 transactions pending) n'a pas été reconstitué — les données restent intactes en base (seul l'accès Auth avait été supprimé), récupérables via un futur onboarding DRIVER + validation admin si nécessaire. Décision de reconstitution laissée à la discrétion du porteur / de la session future qui en aurait besoin.
-
-**Backups créés dans cette session** : .bak.session2.14quater, 4 fichiers (CreateMissionScreen.tsx, missionService.ts, CreateParcelScreen.tsx, parcelService.ts) — conservés tels quels, cohérent avec la politique déjà établie dans le prompt de passation (mécanisme de traçabilité délibéré, ~55 fichiers .bak* déjà présents dans le projet). Aucune action de nettoyage requise.
-
-### Points techniques mineurs consignés pour référence future
-
-- Décalage de fuseau horaire (toISOString() en UTC) dans le formatage web du champ date — limitation héritée du pattern de LegalDocumentsScreen.tsx, non corrigée (hors périmètre de cette session).
-- min de <input type="date"> figé à la date du rendu initial du composant, cas limite (formulaire resté ouvert plusieurs heures sans rechargement) non explicitement couvert — rattrapé de toute façon par la validation finale sur new Date().
-- Cas limite '' (chaîne vide) vs null avec l'opérateur ?? sur localDateStr/localTimeStr — n'affecte pas le comportement principal recherché, jugé non prioritaire à corriger.
-- Comportement hérité display="spinner" (iOS) fermant le picker dès le premier onChange — présent également dans DateField d'origine, non corrigé dans cette session (fichier hors périmètre).
-- Divergence documentation/code sur NotificationBell.tsx : le prompt de passation documentait un mécanisme de « polling », alors que le code réel utilise un abonnement Realtime Supabase déclenché par événement, sans setInterval — corrigé Section 3.
-- Écart de nommage déjà résolu sur cancelMission(userId, ...) par rapport à ce que documentait le prompt de passation (paramètre _userId non utilisé, signalé comme point de sécurité pour une session 2.17) — le code actuel utilise bien userId nommé sans underscore. ⚠️ Nuance importante : ce renommage de paramètre est un fait de code déjà en place, mais NE RÉSOUT PAS le point de sécurité lui-même — aucune vérification que l'appelant est bien client_id ou driver_id de la mission annulée n'a été ajoutée. Le point de sécurité reste entier et rattaché à la session 2.17 (voir Section 15/17, mise à jour de la recommandation existante).
-- Deux points d'enrichissement fonctionnel identifiés mais non traités, car hors du périmètre strict de la dérogation (« ajout et transmission du champ », rien de plus) : le SMS envoyé au destinataire d'un colis (notifyRecipientBySMS) et l'historique client (getClientParcels) pourraient à l'avenir inclure scheduled_pickup_time dans leur contenu/sélection — consigné en Section 17 comme piste future, non assignée.
-
-### État final du dépôt
-
-HEAD : 829f31e, aligné avec origin/main. Aucune modification en attente de commit. Contrainte NOT NULL active en production sur missions.scheduled_pickup_time, vérifiée par lecture directe du schéma.
+| Partie 1 — Investigation | ✅ Complète, très approfondie, toutes vérifications par lecture directe |
+| Faille de sécurité découverte et corrigée | ✅ Traitée en priorité, périmètre élargi tracé |
+| Diffusion géospatiale — préparation | ✅ Infrastructure sécurisée et intégralement cartographiée |
+| Diffusion géospatiale — branchement final | ⏸ Reportée à la session 2.14 quinquies bis (nouvelle, créée) |
+| Volet 1 | ✅ Implémenté, déployé, testé dans la limite du GPS |
+| Volet 2 (migration + applicatif + filtre admin) | ✅ Implémenté, déployé |
+| Incident critique (filtre admin) | ✅ Détecté par test réel, corrigé, revalidé |
+| Tests de non-régression 3 rôles | ✅ Réalisés, aucune régression fonctionnelle |
+| État du dépôt | ✅ Propre, HEAD 8941e0a, synchronisé |
 
 ### Reste à faire (sessions futures)
 
-- Session 2.20 (nouvelle) : corriger l'enregistrement manquant de la route CreateParcel dans la navigation, puis tester le flux e-commerce complet (UI + insertion en base).
-- Test complet de soumission de bout en bout (transport classique et e-commerce) sur un environnement disposant d'une géolocalisation fonctionnelle (device physique, Phase 4.x).
-- Tests de non-régression DRIVER et ADMIN.
-- Décision à prendre sur la reconstitution du profil DRIVER pour le numéro de test partagé.
+1. 🆕 Session 2.14 quinquies bis (nouvelle, priorité immédiate suivante pour ce chantier) : étudier la faisabilité et concevoir un mécanisme de filtrage par distance réel (VUL, 60 km), couplé à la connexion effective de la géolocalisation côté diffusion — en s'appuyant sur l'infrastructure déjà sécurisée et cartographiée par cette session. Éviter le recoupement avec la future table mission_offers (2.14 sexies). Corriger le rayon par défaut du wrapper (15 km → 60 km). Brancher le résultat de la géolocalisation sur le paramètre _driverLocation de subscribeToNewMissions(), actuellement présent dans la signature mais jamais rempli.
+2. 🆕 Audit des permissions par défaut (GRANT) sur l'ensemble du schéma public — constat récurrent de permissions larges pour anon/authenticated, protection reposant uniquement sur RLS.
+3. 🆕 Méthodologique : après toute séquence de plusieurs sed sur un même fichier, effectuer systématiquement une relecture structurelle complète avant de committer ; ne jamais considérer un CI vert comme une garantie suffisante sans un test d'exécution réelle au moins une fois par session touchant du code applicatif.
+4. Test fonctionnel complet du Volet 1, de la diffusion et du filtre expired, en environnement disposant d'une géolocalisation fonctionnelle et de données réelles (device physique, Phase 4.x) — non réalisable en Codespaces.
+5. Décision sur la reconstitution ou l'abandon du profil DRIVER historique orphelin (2ec2b439-..., wallet 800 DH, 4 transactions pending).
+6. Rappel 24h avant scheduled_pickup_time — hors périmètre, affectation à une session future non figée.
+7. Volet 2 — limite assumée (pas de garantie de nettoyage si aucun écran client n'est consulté) à réévaluer si le volume de missions réelles augmente significativement.
 
 # CHAÎNE DE NAVIGATION DRIVER
 
@@ -712,7 +740,8 @@ PendingVerificationScreen [reçoit driverId] → souscrit realtime driver-verifi
    ⚠️ Bouton "Recharger mon wallet" SUPPRIMÉ — session 2.13 (RÉSOLU 40)
    ⚠️ navigation.replace('DriverHome') cible toujours un écran absent du stack DriverPendingStack — bug distinct, non traité (voir Section 15)
 DriverHomeScreen → attend driverId + vehicleCategory obligatoires → affiche solde wallet (table wallet sans 's') → carte Wallet → WalletDashboard { driverId } → bouton Mes documents → DocumentStatus → ✅ NotificationBell montée — session 2.14 → NotificationBell → NotificationCenterScreen ⚠️ Aucun bouton "← Retour" — Anomalie #1
-   ⚠️ ACCÈS ACTUELLEMENT INDISPONIBLE pour le numéro de test partagé (rôle DRIVER supprimé depuis session 2.14 quater) — nécessite un nouvel onboarding pour être re-testé
+   ✅ NOUVEAU (session 2.14 quinquies) — abonnement subscribeToMissionUpdates dès réception d'une nouvelle mission pending (Volet 1) : fermeture automatique du modal de proposition si le statut de la mission change avant acceptation par ce chauffeur ; désabonnement systématique à chaque point de sortie
+   ✅ ACCÈS RÉTABLI (depuis session 2.14 quinquies) pour le numéro de test partagé — nouveau profil DRIVER créé via un nouvel onboarding complet, distinct du profil historique
 TransactionHistoryScreen → ✅ Écoute Realtime branchée — session 2.14 (INSERT uniquement)
 
 ⚠️ is_verified = GENERATED ALWAYS AS — devient true quand driver_license_verified, vehicle_registration_verified, insurance_verified, technical_inspection_verified = 'verified'
@@ -727,7 +756,7 @@ DocumentReviewScreen → Valider/Rejeter documents driver → Notification drive
 WalletManagementScreen → Liste drivers vérifiés avec solde → Recharger wallet → adminTopupDriverWallet() → Solde mis à jour en temps réel ✅
    ⚠️ Ne gère pas encore les 4 demandes de recharge chauffeur en statut pending (voir Section 3) — écran de traitement dédié prévu session 2.17
 
-AdminMissionsScreen → Liste toutes missions avec 6 filtres → Enum : pending / accepted / in_progress / completed / cancelled_client / cancelled_driver
+AdminMissionsScreen → Liste toutes missions avec 7 filtres (dont expired, ajouté session 2.14 quinquies, incident de duplication détecté et corrigé — voir RÉSOLU 50) → Enum : pending / accepted / in_progress / completed / cancelled_client / cancelled_driver / expired
 
 AdminUsersScreen → Liste drivers avec statut actif/suspendu → Suspendre/Activer via toggleUserActive() ⚠️ sans distinction Platform.OS
 
@@ -736,7 +765,10 @@ AdminUsersScreen → Liste drivers avec statut actif/suspendu → Suspendre/Acti
 CreateMissionScreen → ✅ NotificationBell montée — session 2.14 → NotificationBell → NotificationCenterScreen ⚠️ Anomalie #1
    ✅ NOUVEAU (session 2.14 quater) — champ scheduled_pickup_time désormais OBLIGATOIRE (composant DateTimeField.tsx), bouton de soumission désactivé tant qu'une date/heure valide n'est pas sélectionnée, date passée rejetée, aucun délai minimum requis
    ⚠️ Volet Client non testé fonctionnellement de bout en bout à ce jour (contrainte GPS/Codespaces) — voir Section 15/16
-   ⚠️ Le numéro de test partagé occupe désormais ce rôle ("TEST CLIENT FTM") mais aucune mission n'a été insérée en base
+   ⚠️ Le numéro de test partagé occupe désormais le rôle DRIVER (depuis session 2.14 quinquies) et non plus CLIENT — aucune mission n'a été insérée en base à ce jour
+
+MissionTrackingScreen.tsx → ✅ NOUVEAU (session 2.14 quinquies, Volet 2) — nouveau useEffect actif uniquement si status === 'pending' et scheduled_pickup_time renseigné : vérification locale toutes les 30 secondes (EXPIRATION_CHECK_INTERVAL_MS), appel de expireMission() en base uniquement si expiration détectée ; nouveau case 'expired' dans renderStatus() (message dédié + bouton de recréation de mission)
+   ⚠️ Non testable en conditions réelles à ce jour — table missions vide (0 ligne)
 
 CreateParcelScreen (flux e-commerce) → ⚠️ NOUVEAU BUG DÉCOUVERT (session 2.14 quater) — route 'CreateParcel' non déclarée dans frontend/src/navigation/, écran inaccessible depuis l'UI normale (ParcelHistoryScreen.tsx tente navigation.navigate('CreateParcel') sans effet) — correction assignée à la session 2.20
    ✅ Champ scheduled_pickup_time intégré au titre de la dérogation Bloc 6 (session 2.14 quater) — non testable tant que le bug de navigation n'est pas corrigé
@@ -827,15 +859,39 @@ Migration : supabase/migrations/20260504000016_add_scheduled_pickup_time_not_nul
 Commit : 0da3e07
 Confirmé : is_nullable = NO vérifié par lecture directe du schéma réel (information_schema.columns) ✅
 
-⚠️ Note de numérotation : RÉSOLU 43 (RLS voice-messages) précède chronologiquement RÉSOLU 44-47 (session 2.14 quater), lesquelles suivent l'ordre interne code → 3 bugs web → contrainte NOT NULL, correspondant à l'ordre de découverte réel au sein de la session 2.14 quater (la contrainte NOT NULL et le composant DateTimeField ont été introduits ensemble dans le commit 0da3e07, les 3 bugs web ont été découverts et corrigés ensuite dans le commit 829f31e).
+**RÉSOLU 48 — Exposition de données sensibles sans authentification via les vues available_drivers et driver_dashboard (session 2.14 quinquies)**
+Cause : deux vues Supabase simples (non protégées par RLS, à la différence des tables sous-jacentes), accessibles en SELECT par les rôles anon/authenticated sans aucune restriction — available_drivers exposait phone_number de tout chauffeur disponible ; driver_dashboard exposait solde wallet, commissions et recharges de tout chauffeur, sans filtre d'identité côté base (seul un filtre côté application, non fiable, existait via walletService.ts). La RPC find_nearby_drivers, SECURITY DEFINER, contournait également toute protection RLS et exposait phone_number en sortie, avec EXECUTE ouvert à anon.
+Correctif : suppression de la colonne phone_number des deux points d'exposition (vue et RPC) ; révocation SELECT anon/authenticated sur available_drivers ; révocation SELECT anon + activation de security_invoker = true sur driver_dashboard ; révocation EXECUTE anon/PUBLIC sur find_nearby_drivers, conservé pour authenticated uniquement.
+Fichier : supabase/migrations/20260504000017_fix_available_drivers_and_driver_dashboard_exposure.sql
+Commits : 3bf1c09 (version initiale), 70b02f0 (correction de déploiement, voir RÉSOLU 49)
+Confirmé : par lecture directe post-déploiement (pg_get_viewdef, role_table_grants, pg_get_functiondef, routine_privileges — tous vérifiés) ✅, et par validation fonctionnelle croisée en conditions réelles (le nouveau chauffeur test ne voit que son propre solde wallet, 0 DH puis 300 DH, jamais celui d'un autre profil) ✅
+
+**RÉSOLU 49 — Échec initial de déploiement de la migration de sécurité, SQLSTATE 42P16 (session 2.14 quinquies)**
+Précision de formulation : il s'agit d'un bug de déploiement auto-corrigé en cours de session, et non un défaut resté actif en production — le premier déploiement a échoué avant toute mise en production effective de la correction, et la correction a été appliquée et déployée avec succès dans la même session.
+Cause : CREATE OR REPLACE VIEW ne permet pas de retirer une colonne existante d'une vue (cannot drop columns from view) — le premier déploiement de la migration 20260504000017 (commit 3bf1c09) a échoué sur cette erreur (Deploy Supabase FTM #47).
+Correctif : remplacement de CREATE OR REPLACE VIEW par une séquence DROP FUNCTION (RPC dépendante) + DROP VIEW puis CREATE, en respectant l'ordre des dépendances.
+Fichier : supabase/migrations/20260504000017_fix_available_drivers_and_driver_dashboard_exposure.sql
+Commit : 70b02f0
+Confirmé : déploiement réussi après correction, vérifications post-déploiement listées au RÉSOLU 48 ✅
+
+**RÉSOLU 50 — Duplication de la déclaration STATUS_FILTERS dans AdminMissionsScreen.tsx (session 2.14 quinquies)**
+Cause : une séquence de trois commandes sed appliquées successivement sur le fichier (une insertion, un remplacement de ligne, une seconde insertion) a provoqué un décalage de numérotation de lignes non anticipé après la première insertion ; le remplacement suivant, ciblant la ligne 43 avant recalcul, a produit une duplication de la déclaration STATUS_FILTERS (version correcte avec expired + résidu de l'ancienne version sans expired, jamais supprimé) plutôt qu'un remplacement propre — provoquant une SyntaxError bloquante à l'exécution (Identifier 'STATUS_FILTERS' has already been declared). Point méthodologique majeur : le CI (Vérification Qualité Code) était passé au vert sur le commit fautif — le linting TypeScript n'a pas détecté cette erreur de syntaxe. Seul un test d'exécution réelle (lancement du serveur Metro Bundler) l'a révélée.
+Correctif : suppression de la ligne dupliquée (ancienne version, sans expired), conservation de la version correcte.
+Fichier : frontend/src/screens/admin/AdminMissionsScreen.tsx
+Commit : 8941e0a
+Confirmé : par relecture complète (grep ciblé, une seule déclaration de chaque constante) ET par test d'exécution réel (serveur relancé avec succès, 7 filtres affichés dont "Expirées", écran stable, sans erreur JavaScript) ✅
+
+⚠️ Note de numérotation : RÉSOLU 43 (RLS voice-messages) précède chronologiquement RÉSOLU 44-47 (session 2.14 quater), lesquelles précèdent RÉSOLU 48-50 (session 2.14 quinquies), suivant l'ordre chronologique réel des découvertes au sein de chaque session.
 
 # PISTES DÉFINITIVEMENT ÉCARTÉES
 
-Ne pas retester : ❌ locationService import statique ❌ expo-haptics / expo-notifications ❌ expo-location fallback web ❌ missionService / realtimeService ❌ react-native-screens sans fallback web ❌ NativeStackScreenProps sans type ❌ Dépendance circulaire missionService ❌ audioService / expo-av (contexte débogage page blanche — n'implique pas l'abandon de la fonctionnalité messages vocaux) ❌ supabaseClient.ts ❌ showAuth logique incorrecte ❌ ErrorBoundary capture l'erreur ❌ --no-dev résout seul ❌ 'cancelled' comme valeur enum mission_status ❌ cron.run_job(integer) ❌ owner = auth.uid() comme clause RLS Storage simple (raccourci écarté au profit de la chaîne de propriété complète, RÉSOLU 36) ❌ Modification directe du solde wallet par le chauffeur (Option B écartée, session 2.13, RÉSOLU 38) ❌ python3 -c "..." en ligne directe pour tout texte contenant un caractère spécial bash (écarté au profit du heredoc quoté, session 2.14) ❌ notifyNewMission comme fonction notify* branchable isolément (incompatibilité structurelle confirmée, session 2.14, reconfirmée 2.14 bis) ❌ Correction d'initializeApp() pour distribuer systématiquement profiles.id (écartée au profit de getCurrentProfileId(), session 2.14) ❌ Remplacement du canal vocal (VoiceChatScreen.tsx) par un canal texte (décision de conservation actée session 2.14 bis)
+Ne pas retester : ❌ locationService import statique ❌ expo-haptics / expo-notifications ❌ expo-location fallback web ❌ missionService / realtimeService ❌ react-native-screens sans fallback web ❌ NativeStackScreenProps sans type ❌ Dépendance circulaire missionService ❌ audioService / expo-av (contexte débogage page blanche — n'implique pas l'abandon de la fonctionnalité messages vocaux) ❌ supabaseClient.ts ❌ showAuth logique incorrecte ❌ ErrorBoundary capture l'erreur ❌ --no-dev résout seul ❌ 'cancelled' comme valeur enum mission_status ❌ cron.run_job(integer) ❌ owner = auth.uid() comme clause RLS Storage simple (raccourci écarté au profit de la chaîne de propriété complète, RÉSOLU 36) ❌ Modification directe du solde wallet par le chauffeur (Option B écartée, session 2.13, RÉSOLU 38) ❌ python3 -c "..." en ligne directe pour tout texte contenant un caractère spécial bash (écarté au profit du heredoc quoté, session 2.14) ❌ notifyNewMission comme fonction notify* branchable isolément (incompatibilité structurelle confirmée, session 2.14, reconfirmée 2.14 bis et 2.14 quinquies) ❌ Correction d'initializeApp() pour distribuer systématiquement profiles.id (écartée au profit de getCurrentProfileId(), session 2.14) ❌ Remplacement du canal vocal (VoiceChatScreen.tsx) par un canal texte (décision de conservation actée session 2.14 bis)
 ❌ Accès admin dans la clause RLS voice-messages (session 2.14 ter) — écarté par le porteur : aucun besoin métier documenté ne justifie qu'un admin lise du contenu audio privé
 ❌ Factorisation SQL des 4 policies voice-messages via fonction partagée (session 2.14 ter) — écartée au profit de la duplication littérale, fidèle au pattern RÉSOLU 36
 ❌ Test symétrique de la contrainte scheduled_pickup_time NOT NULL par insertion SQL directe (session 2.14 quater) — décision explicite du porteur, pour éviter de polluer la base de production ; jugé non nécessaire, le code applicatif ayant été vérifié à trois reprises distinctes
 ❌ Modification de LegalDocumentsScreen.tsx ou import direct par DateTimeField.tsx (session 2.14 quater) — hors périmètre, aucune dérogation accordée ; composant dupliqué et réécrit indépendamment
+❌ CREATE OR REPLACE VIEW pour retirer une colonne existante d'une vue (session 2.14 quinquies) — écarté après échec réel (SQLSTATE 42P16), au profit d'une séquence DROP + CREATE respectant l'ordre des dépendances — voir RÉSOLU 49
+❌ Mécanisme CRON pour la détection d'expiration des missions pending (session 2.14 quinquies) — écarté au profit d'une vérification locale côté client toutes les 30 secondes, sans coût réseau hors écriture en cas d'expiration détectée — décision métier du porteur
 
 # MIGRATIONS SUPABASE DÉPLOYÉES
 
@@ -863,10 +919,12 @@ Ne pas retester : ❌ locationService import statique ❌ expo-haptics / expo-no
 20260504000014_rename_revenue_to_recharges_driver_dashboard.sql ✅ Session 2.13
 20260504000015_fix_rls_voice_messages.sql ✅ Session 2.14 ter
 20260504000016_add_scheduled_pickup_time_not_null.sql ✅ Session 2.14 quater
+20260504000017_fix_available_drivers_and_driver_dashboard_exposure.sql ✅ Session 2.14 quinquies
+20260504000018_add_expired_status_to_mission_status.sql ✅ Session 2.14 quinquies
 
 Aucune migration SQL déployée en session 2.14 (session applicative/service) ni en session 2.14 bis (session investigative).
 
-Prochain timestamp disponible : 20260504000017
+Prochain timestamp disponible : 20260504000019
 
 Note prospective : la migration mission_offers (session 2.14 sexies proposée) consommera ce timestamp et les suivants.
 
@@ -875,7 +933,7 @@ Note prospective : la migration mission_offers (session 2.14 sexies proposée) c
 send-push-notification ✅ (CORS bloqué sur web — fonctionnel sur device)
 register-push-token ✅
 check-document-reminders ✅ (CRON opérationnel — session 2.9, 5 exécutions succeeded 18→22/06/2026)
-   ⚠️ Lien avec notifyDocumentExpiry non vérifié — non traité en 2.14 bis, 2.14 ter, ni 2.14 quater (hors périmètre de chacune)
+   ⚠️ Lien avec notifyDocumentExpiry non vérifié — non traité en 2.14 bis, 2.14 ter, 2.14 quater, ni 2.14 quinquies (hors périmètre de chacune)
 send-tracking-sms ✅
 
 # ARBORESCENCE COMPLÈTE DU REPO
@@ -898,7 +956,7 @@ FAST-TRANS-MAROC-FTM/
 │   └── src/
 │       ├── components/
 │       │   ├── NotificationBell.tsx ← modifié session 2.14
-│       │   ├── DateTimeField.tsx ← NOUVEAU, créé session 2.14 quater (commits 0da3e07 + 829f31e)
+│       │   ├── DateTimeField.tsx ← créé session 2.14 quater (commits 0da3e07 + 829f31e)
 │       │   └── VoiceMicButton.tsx ← lu intégralement session 2.14 bis, aucune modification
 │       ├── constants/theme.ts ← BORDER_RADIUS ajouté
 │       ├── lib/supabaseClient.ts
@@ -907,7 +965,7 @@ FAST-TRANS-MAROC-FTM/
 │       ├── screens/
 │       │   ├── admin/
 │       │   │   ├── AdminDashboardScreen.tsx ← modifié session 2.14
-│       │   │   ├── AdminMissionsScreen.tsx ← créé session 2.7
+│       │   │   ├── AdminMissionsScreen.tsx ← créé session 2.7 ; modifié session 2.14 quinquies (ajout filtre expired aux 3 constantes STATUS_LABELS/STATUS_FILTERS/FILTER_LABELS, commits 69273c0 puis 8941e0a — incident de duplication corrigé, voir RÉSOLU 50)
 │       │   │   ├── AdminUsersScreen.tsx ← créé session 2.7
 │       │   │   ├── DocumentReviewScreen.tsx
 │       │   │   └── WalletManagementScreen.tsx
@@ -917,11 +975,11 @@ FAST-TRANS-MAROC-FTM/
 │       │   │   └── ProfileSetupScreen.tsx ← INTOUCHABLE
 │       │   ├── client/
 │       │   │   ├── CreateMissionScreen.tsx ← modifié sessions 2.14 + 2.14 quater (scheduled_pickup_time obligatoire, DateTimeField)
-│       │   │   ├── MissionTrackingScreen.tsx
+│       │   │   ├── MissionTrackingScreen.tsx ← modifié session 2.14 quinquies (Volet 2 : détection expiration locale 30s + expireMission() + case 'expired' dans renderStatus(), commit b1d2540)
 │       │   │   └── RatingScreen.tsx
 │       │   ├── driver/
 │       │   │   ├── DocumentStatusScreen.tsx
-│       │   │   ├── DriverHomeScreen.tsx ← modifié session 2.14
+│       │   │   ├── DriverHomeScreen.tsx ← modifié session 2.14 ; modifié session 2.14 quinquies (Volet 1 : abonnement subscribeToMissionUpdates, fermeture auto du modal, commit d1869e4)
 │       │   │   ├── MissionActiveScreen.tsx
 │       │   │   ├── NewMissionModal.tsx ← lu intégralement session 2.14 bis
 │       │   │   ├── ParcelMissionDetailScreen.tsx
@@ -952,9 +1010,9 @@ FAST-TRANS-MAROC-FTM/
 │       │   ├── documentService.ts
 │       │   ├── driverService.ts ← STABLE INTOUCHABLE
 │       │   ├── i18nService.ts
-│       │   ├── locationService.ts
-│       │   ├── missionService.ts ← modifié sessions 2.14 + 2.14 quater (scheduled_pickup_time)
-│       │   ├── notificationTemplates.ts
+│       │   ├── locationService.ts ← lu en profondeur session 2.14 quinquies (Partie 2), non modifié — startBackgroundTracking() confirmé (intervalle 15s / 50m)
+│       │   ├── missionService.ts ← modifié sessions 2.14 + 2.14 quater (scheduled_pickup_time) ; modifié session 2.14 quinquies (ajout 'expired' au type MissionStatus, nouvelle fonction expireMission(), commit b1d2540) ; wrapper findNearbyDrivers() confirmé toujours non appelé, rayon par défaut 15 km à corriger (voir Section 16, 2.14 quinquies bis)
+│       │   ├── notificationTemplates.ts ← lu session 2.14 quinquies (confirmation notifyNewMission incompatible par construction)
 │       │   ├── parcelService.ts ← modifié session 2.14 quater (scheduled_pickup_time)
 │       │   ├── pushNotificationService.ts ← modifié session 2.14
 │       │   ├── realtimeService.ts ← lu session 2.14 bis, aucune modification
@@ -971,24 +1029,28 @@ FAST-TRANS-MAROC-FTM/
 │   │   └── send-tracking-sms/
 │   ├── migrations/
 │   │   ├── 20260220155500_initial_schema.sql
-│   │   ├── 20260221000000_add_rpc_nearby_drivers.sql ← RPC find_nearby_drivers, code mort confirmé session 2.14 bis
+│   │   ├── 20260221000000_add_rpc_nearby_drivers.sql ← RPC find_nearby_drivers, code mort confirmé session 2.14 bis, sécurisée (permissions restreintes, phone_number retiré) session 2.14 quinquies (voir migration 017)
 │   │   ├── … (fichiers intermédiaires inchangés) …
 │   │   ├── 20260504000013_fix_storage_transactions_rls_ownership.sql ← session 2.12
 │   │   ├── 20260504000014_rename_revenue_to_recharges_driver_dashboard.sql ← session 2.13
 │   │   ├── 20260504000015_fix_rls_voice_messages.sql ← session 2.14 ter
-│   │   └── 20260504000016_add_scheduled_pickup_time_not_null.sql ← session 2.14 quater
+│   │   ├── 20260504000016_add_scheduled_pickup_time_not_null.sql ← session 2.14 quater
+│   │   ├── 20260504000017_fix_available_drivers_and_driver_dashboard_exposure.sql ← session 2.14 quinquies
+│   │   └── 20260504000018_add_expired_status_to_mission_status.sql ← session 2.14 quinquies
 │   └── rollbacks/
 │       ├── rollback_20260504000013.sql ← session 2.12
 │       ├── 20260504000014_rename_revenue_to_recharges_driver_dashboard_rollback.sql ← session 2.13
 │       ├── 20260504000015_fix_rls_voice_messages_rollback.sql ← session 2.14 ter
-│       └── 20260504000016_add_scheduled_pickup_time_not_null_rollback.sql ← session 2.14 quater
+│       ├── 20260504000016_add_scheduled_pickup_time_not_null_rollback.sql ← session 2.14 quater
+│       ├── 20260504000017_fix_available_drivers_and_driver_dashboard_exposure_rollback.sql ← session 2.14 quinquies
+│       └── 20260504000018_add_expired_status_to_mission_status_rollback.sql ← session 2.14 quinquies (documentaire uniquement)
 ├── .env.example
 ├── .gitignore
 ├── ROADMAP_FTM.md
 └── install_*.sh
 ```
 
-Note : ~55+ fichiers untracked de type .bak* présents dans le dépôt (mécanisme de traçabilité délibéré), dont 4 nouveaux ajoutés en session 2.14 quater (suffixe .bak.session2.14quater) — non représentés dans l'arborescence ci-dessus par souci de lisibilité.
+Note : ~59+ fichiers untracked de type .bak* présents dans le dépôt (mécanisme de traçabilité délibéré), dont 4 nouveaux ajoutés en session 2.14 quater (suffixe .bak.session2.14quater) et 4 nouveaux ajoutés en session 2.14 quinquies (suffixe .bak.session2.14quinquies : DriverHomeScreen.tsx, missionService.ts, MissionTrackingScreen.tsx, AdminMissionsScreen.tsx) — non représentés dans l'arborescence ci-dessus par souci de lisibilité.
 
 # SERVICES EXTERNES — ÉTAT
 
@@ -1007,21 +1069,25 @@ Storage buckets :
 CRON reminders : ✅ OPÉRATIONNEL — session 2.9 — 5 exécutions succeeded 18→22/06/2026
    ⚠️ Lien avec notifyDocumentExpiry non vérifié
 
-Wallet topup : ✅ Mécanisme honnête opérationnel — session 2.13 — reconfirmé intact (données) après sessions 2.14, 2.14 bis, 2.14 ter ; accès Auth du profil porteur supprimé en session 2.14 quater (voir Section 3), données inchangées
+Wallet topup : ✅ Mécanisme honnête opérationnel — session 2.13 — reconfirmé intact (données) après sessions 2.14, 2.14 bis, 2.14 ter ; accès Auth du profil porteur historique supprimé en session 2.14 quater, désormais occupé par un nouveau profil DRIVER depuis session 2.14 quinquies (voir Section 3), données du profil historique inchangées
 
 Realtime transactions/notifications : ✅ subscribeToNewTransactions branché — session 2.14 (INSERT uniquement) — ✅ NotificationBell/Center montés 3 rôles — mécanisme confirmé Realtime événementiel (pas polling, précision session 2.14 quater)
+   ✅ NOUVEAU (session 2.14 quinquies) — subscribeToMissionUpdates désormais également exploité côté DriverHomeScreen.tsx (Volet 1, fermeture automatique du modal de proposition de mission)
    ⚠️ Anomalie #1 : bouton retour manquant sur NotificationCenterScreen
 
-Géolocalisation avancée : 🔵 Infrastructure PostGIS complète (RPC find_nearby_drivers) confirmée existante et active mais non exploitée — réutilisation prévue session 2.14 quinquies (dépendance envers 2.14 quater désormais levée pour le Volet 2)
+Sécurité des vues Supabase exposées : ✅ CORRIGÉE — session 2.14 quinquies (RÉSOLU 48/49) — available_drivers et driver_dashboard ne sont plus accessibles sans authentification (SELECT anon révoqué), phone_number retiré des points d'exposition (vue + RPC find_nearby_drivers), security_invoker activé sur driver_dashboard, EXECUTE de la RPC restreint à authenticated. 🆕 Recommandation ouverte : audit des permissions GRANT par défaut sur l'ensemble du schéma public (voir Section 17).
+
+Géolocalisation avancée : 🔵 Infrastructure PostGIS complète (RPC find_nearby_drivers) confirmée existante, active et désormais SÉCURISÉE (session 2.14 quinquies), intégralement cartographiée (mécanisme de diffusion, filtre de fraîcheur 5 min, suivi position chauffeur 15s/50m) — le canal Realtime de diffusion exploite désormais subscribeToMissionUpdates côté DriverHomeScreen (Volet 1). ⚠️ Le filtrage réel par distance (branchement de la RPC dans le flux de diffusion) reste non exploité — réutilisation prévue session 2.14 quinquies bis (nouvelle), avec correction du rayon par défaut du wrapper (15 km → 60 km) et branchement du paramètre _driverLocation de subscribeToNewMissions().
 
 Planification par date/heure : ✅ OPÉRATIONNELLE — session 2.14 quater — scheduled_pickup_time obligatoire (NOT NULL + UI), transport classique et e-commerce
+   ✅ Volet 2 (expiration mission pending à scheduled_pickup_time dépassé) — implémenté session 2.14 quinquies : détection locale côté MissionTrackingScreen.tsx (30s), fonction expireMission(), nouveau statut expired, filtre admin correspondant
    ⚠️ Flux e-commerce non testable en pratique tant que le bug de navigation CreateParcel n'est pas corrigé (session 2.20)
 
 # BUGS RÉSIDUELS
 
 ⚠️ CORS send-push-notification Edge Function bloquée par CORS policy sur web — non bloquant web, fonctionnel sur device physique — à corriger pour production
 
-⚠️ Filtres AdminMissionsScreen — affichés mais aucune mission en base — cause confirmée (GPS bloqué environnement web/Codespaces) — reporté phase 4.x
+⚠️ Filtres AdminMissionsScreen — affichés mais aucune mission en base — cause confirmée (GPS bloqué environnement web/Codespaces) — reporté phase 4.x — 7 filtres désormais disponibles depuis session 2.14 quinquies (dont expired)
 
 ⚠️ Realtime driver end-to-end — flux avec 2 fenêtres simultanées non testé explicitement
 
@@ -1029,15 +1095,15 @@ Planification par date/heure : ✅ OPÉRATIONNELLE — session 2.14 quater — s
 
 ⚠️ DocumentReviewScreen.tsx — rafraîchissement modal (session 2.12) — non traité faute de temps, reporté à une session ultérieure à assigner
 
-⚠️ Driver test historique (données intactes, accès Auth supprimé) — voir Section 3 pour l'état complet :
-   driverId : 2ec2b439-fcdb-443d-8de0-5bee268d30f6 (données en base uniquement, aucun accès Auth actif depuis session 2.14 quater)
+⚠️ Driver test historique (données intactes, accès Auth occupé par un nouveau profil depuis session 2.14 quinquies) — voir Section 3 pour l'état complet :
+   driverId : 2ec2b439-fcdb-443d-8de0-5bee268d30f6 (données en base uniquement, aucun accès Auth actif depuis session 2.14 quater — le numéro partagé est occupé par un profil DRIVER distinct depuis session 2.14 quinquies)
    wallet_balance réel : 800.00 DH — 4 demandes en pending (50/200/500/1000 DH) — à ne pas altérer sans décision explicite (preuve de fonctionnement du correctif RÉSOLU 38)
 
 ⚠️ Dossiers Storage orphelins (session 2.12) — driver-documents : 8 orphelins + 1 actif — aucune session de nettoyage planifiée
 
 ⚠️ COMPORTEMENT NON EXPLIQUÉ — repr() vs terminal (session 2.9) — statut INCONNU, non bloquant
 
-⚠️ Navigation cross-stack PendingVerification → DriverHome — navigation.replace('DriverHome') cible un écran absent du stack DriverPendingStack — NON traité à ce jour (2.13, 2.14, 2.14 bis, 2.14 ter, 2.14 quater) — bug entier, session à assigner
+⚠️ Navigation cross-stack PendingVerification → DriverHome — navigation.replace('DriverHome') cible un écran absent du stack DriverPendingStack — NON traité à ce jour (2.13, 2.14, 2.14 bis, 2.14 ter, 2.14 quater, 2.14 quinquies) — bug entier, session à assigner
 
 ⚠️ subscribeToNewTransactions — limitation résiduelle : écoute INSERT uniquement, pas UPDATE
 
@@ -1049,9 +1115,9 @@ Planification par date/heure : ✅ OPÉRATIONNELLE — session 2.14 quater — s
 
 ⚠️ Risque de pagination totalCredit/totalDebit (TransactionHistoryScreen.tsx) — à surveiller lors du chantier reporting financier (Section 17)
 
-⚠️ Anomalie #1 — Absence de bouton "← Retour" sur NotificationCenterScreen.tsx — non bloquant, à corriger avant Phase 3, candidat audit session 2.19
+⚠️ Anomalie #1 — Absence de bouton "← Retour" sur NotificationCenterScreen.tsx — non bloquant, à corriger avant Phase 3, candidat audit session 2.19 — reconfirmée en conditions réelles session 2.14 quinquies (tests CLIENT)
 
-⚠️ 4 fonctions notify* mission non testées fonctionnellement — nécessite un second numéro de test dédié au rôle client (voir Section 17). Point réactualisé session 2.14 quater : même en disposant désormais d'un profil CLIENT sur le numéro partagé, le test de bout en bout reste bloqué par l'absence de GPS fonctionnel en environnement Codespaces — la contrainte n'est donc plus uniquement le numéro partagé mais aussi l'environnement de test.
+⚠️ 4 fonctions notify* mission non testées fonctionnellement — nécessite un second numéro de test dédié au rôle client (voir Section 17). Point réactualisé session 2.14 quinquies : le numéro partagé étant redevenu DRIVER, ce test reste bloqué à la fois par l'absence de second numéro CLIENT et par l'environnement (GPS Codespaces).
 
 ⚠️ Cloche NotificationBell côté Client non testée en conditions réelles — reportée avec le test du Volet 4
 
@@ -1059,7 +1125,7 @@ Planification par date/heure : ✅ OPÉRATIONNELLE — session 2.14 quater — s
 
 ⚠️ Point de sécurité cancelMission/userId — le renommage de paramètre (_userId → userId) est confirmé effectif dans le code (vérifié par lecture directe, session 2.14 quater), mais AUCUNE vérification d'autorisation n'a été ajoutée — le point de sécurité de fond reste entier, rattaché à la session 2.17 (décision actée session 2.14, reconfirmée pertinente session 2.14 quater)
 
-⚠️ notifyDocumentExpiry — en attente, lien check-document-reminders non vérifié — non traité en 2.14 bis, 2.14 ter, ni 2.14 quater
+⚠️ notifyDocumentExpiry — en attente, lien check-document-reminders non vérifié — non traité en 2.14 bis, 2.14 ter, 2.14 quater, ni 2.14 quinquies
 
 ⚠️ Bug de reconnexion clientProfileId vide (RootNavigator.tsx) — découverte annexe session 2.14, hors périmètre, session future non assignée
 
@@ -1071,17 +1137,21 @@ Planification par date/heure : ✅ OPÉRATIONNELLE — session 2.14 quater — s
 
 ⚠️ Countdown par tour non contraignant sans vérification serveur (Piste 2, session 2.14 bis) — point de conception à traiter en session 2.14 sexies
 
-**⚠️ NOUVEAU (session 2.14 ter) — Correction de cohérence documentaire, décompte transactions pending** : le présent document mentionnait auparavant "3 demandes de recharge en pending (200/500/1000 DH)" pour le driver test 2ec2b439-... — décompte corrigé en 4 demandes (50/200/500/1000 DH), confirmé par lecture directe des dates de création. La transaction de 50 DH (14/07/2026) est une donnée de test antérieure à la session 2.12, non anormale. Cette correction a été répercutée dans toutes les sections concernées du présent document (Section 3, Section 6).
+⚠️ NOUVEAU (session 2.14 ter) — Correction de cohérence documentaire, décompte transactions pending : le présent document mentionnait auparavant "3 demandes de recharge en pending (200/500/1000 DH)" pour le driver test 2ec2b439-... — décompte corrigé en 4 demandes (50/200/500/1000 DH), confirmé par lecture directe des dates de création. La transaction de 50 DH (14/07/2026) est une donnée de test antérieure à la session 2.12, non anormale. Cette correction a été répercutée dans toutes les sections concernées du présent document (Section 3, Section 6).
 
-**⚠️ NOUVEAU (session 2.14 quater) — Route de navigation CreateParcel manquante** : la route 'CreateParcel', appelée par ParcelHistoryScreen.tsx (navigation.navigate('CreateParcel')), n'est déclarée dans aucun fichier de frontend/src/navigation/ — l'écran CreateParcelScreen.tsx (pourtant modifié cette même session pour intégrer scheduled_pickup_time) reste inaccessible depuis l'UI normale. Bug préexistant, sans rapport avec la session 2.14 quater. Assigné à la nouvelle **session 2.20**.
+⚠️ NOUVEAU (session 2.14 quater) — Route de navigation CreateParcel manquante : la route 'CreateParcel', appelée par ParcelHistoryScreen.tsx (navigation.navigate('CreateParcel')), n'est déclarée dans aucun fichier de frontend/src/navigation/ — l'écran CreateParcelScreen.tsx (pourtant modifié cette même session pour intégrer scheduled_pickup_time) reste inaccessible depuis l'UI normale. Bug préexistant, sans rapport avec la session 2.14 quater. Assigné à la session 2.20.
 
-**⚠️ NOUVEAU (session 2.14 quater) — Points d'enrichissement fonctionnel non traités liés à scheduled_pickup_time** : notifyRecipientBySMS (SMS destinataire colis) et getClientParcels (historique client) pourraient à l'avenir inclure scheduled_pickup_time dans leur contenu/sélection — hors périmètre strict de la dérogation accordée en session 2.14 quater, consigné pour référence future, aucune session assignée à ce stade.
+⚠️ NOUVEAU (session 2.14 quater) — Points d'enrichissement fonctionnel non traités liés à scheduled_pickup_time : notifyRecipientBySMS (SMS destinataire colis) et getClientParcels (historique client) pourraient à l'avenir inclure scheduled_pickup_time dans leur contenu/sélection — hors périmètre strict de la dérogation accordée en session 2.14 quater, consigné pour référence future, aucune session assignée à ce stade.
 
-**⚠️ NOUVEAU (session 2.14 quater) — Points techniques mineurs DateTimeField.tsx** : décalage de fuseau horaire (toISOString() en UTC, hérité de LegalDocumentsScreen.tsx) ; borne min de <input type="date"> figée au rendu initial (cas limite formulaire ouvert plusieurs heures) ; cas limite '' vs null sur localDateStr/localTimeStr ; comportement iOS display="spinner" fermant le picker au premier onChange (hérité de DateField d'origine). Aucun jugé bloquant ni prioritaire, consignés pour référence future.
+⚠️ NOUVEAU (session 2.14 quater) — Points techniques mineurs DateTimeField.tsx : décalage de fuseau horaire (toISOString() en UTC, hérité de LegalDocumentsScreen.tsx) ; borne min de <input type="date"> figée au rendu initial (cas limite formulaire ouvert plusieurs heures) ; cas limite '' vs null sur localDateStr/localTimeStr ; comportement iOS display="spinner" fermant le picker au premier onChange (hérité de DateField d'origine). Aucun jugé bloquant ni prioritaire, consignés pour référence future.
+
+⚠️ NOUVEAU (session 2.14 quinquies) — Volet 2, limite assumée : une mission pending expirée reste techniquement en base tant qu'aucun écran client ne la consulte (pas de mécanisme de nettoyage automatique côté serveur) — compromis explicitement accepté pour cette phase (0 mission en base à ce jour), à réévaluer si le volume réel de missions augmente.
+
+⚠️ NOUVEAU (session 2.14 quinquies) — Wrapper findNearbyDrivers() (missionService.ts) : rayon par défaut de 15 km dans sa signature, alors que le paramètre validé pour le projet est 60 km — origine de cet écart INCONNUE, à corriger lors du futur branchement (session 2.14 quinquies bis, voir Section 16).
 
 # TESTS DE NON-RÉGRESSION
 
-[Sessions 2.7 à 2.14 bis — inchangées, reprises intégralement à l'identique de la version du 11/08/2026. Voir document source. Ajout des sessions 2.14 ter et 2.14 quater ci-dessous.]
+[Sessions 2.7 à 2.14 bis — inchangées, reprises intégralement à l'identique de la version du 11/08/2026. Voir document source. Ajout des sessions 2.14 ter, 2.14 quater et 2.14 quinquies ci-dessous.]
 
 EFFECTUÉS ET CONFIRMÉS ✅ — SESSIONS 2.7 à 2.14 : [contenu inchangé, voir historique complet ci-dessus dans les blocs "Modifications commitées"]
 
@@ -1102,6 +1172,20 @@ SESSION 2.14 bis — AUCUN TEST : session strictement investigative.
 - Flux e-commerce (CreateParcelScreen.tsx) — bloqué par le bug de navigation CreateParcel découvert (sans rapport avec cette session) — assigné session 2.20
 - Tests DRIVER / ADMIN — non abordés dans cette session
 - Test symétrique de la contrainte DB par insertion SQL directe — retiré explicitement par décision du porteur (anti-pollution production)
+
+**SESSION 2.14 quinquies — TESTS EFFECTUÉS ET CONFIRMÉS ✅ :**
+
+Méthode : serveur de développement lancé (2 incidents réseau transitoires vers api.expo.dev — "Client network socket disconnected before secure TLS connection was established" — résolus par simple relance, cohérent avec l'Incident 2 déjà documenté en session 2.14 ter). Ordre pragmatique CLIENT → ADMIN → DRIVER (exception assumée à l'ordre standard, justifiée par l'efficacité pratique — occasion de reconnecter le profil DRIVER).
+
+| Rôle | Résultat | Détail |
+|---|---|---|
+| CLIENT | ✅ Aucune régression | CreateMissionScreen (avec DateTimeField.tsx de 2.14 quater) fonctionnel. NotificationCenterScreen fonctionnel — Anomalie #1 reconfirmée en conditions réelles. GPS bloqué (confirmé : GPS - Client location permission denied). |
+| ADMIN | ✅ Aucune régression | Dashboard, gestion missions (7 filtres dont expired), validation documents (4/4), gestion wallet (recharge 300 DH validée) — tous fonctionnels. |
+| DRIVER | ✅ Aucune régression | Onboarding complet réalisé (nouveau profil créé, 4 documents soumis et validés). Validation admin réussie (CORS send-push-notification confirmée, limitation déjà documentée). Recharge wallet fonctionnelle (0 → 300 DH). Accès à DriverHomeScreen (modifié pour Volet 1) réussi. Activation de disponibilité bloquée au niveau GPS comme attendu, gestion propre de l'échec (sans crash), empêchant le test du canal de diffusion jusqu'au bout. Vérification fonctionnelle croisée : le chauffeur test ne voit que son propre solde wallet — validation pratique de RÉSOLU 48 (security_invoker). |
+
+**SESSION 2.14 quinquies — TESTS NON EFFECTUÉS (justifiés) :**
+- Filtrage réel avec au moins une mission au statut expired — impossible en pratique, table missions restée vide (0 ligne) tout au long de la session.
+- Activation complète de la disponibilité chauffeur et diffusion géospatiale de bout en bout — bloquée par le GPS (Codespaces/iframe), limitation déjà documentée.
 
 # ÉTAPES RESTANTES
 
@@ -1133,10 +1217,23 @@ PHASE 2 — TESTS & DEBUGGING
    → Nouveau bug découvert : route CreateParcel manquante → session 2.20 créée
    → Dépendance 2.14 quinquies (Volet 2) envers 2.14 quater : LEVÉE
 
-2.14 quinquies ⏳ Piste 1 — Diffusion optimisée (priorité 2, dépendance envers 2.14 quater désormais levée)
-   → Branchement RPC find_nearby_drivers, catégorie VUL, rayon 60 km depuis pickup_location
-   → Vérification préalable du contenu de la vue available_drivers
-   → Expiration Volet 1 (indépendant) + Volet 2 (débloqué)
+2.14 quinquies ✅ COMPLET (avec réserves) — Piste 1, sécurisation de l'infrastructure de diffusion + Volets 1/2 expiration
+   → Périmètre initial élargi sur décision explicite du porteur pour traiter une faille de sécurité découverte fortuitement (Étape 1.3) : exposition sans authentification de available_drivers et driver_dashboard (phone_number, solde wallet, commissions) — corrigée et vérifiée ✅ (RÉSOLU 48/49)
+   → Volet 1 implémenté et déployé : fermeture automatique du modal de proposition de mission via subscribeToMissionUpdates (commit d1869e4) ✅
+   → Volet 2 implémenté et déployé : migration enum expired (commit ffd62e8), fonction expireMission() + détection locale 30s (commit b1d2540), filtre admin (commits 69273c0 → 8941e0a) ✅
+   → Incident critique détecté et corrigé : duplication STATUS_FILTERS, non détectée par le CI, révélée par test d'exécution réel — RÉSOLU 50, leçon méthodologique consolidée Section 2
+   → Tests de non-régression 3 rôles (CLIENT/ADMIN/DRIVER) : ✅ aucune régression, ordre CLIENT→ADMIN→DRIVER justifié par l'efficacité pratique
+   → ⚠️ Branchement final du filtrage géospatial réel par distance NON réalisé — reporté à la nouvelle session 2.14 quinquies bis
+   → ⚠️ Filtrage effectif du statut expired NON testé (table missions vide)
+   → Rotation du numéro de test partagé : CLIENT → DRIVER (nouvel onboarding complet, nouveau profil distinct du profil historique)
+   → Nouvelle recommandation : audit des permissions GRANT par défaut sur le schéma public (Section 17)
+
+**2.14 quinquies bis ⏳ NOUVELLE SESSION — Branchement effectif de la diffusion géospatiale**
+   → Concevoir et implémenter le filtrage réel par distance (catégorie VUL, rayon 60 km depuis pickup_location), en s'appuyant sur l'infrastructure sécurisée et cartographiée en session 2.14 quinquies
+   → Corriger le rayon par défaut du wrapper findNearbyDrivers() (15 km → 60 km, origine de l'écart INCONNUE)
+   → Brancher le résultat de la géolocalisation sur le paramètre _driverLocation de subscribeToNewMissions(), actuellement présent dans la signature mais jamais rempli
+   → Éviter le recoupement avec la future table mission_offers (session 2.14 sexies)
+   → Priorité immédiate suivante pour ce chantier, positionnée juste après 2.14 quinquies dans l'ordre logique
 
 2.14 sexies ⏳ Piste 2 — Négociation de prix structurée (session la plus lourde)
    → Nouvelle table mission_offers, RLS sur pattern transactions_select_own/notifications_select_own (référence désormais éprouvée via voice-messages, session 2.14 ter)
@@ -1150,14 +1247,14 @@ PHASE 2 — TESTS & DEBUGGING
 **2.20 ⏳ NOUVELLE SESSION — Correction route CreateParcel + test flux e-commerce complet**
    → Déclarer la route 'CreateParcel' dans frontend/src/navigation/ (bug découvert session 2.14 quater, sans rapport avec elle)
    → Tester le flux e-commerce complet (UI + insertion en base) une fois l'écran accessible
-   → Positionnée en fin de séquence du chantier processus de mission, sans dépendance avec les pistes 2.14 quinquies/sexies/septies
+   → Positionnée en fin de séquence du chantier processus de mission, sans dépendance avec les pistes 2.14 quinquies/quinquies bis/sexies/septies
 
 PHASE 3 — SERVICES EXTERNES
 3.1 ⏳ Twilio SMS / 3.2 ⏳ FCM Android / 3.3 ⏳ APNs iOS
 
 PHASE 4 — TESTS DEVICE PHYSIQUE
 4.1 ⏳ Tests Expo Go Android / 4.2 ⏳ Tests Expo Go iOS
-4.3 ⏳ Tests utilisateurs réels — inclut désormais : chemin natif Alert.alert() (RÉSOLU 42), test complet Volet 4 (4 notify* mission) + cloche Client, ET (nouveau) soumission complète du flux transport avec scheduled_pickup_time (bloquée par GPS en environnement Codespaces)
+4.3 ⏳ Tests utilisateurs réels — inclut désormais : chemin natif Alert.alert() (RÉSOLU 42), test complet Volet 4 (4 notify* mission) + cloche Client, soumission complète du flux transport avec scheduled_pickup_time (bloquée par GPS en environnement Codespaces), ET (nouveau, session 2.14 quinquies) test fonctionnel complet du Volet 1 (fermeture auto du modal), de la diffusion géospatiale réelle (une fois branchée en 2.14 quinquies bis) et du filtre admin expired, en environnement disposant d'une géolocalisation fonctionnelle et de données réelles — non réalisable en Codespaces
 4.4 ⏳ Intégrer messages vocaux dans MissionTrackingScreen (audioService.ts + bucket voice-messages prêts, RLS désormais sécurisée depuis 2.14 ter) — UI à construire — inclut le test fonctionnel complet de la clause RLS voice-messages en conditions réelles (report actée session 2.14 ter)
 
 PHASE 5 — BUILD EAS
@@ -1172,23 +1269,26 @@ PHASE 7 — PUBLICATION
 
 # RECOMMANDATIONS STRATÉGIQUES EN ATTENTE D'ARBITRAGE PORTEUR
 
-(issues des sessions 2.13, 2.14, 2.14 bis, 2.14 ter et 2.14 quater, non déclenchées dans l'immédiat)
+(issues des sessions 2.13, 2.14, 2.14 bis, 2.14 ter, 2.14 quater et 2.14 quinquies, non déclenchées dans l'immédiat)
 
 ✅ RÉSOLUE — Correction de sécurité RLS voice-messages : traitée en session 2.14 ter (RÉSOLU 43). Reste seulement le test fonctionnel en Phase 4.4/session 2.18.
+✅ RÉSOLUE — Correction de sécurité vues available_drivers/driver_dashboard : traitée en session 2.14 quinquies (RÉSOLU 48/49).
 Audit systématique Alert.alert() — tous les usages du projet — idéalement session 2.19, avant Phase 3 active. Portée élargie : chemin natif non testé pour 3 fichiers déjà corrigés.
 Environnement de staging — à évaluer avant Phase 5 (Build EAS) — décision et calendrier à trancher par le porteur.
 Refonte du reporting financier — trois mécanismes de calcul non harmonisés — étude de faisabilité à programmer, hors périmètre 2.13.
 Notification admin en temps réel sur nouvelle demande de recharge — renvoyée à la session 2.17.
-Second numéro de test dédié au rôle client — nécessaire pour le test complet du Volet 4 et de la cloche côté client. Point réactualisé session 2.14 quater : même avec un profil CLIENT désormais actif sur le numéro partagé, le test de bout en bout reste bloqué par l'environnement (GPS Codespaces) — la recommandation reste donc pertinente mais n'est plus suffisante à elle seule.
+Second numéro de test dédié au rôle client — nécessaire pour le test complet du Volet 4 et de la cloche côté client. Point réactualisé session 2.14 quinquies : le numéro partagé étant redevenu DRIVER, cette recommandation reste pleinement d'actualité — aucun profil CLIENT n'est aujourd'hui disponible en parallèle d'un profil DRIVER.
 Anomalie #1 — bouton "← Retour" manquant NotificationCenterScreen.tsx — non bloquante, rattachement session 2.19 ou point autonome, décision du porteur.
 notifyDocumentExpiry — lien check-document-reminders non vérifié — à statuer isolément, session future.
 Bug de reconnexion clientProfileId vide (RootNavigator.tsx) — à documenter, session future non assignée.
 Robustesse topupWallet/refundWallet — à vérifier par lecture directe en tout début de session 2.17.
 subscribeToDriverLocation (realtimeService.ts) — suivi de position en temps réel, non exploité, aucune session dédiée proposée à ce stade.
-**NOUVELLE (session 2.14 quater) — Décision sur la reconstitution du profil DRIVER historique** (2ec2b439-..., wallet 800 DH, 4 transactions pending) pour le numéro de test partagé, actuellement orphelin d'accès Auth — décision et calendrier à trancher par le porteur.
-**NOUVELLE (session 2.14 quater) — Enrichissement fonctionnel scheduled_pickup_time** : notifyRecipientBySMS et getClientParcels pourraient à l'avenir inclure ce champ — piste non assignée, à arbitrer.
-**NOUVELLE (session 2.14 quater) — Correction route CreateParcel** — voir session 2.20 déjà créée pour ce traitement (Section 16).
-**NOUVELLE (session 2.14 quater) — Point de sécurité cancelMission/userId** — le renommage de paramètre est en place mais la vérification d'autorisation elle-même reste absente ; recommandation reconfirmée pour la session 2.17 (déjà actée session 2.14, reconfirmée pertinente et non résolue par le renommage de paramètre observé en 2.14 quater).
+NOUVELLE (session 2.14 quater) — Décision sur la reconstitution du profil DRIVER historique (2ec2b439-..., wallet 800 DH, 4 transactions pending) pour le numéro de test partagé, actuellement orphelin d'accès Auth — décision et calendrier à trancher par le porteur. Point inchangé à l'issue de la session 2.14 quinquies : ce profil reste orphelin, distinct du nouveau profil DRIVER désormais actif sur le numéro partagé.
+NOUVELLE (session 2.14 quater) — Enrichissement fonctionnel scheduled_pickup_time : notifyRecipientBySMS et getClientParcels pourraient à l'avenir inclure ce champ — piste non assignée, à arbitrer.
+NOUVELLE (session 2.14 quater) — Correction route CreateParcel — voir session 2.20 déjà créée pour ce traitement (Section 16).
+NOUVELLE (session 2.14 quater) — Point de sécurité cancelMission/userId — le renommage de paramètre est en place mais la vérification d'autorisation elle-même reste absente ; recommandation reconfirmée pour la session 2.17 (déjà actée session 2.14, reconfirmée pertinente et non résolue par le renommage de paramètre observé en 2.14 quater).
+🆕 NOUVELLE (session 2.14 quinquies) — Audit des permissions par défaut (GRANT) sur l'ensemble du schéma public : constat récurrent, lors de l'investigation de la faille de sécurité, de permissions larges accordées à anon/authenticated sur des objets autres que les deux vues déjà corrigées, la protection reposant alors uniquement sur RLS — à programmer, aucune session dédiée assignée à ce stade.
+🆕 NOUVELLE (session 2.14 quinquies) — Renforcement méthodologique CI/exécution réelle : après toute séquence de plusieurs commandes sed sur un même fichier, effectuer systématiquement une relecture structurelle complète avant de committer ; ne jamais considérer un statut CI vert comme une garantie suffisante sans un test d'exécution réelle au moins une fois par session touchant du code applicatif — règle déjà consolidée en Section 2, recommandation de vigilance continue pour toutes les sessions futures.
 
 # 18. ANNEXE — INVESTIGATION SESSION 2.14 — PROCESSUS DE CRÉATION DE MISSION : ÉTAT ACTUEL ET PISTES D'AMÉLIORATION
 
@@ -1196,16 +1296,18 @@ subscribeToDriverLocation (realtimeService.ts) — suivi de position en temps r�
 
 Mise à jour de statut (session 2.14 quater) : la Piste "Planification par date/heure" (§ TRI, Piste 2 dans la numérotation de cette section / Piste 3 dans la numérotation de la Section 18 bis et du corps du document) est désormais **traitée** — voir Section 6, bloc "SESSION 2.14 quater", et RÉSOLU 47.
 
+Mise à jour de statut (session 2.14 quinquies) : la Piste "Diffusion optimisée" (§ TRI, Piste 1) est **partiellement traitée** — l'infrastructure de diffusion (RPC find_nearby_drivers, vue available_drivers) a été sécurisée (faille corrigée, voir RÉSOLU 48/49) et intégralement cartographiée, et les Volets 1 (retrait de la diffusion à l'acceptation) et 2 (expiration) ont été implémentés et déployés — voir Section 6, bloc "SESSION 2.14 quinquies". Le branchement du filtrage réel par distance reste en attente, reporté à la session 2.14 quinquies bis (nouvelle).
+
 # 18 bis. ANNEXE — SESSION 2.14 bis — SYNTHÈSE DE L'INVESTIGATION ET PLAN D'ACTION (PROCESSUS DE CRÉATION DE MISSION)
 
 [Contenu inchangé — reprise intégrale.]
 
 Synthèse ultra-condensée pour navigation rapide — MISE À JOUR :
-Piste 1 (diffusion) : code mort géospatial à réutiliser — ⏳ 2.14 quinquies, dépendance envers Piste 3 désormais LEVÉE
+Piste 1 (diffusion) : 🔵 Infrastructure sécurisée, Volets 1 et 2 traités — session 2.14 quinquies (voir RÉSOLU 48/49/50) ; branchement du filtrage réel par distance — ⏳ 2.14 quinquies bis (nouvelle)
 Piste 2 (négociation) : nouvelle table + refonte du verrou — ⏳ 2.14 sexies, la plus lourde
 Piste 3 (planification) : champ obligatoire — ✅ TRAITÉE, session 2.14 quater (voir RÉSOLU 47)
 Piste 4 (canal vocal) : conservé, activation en dernier — ⏳ 2.14 septies, dépendance double (2.14 quater livrée, 2.14 sexies restante)
-Hors piste : sécurité voice-messages — ✅ TRAITÉE, session 2.14 ter (voir RÉSOLU 43)
+Hors piste : sécurité voice-messages — ✅ TRAITÉE, session 2.14 ter (voir RÉSOLU 43) ; sécurité available_drivers/driver_dashboard — ✅ TRAITÉE, session 2.14 quinquies (voir RÉSOLU 48/49)
 
 # TEMPLATE DÉBUT DE SESSION CLAUDE
 
@@ -1227,6 +1329,7 @@ Tout texte avec caractère spécial bash (!, `, $, ) → heredoc à délimiteur 
 NE JAMAIS exécuter de commande SQL de modification de schéma directement en SQL Editor — toujours via fichier de migration + GitHub Actions (règle renforcée session 2.14 ter)
 Indexation storage.foldername() : vérifier l'indice par simulation, ne jamais le copier d'un pattern à convention de chemin différente (règle session 2.14 ter)
 Lecture intégrale obligatoire, y compris pour les fichiers de référence/modèle non modifiés (règle renforcée session 2.14 quater)
+NOUVEAU — Un CI vert (Vérification Qualité Code) ne garantit pas que le code compile/s'exécute réellement : après toute séquence de plusieurs sed sur un même fichier, relecture structurelle complète + test d'exécution réel obligatoires (règle consolidée session 2.14 quinquies, suite au bug de duplication STATUS_FILTERS)
 git pull --rebase avant tout push
 Migrations via GitHub uniquement
 NE JAMAIS modifier authService.ts / ProfileSetupScreen.tsx / driverService.ts / wallet_update_admin
@@ -1237,12 +1340,14 @@ timeout_milliseconds := 30000 pour net.http_post
 cron.unschedule() WHERE EXISTS avant tout cron.schedule()
 Alert.alert() ne s'affiche pas sur web — toujours Platform.OS === 'web' ? window.alert(...) : Alert.alert(...) (3 fichiers corrigés : AdminUsersScreen, WalletTopupScreen, PendingVerificationScreen — chemin natif non testé)
 DateTimeField.tsx : nécessite le même traitement différencié web/natif — voir RÉSOLU 44/45/46 pour les 3 causes distinctes déjà rencontrées (absence support web, re-rendu non mémoïsé, validation prématurée onChange/onBlur)
-⚠️ Numéro de test partagé +212600000000 : ACTUELLEMENT EN RÔLE CLIENT ("TEST CLIENT FTM") depuis session 2.14 quater. Le profil DRIVER historique (2ec2b439-..., wallet 800 DH, 4 transactions pending) a perdu son accès Auth mais ses données restent intactes en base. Un seul rôle actif à la fois — envisager un second numéro dédié au rôle Client avant toute session nécessitant un parcours de mission complet.
+✅ Vues available_drivers / driver_dashboard SÉCURISÉES (session 2.14 quinquies) — phone_number retiré, SELECT anon révoqué, security_invoker activé sur driver_dashboard — voir RÉSOLU 48/49
+⚠️ Numéro de test partagé +212600000000 : ACTUELLEMENT EN RÔLE DRIVER depuis session 2.14 quinquies — nouveau profil créé via nouvel onboarding complet (is_verified = true, wallet 300 DH, catégorie VUL, 4 documents validés). Le profil DRIVER historique (2ec2b439-..., wallet 800 DH, 4 transactions pending) reste orphelin d'accès Auth, données intactes en base — ce n'est pas un second profil équivalent utilisable. Un seul rôle actif à la fois — envisager un second numéro dédié au rôle Client avant toute session nécessitant un parcours de mission complet (Client + Driver simultanés).
 ✅ RLS voice-messages CORRIGÉE (session 2.14 ter) — reste le test fonctionnel en Phase 4.4/session 2.18
 ✅ scheduled_pickup_time OBLIGATOIRE (NOT NULL) depuis session 2.14 quater — transport ET e-commerce
+✅ Volets 1 (fermeture auto modal) et 2 (expiration mission pending) OPÉRATIONNELS depuis session 2.14 quinquies — nouveau statut mission_status = 'expired'
 ⚠️ Bug découvert : route 'CreateParcel' non déclarée en navigation — session 2.20 à traiter
-Chantier "amélioration processus de création de mission" : 2.14 ter ✅, 2.14 quater ✅ — restent 2.14 quinquies (débloquée), 2.14 sexies, 2.14 septies — voir Section 6/17/18 bis pour dépendances
-Prochain timestamp migration : 20260504000017
+Chantier "amélioration processus de création de mission" : 2.14 ter ✅, 2.14 quater ✅, 2.14 quinquies ✅ (avec réserves) — restent 2.14 quinquies bis (priorité immédiate, branchement diffusion réelle), 2.14 sexies, 2.14 septies — voir Section 6/17/18 bis pour dépendances
+Prochain timestamp migration : 20260504000019
 
 OBJECTIF SESSION : [Décrire précisément]
 
