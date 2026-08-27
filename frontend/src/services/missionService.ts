@@ -132,7 +132,7 @@ export async function findNearbyDrivers(
   clientLat: number,
   clientLng: number,
   vehicleCategory: VehicleCategory,
-  radiusKm = 15
+  radiusKm = 60
 ): Promise<{ success?: boolean; drivers?: NearbyDriver[]; error?: string }> {
   console.log('[FTM-DEBUG] GPS - Searching nearby drivers', {
     clientLat,
