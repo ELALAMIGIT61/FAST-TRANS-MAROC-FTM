@@ -85,8 +85,35 @@ export default function DriverHomeScreen({ route, navigation }: Props) {
       missionChannelRef.current = subscribeToNewMissions(
         vehicleCategory,
         null,
-        (missionData) => {
+        async (missionData) => {
           const mission = missionData as unknown as Mission;
+          const rawMission = missionData as Record<string, unknown>;
+          const pickupLocation = rawMission.pickup_location as string | null;
+
+          if (pickupLocation) {
+            const { data: nearbyDrivers, error: nearbyError } = await supabase.rpc('find_nearby_drivers', {
+              client_point: pickupLocation,
+              radius_meters: 60000,
+              p_vehicle_category: vehicleCategory,
+            });
+
+            if (nearbyError) {
+              console.log('[FTM-DEBUG] Driver - Distance check error, showing mission by default', {
+                missionId: mission.id,
+                error: nearbyError.message,
+              });
+            } else {
+              const isWithinRadius = (nearbyDrivers as { id: string }[] | null)?.some((d) => d.id === driverId);
+              if (!isWithinRadius) {
+                console.log('[FTM-DEBUG] Driver - Mission outside radius, skipping', {
+                  missionId: mission.id,
+                  driverId,
+                });
+                return;
+              }
+            }
+          }
+
           setPendingMission(mission);
           pendingMissionUpdateChannelRef.current = subscribeToMissionUpdates(
             mission.id,
