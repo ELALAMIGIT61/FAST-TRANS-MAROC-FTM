@@ -1,0 +1,27 @@
+-- Migration 20260504000020
+-- Session 2.14 quinquies bis
+-- Correction de securite : revocation de l'acces anon en lecture (SELECT)
+-- sur la table drivers.
+--
+-- Decouverte fortuite en cours d'investigation session 2.14 quinquies bis
+-- (Partie 1). La policy RLS drivers_select_available (is_verified = true
+-- AND is_available = true) ne comportait aucune verification d'identite,
+-- combinee a un GRANT SELECT accorde a anon, permettait a un utilisateur
+-- non authentifie de lire les donnees de tout chauffeur verifie et
+-- disponible via l'API Supabase, y compris sa position GPS precise
+-- (current_location).
+--
+-- Verifications effectuees avant ce correctif (Partie 1) :
+-- - UPDATE, DELETE, INSERT sur drivers : tous correctement restreints
+--   par policies RLS ou absence de policy (refus par defaut) - non
+--   concernes par ce correctif.
+-- - Aucun flux applicatif actuel ne depend de cet acces anon (verifie
+--   par lecture de la logique de routage RootNavigator.tsx).
+--
+-- Portee du correctif : uniquement le role anon. Le cas authenticated
+-- (policy drivers_select_available reste permissive pour tout
+-- utilisateur connecte, sans filtre sur le chauffeur concerne) est
+-- documente comme recommandation en attente d'arbitrage metier
+-- separee, hors perimetre de ce correctif.
+
+REVOKE SELECT ON drivers FROM anon;
