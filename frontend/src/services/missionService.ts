@@ -459,3 +459,164 @@ export async function expireMission(
 
   return { success: true, mission: data as Mission };
 }
+
+export type OfferStatus = 'pending' | 'accepted' | 'not_selected';
+
+export interface MissionOffer {
+  id: string;
+  mission_id: string;
+  driver_id: string;
+  round_number: 1 | 2;
+  offered_price: number;
+  client_accepted: boolean;
+  driver_accepted: boolean;
+  status: OfferStatus;
+  message: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export async function createMissionOffer(
+  missionId: string,
+  driverId: string,
+  offeredPrice: number,
+  message?: string
+): Promise<{ success?: boolean; offer?: MissionOffer; error?: string }> {
+  console.log('[FTM-DEBUG] MissionOffer - Creating offer', {
+    missionId,
+    driverId,
+    offeredPrice,
+  });
+
+  const { data: mission, error: missionError } = await supabase
+    .from('missions')
+    .select('status')
+    .eq('id', missionId)
+    .single();
+
+  if (missionError || !mission) {
+    console.log('[FTM-DEBUG] MissionOffer - Creation refused: mission not found', { missionId });
+    return { error: 'Mission introuvable.' };
+  }
+
+  if (mission.status !== 'pending') {
+    console.log('[FTM-DEBUG] MissionOffer - Creation refused: mission not pending', {
+      missionId,
+      status: mission.status,
+    });
+    return { error: 'Cette mission n\'est plus disponible.' };
+  }
+
+  const { data, error } = await supabase
+    .from('mission_offers')
+    .insert({
+      mission_id: missionId,
+      driver_id: driverId,
+      round_number: 1,
+      offered_price: offeredPrice,
+      client_accepted: false,
+      driver_accepted: false,
+      status: 'pending',
+      message: message ?? null,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.log('[FTM-DEBUG] MissionOffer - Creation error', { error: error.message });
+    if (error.code === '23505') {
+      return { error: 'Vous avez déjà une offre active sur cette mission.' };
+    }
+    return { error: error.message };
+  }
+
+  console.log('[FTM-DEBUG] MissionOffer - Created successfully', {
+    offerId: data.id,
+    missionId: data.mission_id,
+    driverId: data.driver_id,
+    offeredPrice: data.offered_price,
+  });
+
+  return { success: true, offer: data as MissionOffer };
+}
+
+export async function counterMissionOffer(
+  offerId: string,
+  newPrice: number,
+  actor: 'client' | 'driver'
+): Promise<{ success?: boolean; offer?: MissionOffer; error?: string }> {
+  console.log('[FTM-DEBUG] MissionOffer - Countering offer', {
+    offerId,
+    newPrice,
+    actor,
+  });
+
+  const nextRound = actor === 'client' ? 1 : 2;
+
+  const { data, error } = await supabase
+    .from('mission_offers')
+    .update({
+      offered_price: newPrice,
+      round_number: nextRound,
+    })
+    .eq('id', offerId)
+    .eq('status', 'pending')
+    .eq('round_number', 1)
+    .select()
+    .single();
+
+  if (error) {
+    console.log('[FTM-DEBUG] MissionOffer - Counter error', { error: error.message });
+    return { error: 'Impossible de proposer un nouveau prix pour le moment.' };
+  }
+
+  if (!data) {
+    console.log('[FTM-DEBUG] MissionOffer - Counter failed: offer state changed concurrently', { offerId });
+    return { error: 'Cette offre ne peut plus être modifiée à ce stade.' };
+  }
+
+  console.log('[FTM-DEBUG] MissionOffer - Countered successfully', {
+    offerId: data.id,
+    newPrice: data.offered_price,
+    roundNumber: data.round_number,
+  });
+
+  return { success: true, offer: data as MissionOffer };
+}
+
+export async function acceptMissionOffer(
+  offerId: string,
+  acceptedBy: 'client' | 'driver'
+): Promise<{ success?: boolean; offer?: MissionOffer; error?: string }> {
+  console.log('[FTM-DEBUG] MissionOffer - Accepting offer', { offerId, acceptedBy });
+
+  const updatePayload =
+    acceptedBy === 'client' ? { client_accepted: true } : { driver_accepted: true };
+
+  const { data, error } = await supabase
+    .from('mission_offers')
+    .update(updatePayload)
+    .eq('id', offerId)
+    .eq('status', 'pending')
+    .select()
+    .single();
+
+  if (error) {
+    console.log('[FTM-DEBUG] MissionOffer - Accept error', { error: error.message });
+    return { error: error.message };
+  }
+
+  if (!data) {
+    console.log('[FTM-DEBUG] MissionOffer - Accept failed: offer no longer pending', { offerId });
+    return { error: 'Cette offre a déjà été traitée.' };
+  }
+
+  console.log('[FTM-DEBUG] MissionOffer - Accepted successfully', {
+    offerId: data.id,
+    status: data.status,
+    clientAccepted: data.client_accepted,
+    driverAccepted: data.driver_accepted,
+  });
+
+  return { success: true, offer: data as MissionOffer };
+}
