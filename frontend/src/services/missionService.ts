@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabaseClient';
-import { notifyMissionStarted, notifyMissionAccepted, notifyMissionCompleted, notifyMissionCancelled } from './notificationTemplates';
+import { notifyMissionStarted, notifyMissionAccepted, notifyMissionCompleted, notifyMissionCancelled, notifyClientOfferUpdate, notifyDriverCounterOffer, notifyOfferAcceptancePending, notifyDriverOfferNotSelected } from './notificationTemplates';
 import { insertNotification } from './pushNotificationService';
 
 export type VehicleCategory = 'vul' | 'n2_medium' | 'n2_large';
@@ -490,7 +490,7 @@ export async function createMissionOffer(
 
   const { data: mission, error: missionError } = await supabase
     .from('missions')
-    .select('status')
+    .select('id, mission_number, client_id, status')
     .eq('id', missionId)
     .single();
 
@@ -537,6 +537,26 @@ export async function createMissionOffer(
     offeredPrice: data.offered_price,
   });
 
+  if (mission.client_id) {
+    try {
+      const { data: driverProfile } = await supabase
+        .from('drivers')
+        .select('profiles ( full_name )')
+        .eq('id', driverId)
+        .single();
+      const driverName = (driverProfile?.profiles as { full_name?: string } | null)?.full_name ?? 'Un chauffeur';
+      await notifyClientOfferUpdate(
+        mission.client_id,
+        { id: mission.id, mission_number: mission.mission_number },
+        driverName,
+        offeredPrice,
+        1
+      );
+    } catch (notifyError) {
+      console.log('[FTM-DEBUG] MissionOffer - Notify client (create) failed (non-blocking)', { notifyError });
+    }
+  }
+
   return { success: true, offer: data as MissionOffer };
 }
 
@@ -562,7 +582,7 @@ export async function counterMissionOffer(
     .eq('id', offerId)
     .eq('status', 'pending')
     .eq('round_number', 1)
-    .select()
+    .select('*, missions ( id, mission_number, client_id )')
     .single();
 
   if (error) {
@@ -581,7 +601,35 @@ export async function counterMissionOffer(
     roundNumber: data.round_number,
   });
 
-  return { success: true, offer: data as MissionOffer };
+  const mission = data.missions as { id: string; mission_number: string; client_id: string | null } | null;
+
+  try {
+    if (actor === 'client' && data.driver_id) {
+      await notifyDriverCounterOffer(
+        data.driver_id,
+        { id: mission?.id ?? data.mission_id, mission_number: mission?.mission_number ?? '' },
+        newPrice
+      );
+    } else if (actor === 'driver' && mission?.client_id) {
+      const { data: driverProfile } = await supabase
+        .from('drivers')
+        .select('profiles ( full_name )')
+        .eq('id', data.driver_id)
+        .single();
+      const driverName = (driverProfile?.profiles as { full_name?: string } | null)?.full_name ?? 'Un chauffeur';
+      await notifyClientOfferUpdate(
+        mission.client_id,
+        { id: mission.id, mission_number: mission.mission_number },
+        driverName,
+        newPrice,
+        2
+      );
+    }
+  } catch (notifyError) {
+    console.log('[FTM-DEBUG] MissionOffer - Notify counter failed (non-blocking)', { notifyError });
+  }
+
+  return { success: true, offer: data as unknown as MissionOffer };
 }
 
 export async function acceptMissionOffer(
@@ -598,7 +646,7 @@ export async function acceptMissionOffer(
     .update(updatePayload)
     .eq('id', offerId)
     .eq('status', 'pending')
-    .select()
+    .select('*, missions ( id, mission_number, client_id )')
     .single();
 
   if (error) {
@@ -618,5 +666,121 @@ export async function acceptMissionOffer(
     driverAccepted: data.driver_accepted,
   });
 
-  return { success: true, offer: data as MissionOffer };
+  const mission = data.missions as { id: string; mission_number: string; client_id: string | null } | null;
+
+  try {
+    if (data.status === 'accepted') {
+      // Le trigger AFTER UPDATE sync_mission_on_offer_accepted s'exécute de façon
+      // synchrone dans la même transaction SQL, avant que cette requête ne retourne
+      // son résultat — les autres offres de la mission sont donc déjà basculées à
+      // 'not_selected' au moment où on les relit ici. Comportement à confirmer lors
+      // du test d'exécution réel de cette étape.
+      const { data: losingOffers } = await supabase
+        .from('mission_offers')
+        .select('driver_id')
+        .eq('mission_id', data.mission_id)
+        .eq('status', 'not_selected');
+
+      if (losingOffers) {
+        for (const losingOffer of losingOffers) {
+          try {
+            await notifyDriverOfferNotSelected(losingOffer.driver_id, {
+              id: mission?.id ?? data.mission_id,
+              mission_number: mission?.mission_number ?? '',
+            });
+          } catch (notifyError) {
+            console.log('[FTM-DEBUG] MissionOffer - Notify not-selected failed for one driver (non-blocking)', {
+              driverId: losingOffer.driver_id,
+              notifyError,
+            });
+          }
+        }
+      }
+    } else if (acceptedBy === 'client') {
+      // Le client vient d'accepter : on notifie le chauffeur, dont il faut
+      // résoudre le profileId via la jointure drivers -> profiles.
+      const { data: driverProfile } = await supabase
+        .from('drivers')
+        .select('profiles ( id )')
+        .eq('id', data.driver_id)
+        .single();
+      const driverProfileId = (driverProfile?.profiles as { id?: string } | null)?.id;
+      if (driverProfileId) {
+        await notifyOfferAcceptancePending(
+          driverProfileId,
+          { id: mission?.id ?? data.mission_id, mission_number: mission?.mission_number ?? '' },
+          data.offered_price
+        );
+      }
+    } else if (acceptedBy === 'driver' && mission?.client_id) {
+      // Le chauffeur vient d'accepter : on notifie directement le client,
+      // dont le profileId est déjà disponible via la jointure missions.
+      await notifyOfferAcceptancePending(
+        mission.client_id,
+        { id: mission.id, mission_number: mission.mission_number },
+        data.offered_price
+      );
+    }
+  } catch (notifyError) {
+    console.log('[FTM-DEBUG] MissionOffer - Notify acceptance failed (non-blocking)', { notifyError });
+  }
+
+  return { success: true, offer: data as unknown as MissionOffer };
+}
+
+export async function submitClientCounterOffer(
+  missionId: string,
+  newPrice: number
+): Promise<{ success?: boolean; updatedCount?: number; failedOfferIds?: string[]; error?: string }> {
+  console.log('[FTM-DEBUG] MissionOffer - Submitting client counter offer', { missionId, newPrice });
+
+  const { data: offers, error: fetchError } = await supabase
+    .from('mission_offers')
+    .select('id, driver_id')
+    .eq('mission_id', missionId)
+    .eq('status', 'pending')
+    .eq('round_number', 1);
+
+  if (fetchError) {
+    console.log('[FTM-DEBUG] MissionOffer - Counter offer fetch error', { error: fetchError.message });
+    return { error: fetchError.message };
+  }
+
+  if (!offers || offers.length === 0) {
+    console.log('[FTM-DEBUG] MissionOffer - No round-1 pending offers to counter', { missionId });
+    return { error: 'Aucune offre en attente pour cette mission.' };
+  }
+
+  const failedOfferIds: string[] = [];
+  let updatedCount = 0;
+
+  for (const offer of offers) {
+    try {
+      const result = await counterMissionOffer(offer.id, newPrice, 'client');
+      if (result.success) {
+        updatedCount += 1;
+      } else {
+        failedOfferIds.push(offer.id);
+        console.log('[FTM-DEBUG] MissionOffer - Counter offer failed for one driver', {
+          offerId: offer.id,
+          error: result.error,
+        });
+      }
+    } catch (err: unknown) {
+      failedOfferIds.push(offer.id);
+      const msg = err instanceof Error ? err.message : String(err);
+      console.log('[FTM-DEBUG] MissionOffer - Counter offer exception for one driver', {
+        offerId: offer.id,
+        error: msg,
+      });
+    }
+  }
+
+  console.log('[FTM-DEBUG] MissionOffer - Client counter offer completed', {
+    missionId,
+    updatedCount,
+    failedCount: failedOfferIds.length,
+  });
+
+  return { success: updatedCount > 0, updatedCount, failedOfferIds };
 }

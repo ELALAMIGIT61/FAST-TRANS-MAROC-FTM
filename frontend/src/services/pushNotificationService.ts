@@ -44,6 +44,7 @@ function getChannelForType(type: string): string {
     document_rejected:  'ftm_documents',
     document_verified:  'ftm_documents',
     parcel_status:      'ftm_missions',
+    offer_update:       'ftm_missions',
   };
   return channelMap[type] || 'ftm_default';
 }

@@ -11,6 +11,7 @@ export const NOTIF_ICONS: Record<string, string> = {
   document_rejected:  '❌',
   document_verified:  '✅',
   parcel_status:      '📦',
+  offer_update:       '💰',
 };
 
 // ─── MISSIONS ──────────────────────────────────────────────────────────────────
@@ -164,5 +165,77 @@ export async function notifyDocumentRejected(
     '❌ Document refusé — Action requise',
     `Votre ${DOC_LABELS[documentType] || documentType} a été refusé : "${reason}". Re-uploadez un document valide.`,
     { document_type: documentType, reason, screen: 'DocumentStatusScreen' }
+  );
+}
+
+// ─── MISSION OFFERS ────────────────────────────────────────────────────────────
+
+export async function notifyClientOfferUpdate(
+  clientProfileId: string,
+  mission: { id: string; mission_number: string },
+  driverName: string,
+  offeredPrice: number,
+  roundNumber: 1 | 2
+) {
+  console.log('[FTM-DEBUG] Push - Notify client offer update', {
+    clientProfileId, missionId: mission.id, driverName, offeredPrice, roundNumber,
+  });
+  const title = roundNumber === 1 ? '💰 Nouvelle offre de prix' : '💰 Réponse du chauffeur';
+  return insertNotification(
+    clientProfileId,
+    'offer_update',
+    title,
+    `${driverName} propose ${offeredPrice} DH pour la mission ${mission.mission_number}.`,
+    { mission_id: mission.id, offered_price: offeredPrice, screen: 'MissionOfferScreen' }
+  );
+}
+
+export async function notifyDriverCounterOffer(
+  driverProfileId: string,
+  mission: { id: string; mission_number: string },
+  newPrice: number
+) {
+  console.log('[FTM-DEBUG] Push - Notify driver counter offer', {
+    driverProfileId, missionId: mission.id, newPrice,
+  });
+  return insertNotification(
+    driverProfileId,
+    'offer_update',
+    '💰 Contre-offre du client',
+    `Le client propose ${newPrice} DH pour la mission ${mission.mission_number}.`,
+    { mission_id: mission.id, offered_price: newPrice, screen: 'MissionOfferScreen' }
+  );
+}
+
+export async function notifyOfferAcceptancePending(
+  recipientProfileId: string,
+  mission: { id: string; mission_number: string },
+  offeredPrice: number
+) {
+  console.log('[FTM-DEBUG] Push - Notify offer acceptance pending', {
+    recipientProfileId, missionId: mission.id, offeredPrice,
+  });
+  return insertNotification(
+    recipientProfileId,
+    'offer_update',
+    '✅ Confirmation attendue',
+    `L'autre partie a accepté ${offeredPrice} DH pour la mission ${mission.mission_number}. Confirmez pour conclure.`,
+    { mission_id: mission.id, offered_price: offeredPrice, screen: 'MissionOfferScreen' }
+  );
+}
+
+export async function notifyDriverOfferNotSelected(
+  driverProfileId: string,
+  mission: { id: string; mission_number: string }
+) {
+  console.log('[FTM-DEBUG] Push - Notify driver offer not selected', {
+    driverProfileId, missionId: mission.id,
+  });
+  return insertNotification(
+    driverProfileId,
+    'offer_update',
+    'ℹ️ Offre non retenue',
+    `Un autre chauffeur a été retenu pour la mission ${mission.mission_number}.`,
+    { mission_id: mission.id, screen: 'DriverHomeScreen' }
   );
 }
