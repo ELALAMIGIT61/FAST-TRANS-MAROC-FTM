@@ -784,3 +784,65 @@ export async function submitClientCounterOffer(
 
   return { success: updatedCount > 0, updatedCount, failedOfferIds };
 }
+
+export async function rejectOfferAcceptance(
+  offerId: string,
+  rejectedBy: 'client' | 'driver'
+): Promise<{ success?: boolean; offer?: MissionOffer; error?: string }> {
+  console.log('[FTM-DEBUG] MissionOffer - Rejecting offer acceptance', { offerId, rejectedBy });
+
+  const { data, error } = await supabase
+    .from('mission_offers')
+    .update({
+      client_accepted: false,
+      driver_accepted: false,
+      status: 'not_selected',
+    })
+    .eq('id', offerId)
+    .eq('status', 'pending')
+    .select('*, missions ( id, mission_number, client_id )')
+    .single();
+
+  if (error) {
+    console.log('[FTM-DEBUG] MissionOffer - Reject error', { error: error.message });
+    return { error: error.message };
+  }
+
+  if (!data) {
+    console.log('[FTM-DEBUG] MissionOffer - Reject failed: offer no longer pending', { offerId });
+    return { error: 'Cette offre ne peut plus être annulée à ce stade.' };
+  }
+
+  console.log('[FTM-DEBUG] MissionOffer - Acceptance rejected successfully', {
+    offerId: data.id,
+    rejectedBy,
+  });
+
+  const mission = data.missions as { id: string; mission_number: string; client_id: string | null } | null;
+
+  try {
+    if (rejectedBy === 'driver' && mission?.client_id) {
+      await notifyDriverOfferNotSelected(data.driver_id, {
+        id: mission.id,
+        mission_number: mission.mission_number,
+      });
+    } else if (rejectedBy === 'client') {
+      const { data: driverProfile } = await supabase
+        .from('drivers')
+        .select('profiles ( id )')
+        .eq('id', data.driver_id)
+        .single();
+      const driverProfileId = (driverProfile?.profiles as { id?: string } | null)?.id;
+      if (driverProfileId) {
+        await notifyDriverOfferNotSelected(driverProfileId, {
+          id: mission?.id ?? data.mission_id,
+          mission_number: mission?.mission_number ?? '',
+        });
+      }
+    }
+  } catch (notifyError) {
+    console.log('[FTM-DEBUG] MissionOffer - Notify rejection failed (non-blocking)', { notifyError });
+  }
+
+  return { success: true, offer: data as unknown as MissionOffer };
+}
