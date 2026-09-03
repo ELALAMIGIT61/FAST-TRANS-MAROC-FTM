@@ -20,6 +20,7 @@ import CreateMissionScreen from "../screens/client/CreateMissionScreen";
 
 // Driver screens
 import DriverHomeScreen from "../screens/driver/DriverHomeScreen";
+import MissionOfferScreen from "../screens/driver/MissionOfferScreen";
 import WalletDashboardScreen from "../screens/driver/WalletDashboardScreen";
 import WalletTopupScreen from "../screens/driver/WalletTopupScreen";
 import TransactionHistoryScreen from "../screens/driver/TransactionHistoryScreen";
@@ -47,11 +48,13 @@ export type AuthStackParamList = {
 
 export type ClientStackParamList = {
   ClientHome: undefined;
+  MissionOffer: { missionId: string };
   NotificationCenter: undefined;
 };
 
 export type DriverStackParamList = {
   DriverHome: { driverId: string; vehicleCategory: string };
+  MissionOffer: { missionId: string; driverId: string };
   WalletDashboard: { driverId: string };
   WalletTopup: { walletId: string; currentBalance: number; minimumBalance: number };
   TransactionHistory: { walletId: string };
@@ -94,6 +97,7 @@ function ClientNavigator({ clientProfileId }: { clientProfileId: string }) {
         component={CreateMissionScreen as any}
         initialParams={{ clientProfileId }}
       />
+      <ClientStack.Screen name="MissionOffer" component={MissionOfferScreen as any} />
       <ClientStack.Screen name="NotificationCenter" component={NotificationCenterScreen as any} />
     </ClientStack.Navigator>
   );
@@ -129,6 +133,10 @@ function DriverNavigator({ driverId, vehicleCategory }: { driverId: string; vehi
         name="DriverHome"
         component={DriverHomeScreen as any}
         initialParams={{ driverId, vehicleCategory }}
+      />
+      <DriverStack.Screen
+        name="MissionOffer"
+        component={MissionOfferScreen as any}
       />
       <DriverStack.Screen
         name="WalletDashboard"
