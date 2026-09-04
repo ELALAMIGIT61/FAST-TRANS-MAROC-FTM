@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
+  TextInput,
   TouchableOpacity,
   StyleSheet,
   Modal,
@@ -9,21 +10,23 @@ import {
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../constants/theme';
-import { acceptMission } from '../../services/missionService';
+import { createMissionOffer } from '../../services/missionService';
 import type { Mission } from '../../services/missionService';
 
 interface Props {
   mission: Mission;
   driverId: string;
-  onAccepted: (mission: Mission) => void;
+  onOfferCreated: (offer: { id: string; mission_id: string }) => void;
   onDismiss: () => void;
 }
 
 const COUNTDOWN_SECONDS = 30;
 
-export default function NewMissionModal({ mission, driverId, onAccepted, onDismiss }: Props) {
+export default function NewMissionModal({ mission, driverId, onOfferCreated, onDismiss }: Props) {
   const [timeLeft, setTimeLeft] = useState(COUNTDOWN_SECONDS);
-  const [isAccepting, setIsAccepting] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [offeredPrice, setOfferedPrice] = useState('');
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const progressAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
@@ -49,15 +52,21 @@ export default function NewMissionModal({ mission, driverId, onAccepted, onDismi
     return () => clearInterval(interval);
   }, []);
 
-  const handleAccept = async () => {
-    setIsAccepting(true);
-    const result = await acceptMission(mission.id, driverId);
-    setIsAccepting(false);
+  const handleCreateOffer = async () => {
+    setErrorMessage(null);
+    const price = Number(offeredPrice);
+    if (!price || price <= 0) {
+      setErrorMessage('Veuillez saisir un prix valide.');
+      return;
+    }
+    setIsSubmitting(true);
+    const result = await createMissionOffer(mission.id, driverId, price);
+    setIsSubmitting(false);
 
     if (result.error) {
-      onDismiss();
-    } else if (result.mission) {
-      onAccepted(result.mission);
+      setErrorMessage(result.error);
+    } else if (result.offer) {
+      onOfferCreated(result.offer);
     }
   };
 
@@ -106,20 +115,34 @@ export default function NewMissionModal({ mission, driverId, onAccepted, onDismi
           </View>
           <Text style={styles.countdown}>{timeLeft}s</Text>
 
+          {errorMessage && (
+            <Text style={styles.errorText}>{errorMessage}</Text>
+          )}
+
+          <TextInput
+            style={styles.priceInput}
+            keyboardType="numeric"
+            placeholder="Votre prix proposé (DH)"
+            placeholderTextColor={COLORS.textSecondary}
+            value={offeredPrice}
+            onChangeText={setOfferedPrice}
+            editable={!isSubmitting}
+          />
+
           <View style={styles.actionRow}>
             <TouchableOpacity
               style={styles.refuseButton}
               onPress={onDismiss}
-              disabled={isAccepting}
+              disabled={isSubmitting}
             >
               <Text style={styles.refuseButtonText}>❌ Refuser</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.acceptButton, isAccepting && styles.buttonDisabled]}
-              onPress={handleAccept}
-              disabled={isAccepting}
+              style={[styles.acceptButton, isSubmitting && styles.buttonDisabled]}
+              onPress={handleCreateOffer}
+              disabled={isSubmitting}
             >
-              <Text style={styles.acceptButtonText}>✅ Accepter</Text>
+              <Text style={styles.acceptButtonText}>💰 Proposer ce prix</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -189,6 +212,19 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: COLORS.textSecondary,
     marginTop: -SPACING.xs,
+  },
+  priceInput: {
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: BORDER_RADIUS.md,
+    padding: SPACING.sm,
+    fontSize: 16,
+    color: COLORS.text,
+  },
+  errorText: {
+    color: COLORS.alert ?? '#E53E3E',
+    fontSize: 13,
+    textAlign: 'center',
   },
   actionRow: { flexDirection: 'row', gap: SPACING.sm },
   acceptButton: {
