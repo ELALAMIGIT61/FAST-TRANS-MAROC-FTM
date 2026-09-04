@@ -22,7 +22,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 type RootStackParamList = {
   MissionTracking: { mission: Record<string, unknown> };
   Rating: { mission: Record<string, unknown> };
-  CreateMission: { clientProfileId: string };
+  ClientHome: { clientProfileId?: string };
 };
 
 type Props = NativeStackScreenProps<RootStackParamList, 'MissionTracking'>;
@@ -187,7 +187,7 @@ export default function MissionTrackingScreen({ route, navigation }: Props) {
             <Text style={styles.statusTitle}>Mission annulée par le chauffeur</Text>
             <TouchableOpacity
               style={styles.primaryButton}
-              onPress={() => navigation.replace('CreateMission', { clientProfileId: mission.client_id ?? '' })}
+              onPress={() => navigation.replace('ClientHome', { clientProfileId: mission.client_id ?? '' })}
             >
               <Text style={styles.primaryButtonText}>Créer une nouvelle mission</Text>
             </TouchableOpacity>
@@ -202,7 +202,7 @@ export default function MissionTrackingScreen({ route, navigation }: Props) {
             <Text style={styles.subText}>Aucun chauffeur n'était disponible avant l'heure prévue.</Text>
             <TouchableOpacity
               style={styles.primaryButton}
-              onPress={() => navigation.replace('CreateMission', { clientProfileId: mission.client_id ?? '' })}
+              onPress={() => navigation.replace('ClientHome', { clientProfileId: mission.client_id ?? '' })}
             >
               <Text style={styles.primaryButtonText}>Créer une nouvelle mission</Text>
             </TouchableOpacity>

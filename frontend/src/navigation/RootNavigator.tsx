@@ -17,6 +17,8 @@ import ProfileSetupScreen from "../screens/auth/ProfileSetupScreen";
 
 // Client screens
 import CreateMissionScreen from "../screens/client/CreateMissionScreen";
+import MissionTrackingScreen from "../screens/client/MissionTrackingScreen";
+import RatingScreen from "../screens/client/RatingScreen";
 
 // Driver screens
 import DriverHomeScreen from "../screens/driver/DriverHomeScreen";
@@ -47,8 +49,10 @@ export type AuthStackParamList = {
 };
 
 export type ClientStackParamList = {
-  ClientHome: undefined;
+  ClientHome: { clientProfileId?: string };
   MissionOffer: { missionId: string };
+  MissionTracking: { mission: Record<string, unknown> };
+  Rating: { mission: Record<string, unknown> };
   NotificationCenter: undefined;
 };
 
@@ -98,6 +102,8 @@ function ClientNavigator({ clientProfileId }: { clientProfileId: string }) {
         initialParams={{ clientProfileId }}
       />
       <ClientStack.Screen name="MissionOffer" component={MissionOfferScreen as any} />
+      <ClientStack.Screen name="MissionTracking" component={MissionTrackingScreen as any} />
+      <ClientStack.Screen name="Rating" component={RatingScreen as any} />
       <ClientStack.Screen name="NotificationCenter" component={NotificationCenterScreen as any} />
     </ClientStack.Navigator>
   );

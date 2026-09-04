@@ -15,7 +15,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 type RootStackParamList = {
   Rating: { mission: Record<string, unknown> };
-  ClientHome: undefined;
+  ClientHome: { clientProfileId?: string };
 };
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Rating'>;
@@ -46,12 +46,12 @@ export default function RatingScreen({ route, navigation }: Props) {
     if (result.error) {
       Alert.alert('Erreur', result.error);
     } else {
-      navigation.replace('ClientHome');
+      navigation.replace('ClientHome', { clientProfileId: mission.client_id ?? '' });
     }
   };
 
   const handleSkip = () => {
-    navigation.replace('ClientHome');
+    navigation.replace('ClientHome', { clientProfileId: mission.client_id ?? '' });
   };
 
   const starColor = rating > 0 ? STAR_COLORS[rating] : COLORS.border;
