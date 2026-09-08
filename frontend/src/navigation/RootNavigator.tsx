@@ -19,10 +19,11 @@ import ProfileSetupScreen from "../screens/auth/ProfileSetupScreen";
 import CreateMissionScreen from "../screens/client/CreateMissionScreen";
 import MissionTrackingScreen from "../screens/client/MissionTrackingScreen";
 import RatingScreen from "../screens/client/RatingScreen";
+import ClientMissionOfferScreen from "../screens/client/ClientMissionOfferScreen";
 
 // Driver screens
 import DriverHomeScreen from "../screens/driver/DriverHomeScreen";
-import MissionOfferScreen from "../screens/driver/MissionOfferScreen";
+import DriverMissionOfferScreen from "../screens/driver/DriverMissionOfferScreen";
 import MissionActiveScreen from "../screens/driver/MissionActiveScreen";
 import WalletDashboardScreen from "../screens/driver/WalletDashboardScreen";
 import WalletTopupScreen from "../screens/driver/WalletTopupScreen";
@@ -103,7 +104,7 @@ function ClientNavigator({ clientProfileId }: { clientProfileId: string }) {
         component={CreateMissionScreen as any}
         initialParams={{ clientProfileId }}
       />
-      <ClientStack.Screen name="MissionOffer" component={MissionOfferScreen as any} />
+      <ClientStack.Screen name="MissionOffer" component={ClientMissionOfferScreen as any} />
       <ClientStack.Screen name="MissionTracking" component={MissionTrackingScreen as any} />
       <ClientStack.Screen name="Rating" component={RatingScreen as any} />
       <ClientStack.Screen name="NotificationCenter" component={NotificationCenterScreen as any} />
@@ -144,7 +145,7 @@ function DriverNavigator({ driverId, vehicleCategory }: { driverId: string; vehi
       />
       <DriverStack.Screen
         name="MissionOffer"
-        component={MissionOfferScreen as any}
+        component={DriverMissionOfferScreen as any}
       />
       <DriverStack.Screen
         name="MissionActive"
