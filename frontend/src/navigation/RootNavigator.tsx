@@ -23,6 +23,7 @@ import RatingScreen from "../screens/client/RatingScreen";
 // Driver screens
 import DriverHomeScreen from "../screens/driver/DriverHomeScreen";
 import MissionOfferScreen from "../screens/driver/MissionOfferScreen";
+import MissionActiveScreen from "../screens/driver/MissionActiveScreen";
 import WalletDashboardScreen from "../screens/driver/WalletDashboardScreen";
 import WalletTopupScreen from "../screens/driver/WalletTopupScreen";
 import TransactionHistoryScreen from "../screens/driver/TransactionHistoryScreen";
@@ -59,6 +60,7 @@ export type ClientStackParamList = {
 export type DriverStackParamList = {
   DriverHome: { driverId: string; vehicleCategory: string };
   MissionOffer: { missionId: string; driverId: string };
+  MissionActive: { mission: Record<string, unknown> };
   WalletDashboard: { driverId: string };
   WalletTopup: { walletId: string; currentBalance: number; minimumBalance: number };
   TransactionHistory: { walletId: string };
@@ -143,6 +145,10 @@ function DriverNavigator({ driverId, vehicleCategory }: { driverId: string; vehi
       <DriverStack.Screen
         name="MissionOffer"
         component={MissionOfferScreen as any}
+      />
+      <DriverStack.Screen
+        name="MissionActive"
+        component={MissionActiveScreen as any}
       />
       <DriverStack.Screen
         name="WalletDashboard"
