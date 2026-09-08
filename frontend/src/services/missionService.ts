@@ -635,7 +635,7 @@ export async function counterMissionOffer(
 export async function acceptMissionOffer(
   offerId: string,
   acceptedBy: 'client' | 'driver'
-): Promise<{ success?: boolean; offer?: MissionOffer; error?: string }> {
+): Promise<{ success?: boolean; offer?: MissionOffer; mission?: Record<string, unknown> | null; error?: string }> {
   console.log('[FTM-DEBUG] MissionOffer - Accepting offer', { offerId, acceptedBy });
 
   const updatePayload =
@@ -646,7 +646,7 @@ export async function acceptMissionOffer(
     .update(updatePayload)
     .eq('id', offerId)
     .eq('status', 'pending')
-    .select('*, missions ( id, mission_number, client_id )')
+    .select('*, missions ( id, mission_number, client_id, status, pickup_address, pickup_city, dropoff_address, dropoff_city, driver_id, vehicle_category, actual_pickup_time )')
     .single();
 
   if (error) {
@@ -666,7 +666,7 @@ export async function acceptMissionOffer(
     driverAccepted: data.driver_accepted,
   });
 
-  const mission = data.missions as { id: string; mission_number: string; client_id: string | null } | null;
+  const mission = data.missions as { id: string; mission_number: string; client_id: string | null; status: string; pickup_address: string; pickup_city: string; dropoff_address: string; dropoff_city: string; driver_id: string | null; vehicle_category: string; actual_pickup_time: string | null } | null;
 
   try {
     if (data.status === 'accepted') {
@@ -725,7 +725,7 @@ export async function acceptMissionOffer(
     console.log('[FTM-DEBUG] MissionOffer - Notify acceptance failed (non-blocking)', { notifyError });
   }
 
-  return { success: true, offer: data as unknown as MissionOffer };
+  return { success: true, offer: data as unknown as MissionOffer, mission: mission as Record<string, unknown> | null };
 }
 
 export async function submitClientCounterOffer(
