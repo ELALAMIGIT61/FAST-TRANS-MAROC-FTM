@@ -7,6 +7,7 @@ import {
   acceptMissionOffer,
   rejectOfferAcceptance,
   submitClientCounterOffer,
+  getMissionById,
 } from '../../services/missionService';
 import type { MissionOffer } from '../../services/missionService';
 import {
@@ -88,7 +89,7 @@ interface Props {
   missionId: string;
   role: 'client' | 'driver';
   driverId?: string;
-  onMissionResolved: () => void;
+  onMissionResolved: (mission: Record<string, unknown>) => void;
 }
 
 export default function MissionOfferScreen({ missionId, role, driverId, onMissionResolved }: Props) {
@@ -98,6 +99,7 @@ export default function MissionOfferScreen({ missionId, role, driverId, onMissio
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const channelRef = React.useRef<RealtimeChannel | null>(null);
+  const hasResolvedRef = React.useRef(false);
 
   useEffect(() => {
     if (role === 'client') {
@@ -127,14 +129,21 @@ export default function MissionOfferScreen({ missionId, role, driverId, onMissio
 
   useEffect(() => {
     const clientState = role === 'client' ? deriveClientOffersState(clientOffers) : null;
-    if (clientState?.isMissionResolved) {
-      onMissionResolved();
-    }
     const driverState = role === 'driver' ? deriveDriverOfferState(driverOffer) : null;
-    if (driverState?.kind === 'accepted') {
-      onMissionResolved();
+
+    const isResolved =
+      (role === 'client' && clientState?.isMissionResolved) ||
+      (role === 'driver' && driverState?.kind === 'accepted');
+
+    if (isResolved && !hasResolvedRef.current) {
+      hasResolvedRef.current = true;
+      getMissionById(missionId).then((result) => {
+        if (result.success && result.mission) {
+          onMissionResolved(result.mission as unknown as Record<string, unknown>);
+        }
+      });
     }
-  }, [role, clientOffers, driverOffer, onMissionResolved]);
+  }, [role, clientOffers, driverOffer, missionId, onMissionResolved]);
 
   const handleClientAccept = useCallback(async (offerId: string) => {
     setIsSubmitting(true);

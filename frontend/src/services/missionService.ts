@@ -846,3 +846,22 @@ export async function rejectOfferAcceptance(
 
   return { success: true, offer: data as unknown as MissionOffer };
 }
+
+export async function getMissionById(
+  missionId: string
+): Promise<{ success?: boolean; mission?: Mission; error?: string }> {
+  console.log('[FTM-DEBUG] Mission - Fetching mission by id', { missionId });
+
+  const { data, error } = await supabase
+    .from('missions')
+    .select()
+    .eq('id', missionId)
+    .single();
+
+  if (error) {
+    console.log('[FTM-DEBUG] Mission - Fetch error', { error: error.message });
+    return { error: error.message };
+  }
+
+  return { success: true, mission: data as Mission };
+}
