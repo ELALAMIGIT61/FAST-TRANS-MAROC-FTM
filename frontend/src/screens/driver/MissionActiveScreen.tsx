@@ -9,12 +9,14 @@ import {
   Platform,
 } from 'react-native';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../constants/theme';
-import { startMission, completeMission } from '../../services/missionService';
+import { startMission, completeMission, getDriverProfileId } from '../../services/missionService';
+import { notifyVoiceChannelOpened } from '../../services/notificationTemplates';
 import type { Mission } from '../../services/missionService';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 type RootStackParamList = {
   MissionActive: { mission: Record<string, unknown> };
+  VoiceChat: { mission: Record<string, unknown> };
   DriverHome: { driverId: string; vehicleCategory: string };
 };
 
@@ -26,6 +28,9 @@ function formatDuration(seconds: number): string {
   const s = seconds % 60;
   return [h, m, s].map((v) => String(v).padStart(2, '0')).join(':');
 }
+
+const VOICE_CHANNEL_CHECK_INTERVAL_MS = 30000;
+const VOICE_CHANNEL_OPEN_BEFORE_MS = 24 * 60 * 60 * 1000;
 
 export default function MissionActiveScreen({ route, navigation }: Props) {
   const initialMission = route.params.mission as unknown as Mission;
@@ -44,6 +49,42 @@ export default function MissionActiveScreen({ route, navigation }: Props) {
       if (timerRef.current) clearInterval(timerRef.current);
     };
   }, [mission.status, mission.actual_pickup_time]);
+
+  const [voiceChannelOpen, setVoiceChannelOpen] = useState(false);
+  const voiceChannelNotifiedRef = useRef(false);
+
+  useEffect(() => {
+    const eligibleStatus = mission.status === 'accepted' || mission.status === 'in_progress';
+    if (!eligibleStatus || !mission.scheduled_pickup_time) {
+      setVoiceChannelOpen(false);
+      return;
+    }
+
+    const checkVoiceChannelWindow = () => {
+      const scheduledTime = new Date(mission.scheduled_pickup_time as string).getTime();
+      const openAt = scheduledTime - VOICE_CHANNEL_OPEN_BEFORE_MS;
+      const isOpen = Date.now() >= openAt;
+      setVoiceChannelOpen(isOpen);
+      if (isOpen && !voiceChannelNotifiedRef.current) {
+        voiceChannelNotifiedRef.current = true;
+        if (mission.driver_id) {
+          getDriverProfileId(mission.driver_id).then((result) => {
+            if (result.success && result.profileId) {
+              notifyVoiceChannelOpened(result.profileId, {
+                id: mission.id,
+                mission_number: mission.mission_number,
+                scheduled_pickup_time: mission.scheduled_pickup_time as string,
+              });
+            }
+          });
+        }
+      }
+    };
+
+    checkVoiceChannelWindow();
+    const interval = setInterval(checkVoiceChannelWindow, VOICE_CHANNEL_CHECK_INTERVAL_MS);
+    return () => clearInterval(interval);
+  }, [mission.status, mission.scheduled_pickup_time]);
 
   const openMaps = (lat: number, lng: number) => {
     const url =
@@ -103,6 +144,14 @@ export default function MissionActiveScreen({ route, navigation }: Props) {
           <Text style={styles.mapsButtonText}>🗺 Ouvrir dans Maps</Text>
         </TouchableOpacity>
 
+        {voiceChannelOpen && (
+          <TouchableOpacity
+            style={styles.mapsButton}
+            onPress={() => navigation.navigate('VoiceChat', { mission: mission as unknown as Record<string, unknown> })}
+          >
+            <Text style={styles.mapsButtonText}>🎤 Messages vocaux</Text>
+          </TouchableOpacity>
+        )}
         <TouchableOpacity style={styles.primaryButton} onPress={handleStart}>
           <Text style={styles.primaryButtonText}>J'arrive — Démarrer la mission</Text>
         </TouchableOpacity>
@@ -136,6 +185,14 @@ export default function MissionActiveScreen({ route, navigation }: Props) {
           <Text style={styles.timerValue}>{formatDuration(elapsedSeconds)}</Text>
         </View>
 
+        {voiceChannelOpen && (
+          <TouchableOpacity
+            style={styles.mapsButton}
+            onPress={() => navigation.navigate('VoiceChat', { mission: mission as unknown as Record<string, unknown> })}
+          >
+            <Text style={styles.mapsButtonText}>🎤 Messages vocaux</Text>
+          </TouchableOpacity>
+        )}
         <TouchableOpacity style={styles.successButton} onPress={handleComplete}>
           <Text style={styles.successButtonText}>Mission terminée ✓</Text>
         </TouchableOpacity>

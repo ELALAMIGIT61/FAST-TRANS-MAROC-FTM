@@ -16,18 +16,21 @@ import {
   unsubscribeChannel,
 } from '../../services/realtimeService';
 import { cancelMission, expireMission } from '../../services/missionService';
+import { notifyVoiceChannelOpened } from '../../services/notificationTemplates';
 import type { Mission } from '../../services/missionService';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 type RootStackParamList = {
   MissionTracking: { mission: Record<string, unknown> };
   Rating: { mission: Record<string, unknown> };
+  VoiceChat: { mission: Record<string, unknown> };
   ClientHome: { clientProfileId?: string };
 };
 
 type Props = NativeStackScreenProps<RootStackParamList, 'MissionTracking'>;
 
 const EXPIRATION_CHECK_INTERVAL_MS = 30000;
+const VOICE_CHANNEL_OPEN_BEFORE_MS = 24 * 60 * 60 * 1000;
 
 export default function MissionTrackingScreen({ route, navigation }: Props) {
   const initialMission = route.params.mission as unknown as Mission;
@@ -98,6 +101,38 @@ export default function MissionTrackingScreen({ route, navigation }: Props) {
     return () => clearInterval(interval);
   }, [mission.status, mission.scheduled_pickup_time, mission.id]);
 
+  const [voiceChannelOpen, setVoiceChannelOpen] = useState(false);
+  const voiceChannelNotifiedRef = useRef(false);
+
+  useEffect(() => {
+    const eligibleStatus = mission.status === 'accepted' || mission.status === 'in_progress';
+    if (!eligibleStatus || !mission.driver_id || !mission.scheduled_pickup_time) {
+      setVoiceChannelOpen(false);
+      return;
+    }
+
+    const checkVoiceChannelWindow = () => {
+      const scheduledTime = new Date(mission.scheduled_pickup_time as string).getTime();
+      const openAt = scheduledTime - VOICE_CHANNEL_OPEN_BEFORE_MS;
+      const isOpen = Date.now() >= openAt;
+      setVoiceChannelOpen(isOpen);
+      if (isOpen && !voiceChannelNotifiedRef.current) {
+        voiceChannelNotifiedRef.current = true;
+        if (mission.client_id) {
+          notifyVoiceChannelOpened(mission.client_id, {
+            id: mission.id,
+            mission_number: mission.mission_number,
+            scheduled_pickup_time: mission.scheduled_pickup_time as string,
+          });
+        }
+      }
+    };
+
+    checkVoiceChannelWindow();
+    const interval = setInterval(checkVoiceChannelWindow, EXPIRATION_CHECK_INTERVAL_MS);
+    return () => clearInterval(interval);
+  }, [mission.status, mission.driver_id, mission.scheduled_pickup_time]);
+
   const handleCancel = async () => {
     Alert.alert('Annuler la mission', 'Êtes-vous sûr de vouloir annuler ?', [
       { text: 'Non', style: 'cancel' },
@@ -153,6 +188,14 @@ export default function MissionTrackingScreen({ route, navigation }: Props) {
             <TouchableOpacity style={styles.callButton} onPress={callDriver}>
               <Text style={styles.callButtonText}>📞 Appeler le chauffeur</Text>
             </TouchableOpacity>
+            {voiceChannelOpen && (
+              <TouchableOpacity
+                style={styles.callButton}
+                onPress={() => navigation.navigate('VoiceChat', { mission: mission as unknown as Record<string, unknown> })}
+              >
+                <Text style={styles.callButtonText}>🎤 Messages vocaux</Text>
+              </TouchableOpacity>
+            )}
             <TouchableOpacity style={styles.cancelButton} onPress={handleCancel}>
               <Text style={styles.cancelButtonText}>Annuler</Text>
             </TouchableOpacity>
@@ -168,6 +211,14 @@ export default function MissionTrackingScreen({ route, navigation }: Props) {
               <Text style={styles.addressLabel}>🏁 Destination</Text>
               <Text style={styles.addressText}>{mission.dropoff_address}</Text>
             </View>
+            {voiceChannelOpen && (
+              <TouchableOpacity
+                style={styles.callButton}
+                onPress={() => navigation.navigate('VoiceChat', { mission: mission as unknown as Record<string, unknown> })}
+              >
+                <Text style={styles.callButtonText}>🎤 Messages vocaux</Text>
+              </TouchableOpacity>
+            )}
           </View>
         );
 

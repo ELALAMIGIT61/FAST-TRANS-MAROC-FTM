@@ -239,3 +239,21 @@ export async function notifyDriverOfferNotSelected(
     { mission_id: mission.id, screen: 'DriverHomeScreen' }
   );
 }
+
+// ─── CANAL VOCAL ───────────────────────────────────────────────────────────────
+
+export async function notifyVoiceChannelOpened(
+  recipientProfileId: string,
+  mission: { id: string; mission_number: string; scheduled_pickup_time: string }
+) {
+  console.log('[FTM-DEBUG] Push - Notify voice channel opened', {
+    recipientProfileId, missionId: mission.id,
+  });
+  return insertNotification(
+    recipientProfileId,
+    'voice_channel_opened',
+    '🎤 Messagerie vocale disponible',
+    `Votre mission ${mission.mission_number} approche. Vous pouvez désormais échanger des messages vocaux.`,
+    { mission_id: mission.id, screen: 'VoiceChat' }
+  );
+}
