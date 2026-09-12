@@ -20,11 +20,13 @@ import CreateMissionScreen from "../screens/client/CreateMissionScreen";
 import MissionTrackingScreen from "../screens/client/MissionTrackingScreen";
 import RatingScreen from "../screens/client/RatingScreen";
 import ClientMissionOfferScreen from "../screens/client/ClientMissionOfferScreen";
+import ClientVoiceChatScreen from "../screens/client/ClientVoiceChatScreen";
 
 // Driver screens
 import DriverHomeScreen from "../screens/driver/DriverHomeScreen";
 import DriverMissionOfferScreen from "../screens/driver/DriverMissionOfferScreen";
 import MissionActiveScreen from "../screens/driver/MissionActiveScreen";
+import DriverVoiceChatScreen from "../screens/driver/DriverVoiceChatScreen";
 import WalletDashboardScreen from "../screens/driver/WalletDashboardScreen";
 import WalletTopupScreen from "../screens/driver/WalletTopupScreen";
 import TransactionHistoryScreen from "../screens/driver/TransactionHistoryScreen";
@@ -55,6 +57,7 @@ export type ClientStackParamList = {
   MissionOffer: { missionId: string };
   MissionTracking: { mission: Record<string, unknown> };
   Rating: { mission: Record<string, unknown> };
+  VoiceChat: { mission: Record<string, unknown> };
   NotificationCenter: undefined;
 };
 
@@ -62,6 +65,7 @@ export type DriverStackParamList = {
   DriverHome: { driverId: string; vehicleCategory: string };
   MissionOffer: { missionId: string; driverId: string };
   MissionActive: { mission: Record<string, unknown> };
+  VoiceChat: { mission: Record<string, unknown> };
   WalletDashboard: { driverId: string };
   WalletTopup: { walletId: string; currentBalance: number; minimumBalance: number };
   TransactionHistory: { walletId: string };
@@ -107,6 +111,7 @@ function ClientNavigator({ clientProfileId }: { clientProfileId: string }) {
       <ClientStack.Screen name="MissionOffer" component={ClientMissionOfferScreen as any} />
       <ClientStack.Screen name="MissionTracking" component={MissionTrackingScreen as any} />
       <ClientStack.Screen name="Rating" component={RatingScreen as any} />
+      <ClientStack.Screen name="VoiceChat" component={ClientVoiceChatScreen as any} />
       <ClientStack.Screen name="NotificationCenter" component={NotificationCenterScreen as any} />
     </ClientStack.Navigator>
   );
@@ -150,6 +155,10 @@ function DriverNavigator({ driverId, vehicleCategory }: { driverId: string; vehi
       <DriverStack.Screen
         name="MissionActive"
         component={MissionActiveScreen as any}
+      />
+      <DriverStack.Screen
+        name="VoiceChat"
+        component={DriverVoiceChatScreen as any}
       />
       <DriverStack.Screen
         name="WalletDashboard"
