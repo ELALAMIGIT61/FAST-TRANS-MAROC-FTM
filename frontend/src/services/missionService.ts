@@ -865,3 +865,22 @@ export async function getMissionById(
 
   return { success: true, mission: data as Mission };
 }
+
+export async function getDriverProfileId(
+  driverId: string
+): Promise<{ success?: boolean; profileId?: string; error?: string }> {
+  console.log('[FTM-DEBUG] Mission - Resolving driver profile id', { driverId });
+
+  const { data, error } = await supabase
+    .from('drivers')
+    .select('profile_id')
+    .eq('id', driverId)
+    .single();
+
+  if (error) {
+    console.log('[FTM-DEBUG] Mission - Resolve driver profile id error', { error: error.message });
+    return { error: error.message };
+  }
+
+  return { success: true, profileId: (data as { profile_id: string }).profile_id };
+}
