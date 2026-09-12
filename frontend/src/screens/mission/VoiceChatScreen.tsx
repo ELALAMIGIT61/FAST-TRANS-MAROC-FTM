@@ -133,6 +133,13 @@ export default function VoiceChatScreen({
         <Text style={styles.headerSub}>Messages vocaux en Darija</Text>
       </View>
 
+      {/* Avertissement sécurité */}
+      <View style={styles.securityBanner}>
+        <Text style={styles.securityBannerText}>
+          🔒 Toutes les communications concernant cette mission doivent passer exclusivement par l'application FTM.
+        </Text>
+      </View>
+
       {loading ? (
         <View style={styles.center}>
           <ActivityIndicator color={COLORS.primary ?? '#1A73E8'} />
@@ -211,4 +218,16 @@ const styles = StyleSheet.create({
   emptyBody:   { fontSize: 13, color: '#888', textAlign: 'center', lineHeight: 20 },
   footer:      { backgroundColor: '#FFF' },
   divider:     { height: 1, backgroundColor: '#E0E0E0' },
+  securityBanner: {
+    backgroundColor: '#FFF3CD',
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
+  },
+  securityBannerText: {
+    fontSize: 12,
+    color: '#856404',
+    textAlign: 'center',
+  },
 });
