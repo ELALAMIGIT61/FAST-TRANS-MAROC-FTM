@@ -20,6 +20,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 type RootStackParamList = {
   DriverHome: { driverId: string; vehicleCategory: VehicleCategory };
   MissionActive: { mission: Record<string, unknown> };
+  MissionOffer: { missionId: string; driverId: string };
   WalletDashboard: { driverId: string };
   DocumentStatus: undefined;
 };
@@ -191,10 +192,11 @@ export default function DriverHomeScreen({ route, navigation }: Props) {
         <NewMissionModal
           mission={pendingMission}
           driverId={driverId}
-          onAccepted={(acceptedMission) => {
+          onOfferCreated={() => {
+            const missionId = pendingMission.id;
             setPendingMission(null);
             clearPendingMissionWatch();
-            navigation.navigate('MissionActive', { mission: acceptedMission as unknown as Record<string, unknown> });
+            navigation.navigate('MissionOffer', { missionId, driverId });
           }}
           onDismiss={() => {
             setPendingMission(null);
