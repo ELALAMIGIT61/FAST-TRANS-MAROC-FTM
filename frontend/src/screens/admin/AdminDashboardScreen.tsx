@@ -7,11 +7,14 @@ import {
   TouchableOpacity,
   RefreshControl,
   ActivityIndicator,
+  Alert,
+  Platform,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { COLORS } from '../../constants/theme';
 import { getAdminStats } from '../../services/adminService';
 import NotificationBell from '../../components/NotificationBell';
+import { handleSignOut } from '../../services/authService';
 
 interface AdminStats {
   totalMissions: number | null;
@@ -47,6 +50,28 @@ export default function AdminDashboardScreen() {
     setRefreshing(true);
     loadStats();
   }, [loadStats]);
+  const handleLogout = () => {
+    const confirmMessage = 'Voulez-vous vraiment vous déconnecter ?';
+    const doLogout = async () => {
+      const result = await handleSignOut();
+      if (result.error) {
+        Platform.OS === 'web'
+          ? window.alert(result.error)
+          : Alert.alert('Erreur', result.error);
+      }
+    };
+    if (Platform.OS === 'web') {
+      if (window.confirm(confirmMessage)) {
+        doLogout();
+      }
+    } else {
+      Alert.alert('Déconnexion', confirmMessage, [
+        { text: 'Annuler', style: 'cancel' },
+        { text: 'Se déconnecter', style: 'destructive', onPress: doLogout },
+      ]);
+    }
+  };
+
 
   if (loading) {
     return (
@@ -64,6 +89,9 @@ export default function AdminDashboardScreen() {
       <View style={styles.headerRow}>
         <Text style={styles.title}>🛡️ Admin FTM — Dashboard</Text>
         <NotificationBell />
+        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+          <Text style={styles.logoutButtonText}>🚪 Se déconnecter</Text>
+        </TouchableOpacity>
       </View>
 
       <Text style={styles.sectionTitle}>── KPIs ──</Text>
@@ -242,5 +270,13 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 11,
     fontWeight: '700',
+  },
+  logoutButton: {
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+  },
+  logoutButtonText: {
+    fontSize: 12,
+    color: '#DC3545',
   },
 });
