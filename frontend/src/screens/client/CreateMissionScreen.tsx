@@ -17,6 +17,7 @@ import { getClientCurrentLocation, reverseGeocode } from '../../services/locatio
 import { createMission, VehicleCategory } from '../../services/missionService';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import NotificationBell from '../../components/NotificationBell';
+import { handleSignOut } from '../../services/authService';
 import DateTimeField from '../../components/DateTimeField';
 
 type RootStackParamList = {
@@ -98,6 +99,28 @@ export default function CreateMissionScreen({ route, navigation }: Props) {
       navigation.replace('MissionTracking', { mission: result.mission as unknown as Record<string, unknown> });
     }
   };
+  const handleLogout = () => {
+    const confirmMessage = 'Voulez-vous vraiment vous déconnecter ?';
+    const doLogout = async () => {
+      const result = await handleSignOut();
+      if (result.error) {
+        Platform.OS === 'web'
+          ? window.alert(result.error)
+          : Alert.alert('Erreur', result.error);
+      }
+    };
+    if (Platform.OS === 'web') {
+      if (window.confirm(confirmMessage)) {
+        doLogout();
+      }
+    } else {
+      Alert.alert('Déconnexion', confirmMessage, [
+        { text: 'Annuler', style: 'cancel' },
+        { text: 'Se déconnecter', style: 'destructive', onPress: doLogout },
+      ]);
+    }
+  };
+
 
   return (
     <KeyboardAvoidingView
@@ -108,6 +131,9 @@ export default function CreateMissionScreen({ route, navigation }: Props) {
         <View style={styles.headerRow}>
           <Text style={styles.title}>Nouvelle mission</Text>
           <NotificationBell />
+          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+            <Text style={styles.logoutButtonText}>🚪 Se déconnecter</Text>
+          </TouchableOpacity>
         </View>
 
         {/* DÉPART */}
@@ -318,4 +344,12 @@ const styles = StyleSheet.create({
   },
   submitButtonDisabled: { opacity: 0.5 },
   submitButtonText: { color: '#fff', fontSize: 17, fontWeight: '700' },
+  logoutButton: {
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+  },
+  logoutButtonText: {
+    fontSize: 12,
+    color: '#DC3545',
+  },
 });
