@@ -6,6 +6,7 @@ import {
   StyleSheet,
   Switch,
   Alert,
+  Platform,
 } from 'react-native';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../constants/theme';
@@ -14,6 +15,7 @@ import { subscribeToNewMissions, subscribeToMissionUpdates, unsubscribeChannel }
 import { supabase } from '../../lib/supabaseClient';
 import NewMissionModal from './NewMissionModal';
 import NotificationBell from '../../components/NotificationBell';
+import { handleSignOut } from '../../services/authService';
 import type { Mission, VehicleCategory } from '../../services/missionService';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
@@ -135,6 +137,28 @@ export default function DriverHomeScreen({ route, navigation }: Props) {
     }
   }, [isAvailable, driverId, vehicleCategory, clearPendingMissionWatch]);
 
+  const handleLogout = () => {
+    const confirmMessage = 'Voulez-vous vraiment vous déconnecter ?';
+    const doLogout = async () => {
+      const result = await handleSignOut();
+      if (result.error) {
+        Platform.OS === 'web'
+          ? window.alert(result.error)
+          : Alert.alert('Erreur', result.error);
+      }
+    };
+    if (Platform.OS === 'web') {
+      if (window.confirm(confirmMessage)) {
+        doLogout();
+      }
+    } else {
+      Alert.alert('Déconnexion', confirmMessage, [
+        { text: 'Annuler', style: 'cancel' },
+        { text: 'Se déconnecter', style: 'destructive', onPress: doLogout },
+      ]);
+    }
+  };
+
   useEffect(() => {
     return () => {
       stopBackgroundTracking();
@@ -156,6 +180,9 @@ export default function DriverHomeScreen({ route, navigation }: Props) {
           <Text style={styles.vehicleInfo}>{vehicleCategory.toUpperCase()}</Text>
         </View>
         <NotificationBell />
+        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+          <Text style={styles.logoutButtonText}>🚪 Se déconnecter</Text>
+        </TouchableOpacity>
       </View>
       {walletBalance !== null && (
         <TouchableOpacity
@@ -261,5 +288,13 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: COLORS.text,
+  },
+  logoutButton: {
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+  },
+  logoutButtonText: {
+    fontSize: 12,
+    color: '#DC3545',
   },
 });
