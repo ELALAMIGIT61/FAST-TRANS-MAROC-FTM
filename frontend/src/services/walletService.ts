@@ -202,6 +202,11 @@ export async function topupWallet(
     console.log('[FTM-DEBUG] Wallet - Topup transaction record error', {
       error: txError.message,
     });
+    return {
+      error: `Solde mis a jour mais echec de l'enregistrement de la transaction: ${txError.message}`,
+      balanceBefore,
+      balanceAfter,
+    };
   }
 
   console.log('[FTM-DEBUG] Wallet - Topup completed', {
@@ -355,6 +360,11 @@ export async function refundWallet(
     console.log('[FTM-DEBUG] Wallet - Refund transaction record error', {
       error: txError.message,
     });
+    return {
+      error: `Solde mis a jour mais echec de l'enregistrement de la transaction: ${txError.message}`,
+      balanceBefore,
+      balanceAfter,
+    };
   }
 
   console.log('[FTM-DEBUG] Wallet - Refund completed', {
