@@ -234,7 +234,9 @@ export async function topupWallet(
 export async function requestWalletTopup(
   walletId: string,
   amount: number,
-  note: string
+  note: string,
+  paymentMethod: string = 'cash_agent',
+  proofUrl: string | null = null
 ): Promise<{
   success?: true;
   transaction?: Transaction;
@@ -271,7 +273,7 @@ export async function requestWalletTopup(
       balance_after: balanceBefore,
       status: 'pending',
       description: note ? `Demande de recharge -- Note: ${note}` : 'Demande de recharge',
-      metadata: { requested_by: 'driver', note: note || null },
+      metadata: { requested_by: 'driver', note: note || null, payment_method: paymentMethod, proof_url: proofUrl },
       processed_at: null,
     })
     .select()
