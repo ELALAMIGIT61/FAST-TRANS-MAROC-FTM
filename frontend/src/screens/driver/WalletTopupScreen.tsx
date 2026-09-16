@@ -15,13 +15,14 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { COLORS } from '../../constants/theme';
-import { requestWalletTopup } from '../../services/walletService';
+import { requestWalletTopup, uploadPaymentProof } from '../../services/walletService';
+import { pickDocument, pickImageFromCamera } from '../../services/documentService';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type RootStackParamList = {
   WalletDashboard: undefined;
-  WalletTopup: { walletId: string; currentBalance: number; minimumBalance: number };
+  WalletTopup: { walletId: string; currentBalance: number; minimumBalance: number; driverId: string };
   TransactionHistory: { walletId: string };
 };
 
@@ -35,12 +36,16 @@ const PRESET_AMOUNTS = [100, 200, 300, 500, 1000];
 export default function WalletTopupScreen() {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<RoutePropType>();
-  const { walletId, currentBalance, minimumBalance } = route.params;
+  const { walletId, currentBalance, minimumBalance, driverId } = route.params;
 
   const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
   const [customAmount, setCustomAmount] = useState('');
   const [note, setNote] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<'cash_agent' | 'bank_transfer' | 'wafacash'>('cash_agent');
+  const [proofUri, setProofUri] = useState<string | null>(null);
+  const [proofMimeType, setProofMimeType] = useState<string | null>(null);
+  const [isUploadingProof, setIsUploadingProof] = useState(false);
 
   const finalAmount = selectedAmount ?? (customAmount ? parseFloat(customAmount) : 0);
   const isValid = finalAmount >= 100;
@@ -56,10 +61,32 @@ export default function WalletTopupScreen() {
     setSelectedAmount(null);
   };
 
+  const handlePickProof = async (fromCamera: boolean) => {
+    const picked = fromCamera ? await pickImageFromCamera() : await pickDocument();
+    if (!picked) return;
+    setProofUri(picked.uri);
+    setProofMimeType(picked.mimeType);
+  };
+
+  const requiresProof = paymentMethod !== 'cash_agent';
+  const canSubmit = isValid && (!requiresProof || !!proofUri);
+
   const handleConfirm = async () => {
-    if (!isValid) return;
+    if (!canSubmit) return;
     setIsLoading(true);
-    const result = await requestWalletTopup(walletId, finalAmount, note);
+    let proofUrl: string | null = null;
+    if (requiresProof && proofUri && proofMimeType) {
+      setIsUploadingProof(true);
+      const uploadResult = await uploadPaymentProof(driverId, proofUri, proofMimeType);
+      setIsUploadingProof(false);
+      if (uploadResult.error) {
+        setIsLoading(false);
+        Alert.alert('Erreur', uploadResult.error);
+        return;
+      }
+      proofUrl = uploadResult.url ?? null;
+    }
+    const result = await requestWalletTopup(walletId, finalAmount, note, paymentMethod, proofUrl);
     setIsLoading(false);
 
     if (result.error) {
@@ -152,6 +179,41 @@ export default function WalletTopupScreen() {
           onChangeText={setNote}
         />
 
+        {/* Mode de paiement */}
+        <Text style={styles.sectionTitle}>── MODE DE PAIEMENT ──</Text>
+        <View style={styles.methodRow}>
+          {([
+            { key: 'cash_agent', label: 'Especes (agent)' },
+            { key: 'bank_transfer', label: 'Virement' },
+            { key: 'wafacash', label: 'Wafacash / Cash Plus' },
+          ] as const).map((m) => (
+            <TouchableOpacity
+              key={m.key}
+              style={[styles.methodButton, paymentMethod === m.key && styles.methodButtonActive]}
+              onPress={() => { setPaymentMethod(m.key); setProofUri(null); setProofMimeType(null); }}
+            >
+              <Text style={[styles.methodButtonText, paymentMethod === m.key && styles.methodButtonTextActive]}>
+                {m.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {requiresProof && (
+          <>
+            <Text style={styles.sectionTitle}>── JUSTIFICATIF ──</Text>
+            <View style={styles.methodRow}>
+              <TouchableOpacity style={styles.proofButton} onPress={() => handlePickProof(false)}>
+                <Text style={styles.proofButtonText}>Choisir un fichier</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.proofButton} onPress={() => handlePickProof(true)}>
+                <Text style={styles.proofButtonText}>Prendre une photo</Text>
+              </TouchableOpacity>
+            </View>
+            {proofUri && <Text style={styles.proofSelected}>✅ Justificatif selectionne</Text>}
+          </>
+        )}
+
         {/* Summary */}
         {finalAmount > 0 && (
           <View style={styles.summaryBox}>
@@ -171,21 +233,22 @@ export default function WalletTopupScreen() {
         {/* Info note */}
         <View style={styles.noteBox}>
           <Text style={styles.noteText}>
-            ℹ️ Votre demande sera examinée par l'équipe FTM. Le paiement s'effectue en espèces
-            auprès d'un agent FTM ; le solde sera crédité après validation.
+            {'\u2139\ufe0f'} Votre demande sera examinee par l'equipe FTM. Le solde sera credite apres validation du paiement.
           </Text>
         </View>
 
         {/* CTA */}
         <TouchableOpacity
-          style={[styles.confirmButton, !isValid && styles.confirmButtonDisabled]}
+          style={[styles.confirmButton, !canSubmit && styles.confirmButtonDisabled]}
           onPress={handleConfirm}
-          disabled={!isValid || isLoading}
+          disabled={!canSubmit || isLoading}
         >
           {isLoading ? (
             <ActivityIndicator color="#1A1A1A" />
           ) : (
-            <Text style={styles.confirmButtonText}>Confirmer la recharge</Text>
+            <Text style={styles.confirmButtonText}>
+              {isUploadingProof ? 'Envoi du justificatif...' : 'Confirmer la recharge'}
+            </Text>
           )}
         </TouchableOpacity>
       </ScrollView>
@@ -277,4 +340,24 @@ const styles = StyleSheet.create({
   },
   confirmButtonDisabled: { opacity: 0.4 },
   confirmButtonText: { fontSize: 16, fontWeight: '700', color: COLORS.white ?? '#FFFFFF' },
+  methodRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 },
+  methodButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#CCC',
+  },
+  methodButtonActive: { backgroundColor: '#0056B3', borderColor: '#0056B3' },
+  methodButtonText: { fontSize: 13, color: '#333' },
+  methodButtonTextActive: { color: '#FFF', fontWeight: '700' },
+  proofButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#0056B3',
+  },
+  proofButtonText: { fontSize: 13, color: '#0056B3', fontWeight: '600' },
+  proofSelected: { fontSize: 13, color: '#28A745', marginTop: 6 },
 });

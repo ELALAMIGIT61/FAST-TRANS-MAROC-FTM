@@ -23,7 +23,7 @@ import {
 
 type RootStackParamList = {
   WalletDashboard: { driverId: string };
-  WalletTopup: { walletId: string; currentBalance: number; minimumBalance: number };
+  WalletTopup: { walletId: string; currentBalance: number; minimumBalance: number; driverId: string };
   TransactionHistory: { walletId: string };
 };
 
@@ -147,6 +147,7 @@ export default function WalletDashboardScreen({ route }: NativeStackScreenProps<
                 walletId: dashboard.wallet_id,
                 currentBalance: balance,
                 minimumBalance: minimum,
+                driverId,
               })
             }
           >
@@ -201,6 +202,7 @@ export default function WalletDashboardScreen({ route }: NativeStackScreenProps<
             walletId: dashboard.wallet_id,
             currentBalance: balance,
             minimumBalance: minimum,
+            driverId,
           })
         }
       >

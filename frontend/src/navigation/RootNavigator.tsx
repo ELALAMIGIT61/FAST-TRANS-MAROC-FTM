@@ -67,7 +67,7 @@ export type DriverStackParamList = {
   MissionActive: { mission: Record<string, unknown> };
   VoiceChat: { mission: Record<string, unknown> };
   WalletDashboard: { driverId: string };
-  WalletTopup: { walletId: string; currentBalance: number; minimumBalance: number };
+  WalletTopup: { walletId: string; currentBalance: number; minimumBalance: number; driverId: string };
   TransactionHistory: { walletId: string };
   DocumentStatus: undefined;
   NotificationCenter: undefined;

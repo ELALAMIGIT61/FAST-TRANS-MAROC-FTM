@@ -714,3 +714,36 @@ export async function notifyWalletLowBalance(
     });
   }
 }
+
+// ─── uploadPaymentProof ─────────────────────────────────────────────────────
+export async function uploadPaymentProof(
+  driverId: string,
+  fileUri: string,
+  mimeType: string
+): Promise<{ success?: true; url?: string; error?: string }> {
+  console.log('[FTM-DEBUG] Wallet - Payment proof upload start', { driverId, mimeType });
+  const response = await fetch(fileUri);
+  const blob = await response.blob();
+  if (blob.size > 5 * 1024 * 1024) {
+    console.log('[FTM-DEBUG] Wallet - Payment proof file too large', { size: blob.size });
+    return { error: 'Fichier trop volumineux (max 5 MB).' };
+  }
+  const extension = mimeType === 'application/pdf' ? 'pdf' : 'jpg';
+  const filePath = `${driverId}/${Date.now()}.${extension}`;
+  const { data, error: uploadError } = await supabase.storage
+    .from('payment-proofs')
+    .upload(filePath, blob, { contentType: mimeType, upsert: false });
+  if (uploadError) {
+    console.log('[FTM-DEBUG] Wallet - Payment proof upload error', { error: uploadError.message });
+    return { error: `Erreur upload justificatif: ${uploadError.message}` };
+  }
+  console.log('[FTM-DEBUG] Wallet - Payment proof upload success', { path: data.path });
+  const { data: signedData, error: signError } = await supabase.storage
+    .from('payment-proofs')
+    .createSignedUrl(filePath, 365 * 24 * 3600);
+  if (signError) {
+    console.log('[FTM-DEBUG] Wallet - Payment proof signed URL error', { error: signError.message });
+    return { error: 'Justificatif uploade mais URL non generee.' };
+  }
+  return { success: true, url: signedData.signedUrl };
+}
