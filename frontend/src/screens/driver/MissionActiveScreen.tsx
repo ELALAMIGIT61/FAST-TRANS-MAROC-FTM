@@ -9,7 +9,7 @@ import {
   Platform,
 } from 'react-native';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../constants/theme';
-import { startMission, completeMission, getDriverProfileId } from '../../services/missionService';
+import { startMission, completeMission, getDriverProfileId, chargeCommissionAnticipated } from '../../services/missionService';
 import { notifyVoiceChannelOpened } from '../../services/notificationTemplates';
 import type { Mission } from '../../services/missionService';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -78,6 +78,11 @@ export default function MissionActiveScreen({ route, navigation }: Props) {
             }
           });
         }
+        chargeCommissionAnticipated(mission.id).then((result) => {
+          if (result.error) {
+            console.log('[FTM-DEBUG] MissionActive - Anticipated commission charge failed', { error: result.error });
+          }
+        });
       }
     };
 

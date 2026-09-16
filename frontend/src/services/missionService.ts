@@ -884,3 +884,22 @@ export async function getDriverProfileId(
 
   return { success: true, profileId: (data as { profile_id: string }).profile_id };
 }
+
+export async function chargeCommissionAnticipated(
+  missionId: string
+): Promise<{ success?: boolean; error?: string; balanceBefore?: number; balanceAfter?: number }> {
+  console.log('[FTM-DEBUG] Mission - Charging anticipated commission', { missionId });
+  const { data, error } = await supabase.rpc('charge_commission_anticipated', {
+    p_mission_id: missionId,
+  });
+  if (error) {
+    console.log('[FTM-DEBUG] Mission - Charge anticipated commission RPC error', { error: error.message });
+    return { error: error.message };
+  }
+  const result = data as { success: boolean; error?: string; balance_before?: number; balance_after?: number };
+  console.log('[FTM-DEBUG] Mission - Charge anticipated commission result', result);
+  if (!result.success) {
+    return { error: result.error };
+  }
+  return { success: true, balanceBefore: result.balance_before, balanceAfter: result.balance_after };
+}
