@@ -747,3 +747,79 @@ export async function uploadPaymentProof(
   }
   return { success: true, url: signedData.signedUrl };
 }
+
+// ─── getPendingTransactions ─────────────────────────────────────────────────
+export async function getPendingTransactions(): Promise<{
+  success?: true;
+  transactions?: (Transaction & { driver_name?: string; driver_phone?: string })[];
+  error?: string;
+}> {
+  console.log('[FTM-DEBUG] Admin - Fetching pending transactions');
+  const { data, error } = await supabase
+    .from('transactions')
+    .select(`
+      id, wallet_id, transaction_type, amount, balance_before, balance_after,
+      status, description, metadata, created_at, processed_at,
+      wallet ( driver_id, drivers ( profiles ( full_name, phone_number ) ) )
+    `)
+    .eq('status', 'pending')
+    .order('created_at', { ascending: true });
+  if (error) {
+    console.log('[FTM-DEBUG] Admin - Fetch pending transactions error', { error: error.message });
+    return { error: error.message };
+  }
+  console.log('[FTM-DEBUG] Admin - Pending transactions fetched', { count: data?.length });
+  return { success: true, transactions: (data as unknown as Transaction[]) || [] };
+}
+
+// ─── validatePendingTransaction ─────────────────────────────────────────────
+export async function validatePendingTransaction(
+  transactionId: string
+): Promise<{ success?: true; error?: string }> {
+  console.log('[FTM-DEBUG] Admin - Validating pending transaction', { transactionId });
+  const { data: tx, error: fetchError } = await supabase
+    .from('transactions')
+    .select('id, wallet_id, transaction_type, amount, status, mission_id, metadata')
+    .eq('id', transactionId)
+    .single();
+  if (fetchError) {
+    console.log('[FTM-DEBUG] Admin - Validate fetch error', { error: fetchError.message });
+    return { error: fetchError.message };
+  }
+  if (tx.status !== 'pending') {
+    return { error: 'Cette transaction a deja ete traitee.' };
+  }
+  const { error: delError } = await supabase.from('transactions').delete().eq('id', transactionId);
+  if (delError) {
+    console.log('[FTM-DEBUG] Admin - Validate delete pending error', { error: delError.message });
+    return { error: delError.message };
+  }
+  const agentRef = (tx.metadata as { note?: string } | null)?.note || 'Demande validee';
+  const result =
+    tx.transaction_type === 'refund'
+      ? await refundWallet(tx.wallet_id, tx.amount, tx.mission_id, agentRef)
+      : await topupWallet(tx.wallet_id, tx.amount, agentRef);
+  if (result.error) {
+    console.log('[FTM-DEBUG] Admin - Validate credit error', { error: result.error });
+    return { error: result.error };
+  }
+  return { success: true };
+}
+
+// ─── rejectPendingTransaction ───────────────────────────────────────────────
+export async function rejectPendingTransaction(
+  transactionId: string,
+  reason: string
+): Promise<{ success?: true; error?: string }> {
+  console.log('[FTM-DEBUG] Admin - Rejecting pending transaction', { transactionId, reason });
+  const { error } = await supabase
+    .from('transactions')
+    .update({ status: 'failed', description: `Rejetee: ${reason}` })
+    .eq('id', transactionId)
+    .eq('status', 'pending');
+  if (error) {
+    console.log('[FTM-DEBUG] Admin - Reject pending transaction error', { error: error.message });
+    return { error: error.message };
+  }
+  return { success: true };
+}

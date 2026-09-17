@@ -42,6 +42,7 @@ import AdminMissionsScreen from "../screens/admin/AdminMissionsScreen";
 import AdminUsersScreen from "../screens/admin/AdminUsersScreen";
 import DocumentReviewScreen from "../screens/admin/DocumentReviewScreen";
 import WalletManagementScreen from "../screens/admin/WalletManagementScreen";
+import PendingTransactionsScreen from "../screens/admin/PendingTransactionsScreen";
 import NotificationCenterScreen from "../screens/notifications/NotificationCenterScreen";
 
 import type { AppRoute } from "../types/database";
@@ -90,6 +91,7 @@ export type AdminStackParamList = {
   WalletManagement: undefined;
   AdminMissions: undefined;
   AdminUsers: undefined;
+  PendingTransactions: undefined;
   NotificationCenter: undefined;
 };
 
@@ -195,6 +197,10 @@ function AdminNavigator() {
       <AdminStack.Screen
         name="WalletManagement"
         component={WalletManagementScreen as any}
+      />
+      <AdminStack.Screen
+        name="PendingTransactions"
+        component={PendingTransactionsScreen as any}
       />
       <AdminStack.Screen
         name="AdminMissions"
