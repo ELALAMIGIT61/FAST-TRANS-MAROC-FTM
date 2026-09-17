@@ -47,6 +47,7 @@ export interface Mission {
   needs_loading_help: boolean;
   negotiated_price: number | null;
   commission_amount: number | null;
+  commission_charged_at: string | null;
   payment_method: string;
   status: MissionStatus;
   scheduled_pickup_time: string | null;

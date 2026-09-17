@@ -823,3 +823,73 @@ export async function rejectPendingTransaction(
   }
   return { success: true };
 }
+
+// ─── requestRefund ──────────────────────────────────────────────────────────
+// Le chauffeur (via l'appli) declenche une demande de remboursement pour une
+// mission annulee dont la commission avait deja ete prelevee par anticipation.
+// L'appli verifie elle-meme les conditions avant de creer la demande 'pending',
+// que l'admin devra ensuite valider (voir validatePendingTransaction).
+export async function requestRefund(
+  missionId: string,
+  driverId: string
+): Promise<{ success?: true; transaction?: Transaction; error?: string }> {
+  console.log('[FTM-DEBUG] Wallet - Refund request initiated', { missionId, driverId });
+  const { data: mission, error: missionError } = await supabase
+    .from('missions')
+    .select('id, status, commission_amount, commission_charged_at, mission_number, driver_id')
+    .eq('id', missionId)
+    .single();
+  if (missionError) {
+    console.log('[FTM-DEBUG] Wallet - Refund request mission fetch error', { error: missionError.message });
+    return { error: missionError.message };
+  }
+  if (mission.status !== 'cancelled_client' && mission.status !== 'cancelled_driver') {
+    return { error: 'Cette mission n\'est pas annulee.' };
+  }
+  if (!mission.commission_charged_at) {
+    return { error: 'Aucune commission n\'a ete prelevee pour cette mission.' };
+  }
+  if (mission.driver_id !== driverId) {
+    return { error: 'Cette mission ne vous appartient pas.' };
+  }
+  const { data: wallet, error: walletError } = await supabase
+    .from('wallet')
+    .select('id')
+    .eq('driver_id', driverId)
+    .single();
+  if (walletError) {
+    console.log('[FTM-DEBUG] Wallet - Refund request wallet fetch error', { error: walletError.message });
+    return { error: walletError.message };
+  }
+  const { data: existing } = await supabase
+    .from('transactions')
+    .select('id')
+    .eq('mission_id', missionId)
+    .eq('transaction_type', 'refund')
+    .limit(1);
+  if (existing && existing.length > 0) {
+    return { error: 'Une demande de remboursement existe deja pour cette mission.' };
+  }
+  const { data: transaction, error: txError } = await supabase
+    .from('transactions')
+    .insert({
+      wallet_id: wallet.id,
+      mission_id: missionId,
+      transaction_type: 'refund',
+      amount: mission.commission_amount,
+      balance_before: 0,
+      balance_after: 0,
+      status: 'pending',
+      description: `Demande de remboursement -- Mission ${mission.mission_number} annulee`,
+      metadata: { requested_by: 'driver' },
+      processed_at: null,
+    })
+    .select()
+    .single();
+  if (txError) {
+    console.log('[FTM-DEBUG] Wallet - Refund request insertion error', { error: txError.message });
+    return { error: txError.message };
+  }
+  console.log('[FTM-DEBUG] Wallet - Refund request created', { transactionId: (transaction as Transaction | null)?.id });
+  return { success: true, transaction: transaction as Transaction };
+}

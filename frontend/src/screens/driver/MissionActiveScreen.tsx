@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../constants/theme';
 import { startMission, completeMission, getDriverProfileId, chargeCommissionAnticipated } from '../../services/missionService';
+import { requestRefund } from '../../services/walletService';
 import { notifyVoiceChannelOpened } from '../../services/notificationTemplates';
 import type { Mission } from '../../services/missionService';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -36,6 +37,8 @@ export default function MissionActiveScreen({ route, navigation }: Props) {
   const initialMission = route.params.mission as unknown as Mission;
   const [mission, setMission] = useState<Mission>(initialMission);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [isRequestingRefund, setIsRequestingRefund] = useState(false);
+  const [refundRequested, setRefundRequested] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
@@ -205,10 +208,38 @@ export default function MissionActiveScreen({ route, navigation }: Props) {
     );
   }
 
+  const isCancelled = mission.status === 'cancelled_client' || mission.status === 'cancelled_driver';
+  const canRequestRefund = isCancelled && !!mission.commission_charged_at;
+
+  const handleRequestRefund = async () => {
+    setIsRequestingRefund(true);
+    const result = await requestRefund(mission.id, mission.driver_id as string);
+    setIsRequestingRefund(false);
+    if (result.error) {
+      Platform.OS === 'web' ? window.alert(result.error) : Alert.alert('Erreur', result.error);
+      return;
+    }
+    setRefundRequested(true);
+  };
+
   return (
     <View style={styles.container}>
       <Text style={styles.phaseTitle}>Mission</Text>
       <Text style={styles.missionNumber}>Statut : {mission.status}</Text>
+      {canRequestRefund && !refundRequested && (
+        <TouchableOpacity
+          style={styles.mapsButton}
+          onPress={handleRequestRefund}
+          disabled={isRequestingRefund}
+        >
+          <Text style={styles.mapsButtonText}>
+            {isRequestingRefund ? 'Envoi...' : '💸 Demander un remboursement'}
+          </Text>
+        </TouchableOpacity>
+      )}
+      {refundRequested && (
+        <Text style={styles.missionNumber}>Demande de remboursement envoyee.</Text>
+      )}
     </View>
   );
 }
