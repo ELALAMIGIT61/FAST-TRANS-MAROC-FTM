@@ -502,6 +502,13 @@ export async function checkAndEnforceWalletBlock(
       deficit: (w.minimum_balance - w.balance).toFixed(2) + ' DH',
     });
 
+    const { data: driverBefore } = await supabase
+      .from('drivers')
+      .select('is_available, profile_id')
+      .eq('id', driverId)
+      .single();
+    const wasAvailable = (driverBefore as { is_available?: boolean } | null)?.is_available ?? false;
+
     const { error: blockError } = await supabase
       .from('drivers')
       .update({ is_available: false })
@@ -513,6 +520,13 @@ export async function checkAndEnforceWalletBlock(
       });
     } else {
       console.log('[FTM-DEBUG] Wallet - Driver availability forced to false', { driverId });
+      if (wasAvailable) {
+        const profileId = (driverBefore as { profile_id?: string } | null)?.profile_id;
+        if (profileId) {
+          const { notifyDriverLowBalance } = await import('./notificationTemplates');
+          await notifyDriverLowBalance(profileId, w.balance, w.minimum_balance);
+        }
+      }
     }
   } else {
     console.log('[FTM-DEBUG] Wallet - Balance OK, no block applied', {
@@ -803,6 +817,16 @@ export async function validatePendingTransaction(
     console.log('[FTM-DEBUG] Admin - Validate credit error', { error: result.error });
     return { error: result.error };
   }
+  const { data: walletRow } = await supabase
+    .from('wallet')
+    .select('driver_id, drivers ( profile_id )')
+    .eq('id', tx.wallet_id)
+    .single();
+  const profileId = (walletRow as { drivers?: { profile_id?: string } } | null)?.drivers?.profile_id;
+  if (profileId) {
+    const { notifyTransactionValidated } = await import('./notificationTemplates');
+    await notifyTransactionValidated(profileId, tx.transaction_type, tx.amount);
+  }
   return { success: true };
 }
 
@@ -812,14 +836,26 @@ export async function rejectPendingTransaction(
   reason: string
 ): Promise<{ success?: true; error?: string }> {
   console.log('[FTM-DEBUG] Admin - Rejecting pending transaction', { transactionId, reason });
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('transactions')
     .update({ status: 'failed', description: `Rejetee: ${reason}` })
     .eq('id', transactionId)
-    .eq('status', 'pending');
+    .eq('status', 'pending')
+    .select('wallet_id, transaction_type, amount')
+    .single();
   if (error) {
     console.log('[FTM-DEBUG] Admin - Reject pending transaction error', { error: error.message });
     return { error: error.message };
+  }
+  const { data: walletRow } = await supabase
+    .from('wallet')
+    .select('driver_id, drivers ( profile_id )')
+    .eq('id', data.wallet_id)
+    .single();
+  const profileId = (walletRow as { drivers?: { profile_id?: string } } | null)?.drivers?.profile_id;
+  if (profileId) {
+    const { notifyTransactionRejected } = await import('./notificationTemplates');
+    await notifyTransactionRejected(profileId, data.transaction_type, data.amount, reason);
   }
   return { success: true };
 }

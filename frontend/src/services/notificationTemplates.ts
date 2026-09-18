@@ -257,3 +257,48 @@ export async function notifyVoiceChannelOpened(
     { mission_id: mission.id, screen: 'VoiceChat' }
   );
 }
+
+export async function notifyDriverLowBalance(driverProfileId: string, balance: number, minimum: number) {
+  const deficit = (minimum - balance).toFixed(2);
+  console.log('[FTM-DEBUG] Push - Notify driver low balance', { driverProfileId, balance, minimum });
+  return insertNotification(
+    driverProfileId,
+    'wallet_low_balance',
+    '\u26a0\ufe0f Wallet insuffisant',
+    `Votre solde (${balance.toFixed(2)} DH) est insuffisant. Rechargez au moins ${minimum.toFixed(2)} DH (deficit: ${deficit} DH) pour continuer a recevoir des missions.`,
+    { balance, minimum, screen: 'WalletDashboard' }
+  );
+}
+
+export async function notifyTransactionValidated(
+  driverProfileId: string,
+  transactionType: string,
+  amount: number
+) {
+  const label = transactionType === 'refund' ? 'Remboursement' : 'Recharge';
+  console.log('[FTM-DEBUG] Push - Notify transaction validated', { driverProfileId, transactionType, amount });
+  return insertNotification(
+    driverProfileId,
+    'transaction_validated',
+    '\u2705 Demande validee',
+    `${label} de ${amount.toFixed(2)} DH validee. Votre solde a ete mis a jour.`,
+    { amount, transactionType, screen: 'WalletDashboard' }
+  );
+}
+
+export async function notifyTransactionRejected(
+  driverProfileId: string,
+  transactionType: string,
+  amount: number,
+  reason: string
+) {
+  const label = transactionType === 'refund' ? 'Remboursement' : 'Recharge';
+  console.log('[FTM-DEBUG] Push - Notify transaction rejected', { driverProfileId, transactionType, amount, reason });
+  return insertNotification(
+    driverProfileId,
+    'transaction_rejected',
+    '\u274c Demande rejetee',
+    `${label} de ${amount.toFixed(2)} DH rejetee. Motif : ${reason}`,
+    { amount, transactionType, screen: 'WalletDashboard' }
+  );
+}
