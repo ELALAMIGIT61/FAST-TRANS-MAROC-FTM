@@ -302,3 +302,19 @@ export async function notifyTransactionRejected(
     { amount, transactionType, screen: 'WalletDashboard' }
   );
 }
+
+export async function notifyTransactionBankConfirmed(
+  driverProfileId: string,
+  transactionType: string,
+  amount: number
+) {
+  const label = transactionType === 'refund' ? 'Remboursement' : 'Recharge';
+  console.log('[FTM-DEBUG] Push - Notify transaction bank confirmed', { driverProfileId, transactionType, amount });
+  return insertNotification(
+    driverProfileId,
+    'transaction_bank_confirmed',
+    '\u2705 Paiement confirme',
+    `${label} de ${amount.toFixed(2)} DH definitivement confirmee apres verification bancaire.`,
+    { amount, transactionType, screen: 'WalletDashboard' }
+  );
+}

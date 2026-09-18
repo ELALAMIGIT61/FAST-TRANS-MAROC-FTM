@@ -257,6 +257,7 @@ export async function getAdminStats() {
     { count: totalClients },
     { data: commissionData },
     { count: pendingTransactions },
+    { count: unreconciledTransactions },
   ] = await Promise.all([
     supabase.from('missions').select('*', { count: 'exact', head: true }),
     supabase.from('missions').select('*', { count: 'exact', head: true }).eq('status', 'completed'),
@@ -265,6 +266,7 @@ export async function getAdminStats() {
     supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'client'),
     supabase.from('transactions').select('amount').eq('transaction_type', 'commission').eq('status', 'completed'),
     supabase.from('transactions').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
+    supabase.from('transactions').select('*', { count: 'exact', head: true }).eq('status', 'completed').is('bank_reconciled_at', null).not('metadata->>payment_method', 'eq', 'cash_agent'),
   ]);
 
   const totalCommissions = commissionData?.reduce((sum: number, tx: { amount: string }) => sum + parseFloat(tx.amount), 0) || 0;
@@ -281,6 +283,7 @@ export async function getAdminStats() {
     totalClients,
     totalCommissionsDH: totalCommissions.toFixed(2),
     pendingTransactions: pendingTransactions ?? 0,
+    unreconciledTransactions: unreconciledTransactions ?? 0,
   };
 
   console.log('[FTM-DEBUG] Admin - Global stats fetched', stats);

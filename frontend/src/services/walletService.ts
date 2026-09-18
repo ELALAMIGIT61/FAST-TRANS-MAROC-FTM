@@ -929,3 +929,60 @@ export async function requestRefund(
   console.log('[FTM-DEBUG] Wallet - Refund request created', { transactionId: (transaction as Transaction | null)?.id });
   return { success: true, transaction: transaction as Transaction };
 }
+
+// ─── getUnreconciledTransactions ────────────────────────────────────────────
+// Transactions deja creditees (completed), via un mode de paiement autre que
+// cash_agent, dont le rapprochement bancaire n'a pas encore ete effectue.
+export async function getUnreconciledTransactions(): Promise<{
+  success?: true;
+  transactions?: (Transaction & { driver_name?: string; driver_phone?: string })[];
+  error?: string;
+}> {
+  console.log('[FTM-DEBUG] Admin - Fetching unreconciled transactions');
+  const { data, error } = await supabase
+    .from('transactions')
+    .select(`
+      id, wallet_id, transaction_type, amount, status, description, metadata,
+      created_at, processed_at, bank_reconciled_at,
+      wallet ( driver_id, drivers ( profiles ( full_name, phone_number ) ) )
+    `)
+    .eq('status', 'completed')
+    .is('bank_reconciled_at', null)
+    .not('metadata->>payment_method', 'eq', 'cash_agent')
+    .order('processed_at', { ascending: true });
+  if (error) {
+    console.log('[FTM-DEBUG] Admin - Fetch unreconciled transactions error', { error: error.message });
+    return { error: error.message };
+  }
+  console.log('[FTM-DEBUG] Admin - Unreconciled transactions fetched', { count: data?.length });
+  return { success: true, transactions: (data as unknown as Transaction[]) || [] };
+}
+
+// ─── markBankReconciled ─────────────────────────────────────────────────────
+export async function markBankReconciled(
+  transactionId: string
+): Promise<{ success?: true; error?: string }> {
+  console.log('[FTM-DEBUG] Admin - Marking bank reconciled', { transactionId });
+  const { data, error } = await supabase
+    .from('transactions')
+    .update({ bank_reconciled_at: new Date().toISOString() })
+    .eq('id', transactionId)
+    .is('bank_reconciled_at', null)
+    .select('wallet_id, transaction_type, amount')
+    .single();
+  if (error) {
+    console.log('[FTM-DEBUG] Admin - Mark bank reconciled error', { error: error.message });
+    return { error: error.message };
+  }
+  const { data: walletRow } = await supabase
+    .from('wallet')
+    .select('driver_id, drivers ( profile_id )')
+    .eq('id', data.wallet_id)
+    .single();
+  const profileId = (walletRow as { drivers?: { profile_id?: string } } | null)?.drivers?.profile_id;
+  if (profileId) {
+    const { notifyTransactionBankConfirmed } = await import('./notificationTemplates');
+    await notifyTransactionBankConfirmed(profileId, data.transaction_type, data.amount);
+  }
+  return { success: true };
+}

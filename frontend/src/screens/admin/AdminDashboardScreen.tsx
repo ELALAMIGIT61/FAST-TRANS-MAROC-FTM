@@ -26,6 +26,7 @@ interface AdminStats {
   totalClients: number | null;
   totalCommissionsDH: string;
   pendingTransactions: number;
+  unreconciledTransactions: number;
 }
 
 export default function AdminDashboardScreen() {
@@ -146,6 +147,19 @@ export default function AdminDashboardScreen() {
         {(stats?.pendingTransactions ?? 0) > 0 && (
           <View style={styles.badge}>
             <Text style={styles.badgeText}>{stats?.pendingTransactions}</Text>
+          </View>
+        )}
+        <Text style={styles.navArrow}>→</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={styles.navItem}
+        onPress={() => navigation.navigate('BankReconciliation')}
+      >
+        <Text style={styles.navText}>🏦 Rapprochement bancaire</Text>
+        {(stats?.unreconciledTransactions ?? 0) > 0 && (
+          <View style={styles.badge}>
+            <Text style={styles.badgeText}>{stats?.unreconciledTransactions}</Text>
           </View>
         )}
         <Text style={styles.navArrow}>→</Text>
