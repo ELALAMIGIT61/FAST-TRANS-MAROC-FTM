@@ -803,11 +803,6 @@ export async function validatePendingTransaction(
   if (tx.status !== 'pending') {
     return { error: 'Cette transaction a deja ete traitee.' };
   }
-  const { error: delError } = await supabase.from('transactions').delete().eq('id', transactionId);
-  if (delError) {
-    console.log('[FTM-DEBUG] Admin - Validate delete pending error', { error: delError.message });
-    return { error: delError.message };
-  }
   const agentRef = (tx.metadata as { note?: string } | null)?.note || 'Demande validee';
   const result =
     tx.transaction_type === 'refund'
@@ -817,6 +812,10 @@ export async function validatePendingTransaction(
     console.log('[FTM-DEBUG] Admin - Validate credit error', { error: result.error });
     return { error: result.error };
   }
+  await supabase
+    .from('transactions')
+    .update({ status: 'completed', description: 'Demande validee -- creditee via nouvelle transaction' })
+    .eq('id', transactionId);
   const { data: walletRow } = await supabase
     .from('wallet')
     .select('driver_id, drivers ( profile_id )')
@@ -948,6 +947,7 @@ export async function getUnreconciledTransactions(): Promise<{
     `)
     .eq('status', 'completed')
     .is('bank_reconciled_at', null)
+    .not('metadata->>payment_method', 'is', null)
     .not('metadata->>payment_method', 'eq', 'cash_agent')
     .order('processed_at', { ascending: true });
   if (error) {
