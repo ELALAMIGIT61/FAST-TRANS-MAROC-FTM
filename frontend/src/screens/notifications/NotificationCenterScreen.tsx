@@ -85,7 +85,7 @@ export default function NotificationCenterScreen() {
         prev.map(n => n.id === item.id ? { ...n, is_read: true } : n)
       );
     }
-    handleNotificationTap(
+    await handleNotificationTap(
       { id: item.id, profile_id: item.profile_id, type: item.type, data: item.data },
       (screen, params) => navigation.navigate(screen, params)
     );

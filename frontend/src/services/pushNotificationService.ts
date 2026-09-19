@@ -355,10 +355,10 @@ export function setupPushHandlers(
   console.log('[FTM-DEBUG] Push - Push handlers configured');
 }
 
-export function handleNotificationTap(
+export async function handleNotificationTap(
   notification: { id: string; profile_id: string; type: string; data?: Record<string, unknown> },
   navigate: (screen: string, params?: Record<string, unknown>) => void
-): void {
+): Promise<void> {
   console.log('[FTM-DEBUG] Push - Notification tapped', {
     notifId: notification.id,
     type:    notification.type,
@@ -369,7 +369,7 @@ export function handleNotificationTap(
     markNotificationRead(notification.id, notification.profile_id);
   }
 
-  const screenMap: Record<string, () => void> = {
+  const screenMap: Record<string, () => void | Promise<void>> = {
     MissionTrackingScreen: () =>
       navigate('MissionTracking', { missionId: notification.data?.mission_id }),
     NewMissionModal: () =>
@@ -380,11 +380,28 @@ export function handleNotificationTap(
       navigate('DocumentStatus', { highlight: notification.data?.document_type }),
     RatingScreen: () =>
       navigate('Rating', { missionId: notification.data?.mission_id }),
+    VoiceChat: () =>
+      navigate('VoiceChat', { missionId: notification.data?.mission_id }),
+    WalletDashboard: () => navigate('WalletDashboard'),
+    DriverHomeScreen: () => navigate('DriverHome'),
+    MissionOfferScreen: async () => {
+      const missionId = notification.data?.mission_id;
+      const { data: driverRow } = await supabase
+        .from('drivers')
+        .select('id')
+        .eq('profile_id', notification.profile_id)
+        .single();
+      if (driverRow) {
+        navigate('MissionOffer', { missionId, driverId: driverRow.id });
+      } else {
+        navigate('MissionOffer', { missionId });
+      }
+    },
   };
 
   const fn = screenMap[String(notification.data?.screen || '')];
   if (fn) {
-    fn();
+    await fn();
     console.log('[FTM-DEBUG] Push - Navigated from notification', {
       screen: notification.data?.screen,
     });

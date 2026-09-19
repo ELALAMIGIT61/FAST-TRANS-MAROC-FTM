@@ -97,6 +97,7 @@ export async function notifyMissionCancelled(
   cancelledBy: 'client' | 'driver'
 ) {
   const byLabel = cancelledBy === 'client' ? 'le client' : 'le chauffeur';
+  const recipientScreen = cancelledBy === 'driver' ? 'ClientHomeStack' : 'DriverHomeScreen';
   console.log('[FTM-DEBUG] Push - Notify mission cancelled', {
     profileId, missionId: mission.id, cancelledBy,
   });
@@ -105,7 +106,7 @@ export async function notifyMissionCancelled(
     'mission_cancelled',
     '❌ Mission annulée',
     `La mission ${mission.mission_number} a été annulée par ${byLabel}.`,
-    { mission_id: mission.id, screen: 'ClientHomeStack' }
+    { mission_id: mission.id, screen: recipientScreen }
   );
 }
 
