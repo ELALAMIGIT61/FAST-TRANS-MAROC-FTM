@@ -8,8 +8,9 @@ import {
   rejectOfferAcceptance,
   submitClientCounterOffer,
   getMissionById,
+  getClientOfferDrivers,
 } from '../../services/missionService';
-import type { MissionOffer } from '../../services/missionService';
+import type { MissionOffer, OfferDriverInfo } from '../../services/missionService';
 import {
   subscribeToMissionOffers,
   subscribeToDriverOffers,
@@ -94,6 +95,7 @@ interface Props {
 
 export default function MissionOfferScreen({ missionId, role, driverId, onMissionResolved }: Props) {
   const [clientOffers, setClientOffers] = useState<MissionOffer[]>([]);
+  const [driversInfo, setDriversInfo] = useState<Record<string, OfferDriverInfo>>({});
   const [driverOffer, setDriverOffer] = useState<MissionOffer | null>(null);
   const [counterPrice, setCounterPrice] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -126,6 +128,17 @@ export default function MissionOfferScreen({ missionId, role, driverId, onMissio
       unsubscribeChannel(channelRef.current);
     };
   }, [role, missionId, driverId]);
+
+  useEffect(() => {
+    if (role !== 'client' || clientOffers.length === 0) return;
+    getClientOfferDrivers(missionId).then((result) => {
+      if (result.drivers) {
+        const map: Record<string, OfferDriverInfo> = {};
+        result.drivers.forEach((d) => { map[d.driver_id] = d; });
+        setDriversInfo(map);
+      }
+    });
+  }, [role, clientOffers, missionId]);
 
   useEffect(() => {
     const clientState = role === 'client' ? deriveClientOffersState(clientOffers) : null;
@@ -241,6 +254,22 @@ export default function MissionOfferScreen({ missionId, role, driverId, onMissio
           {clientState.views.map(({ offer, state }) => (
             <View key={offer.id} style={styles.offerCard}>
               <Text style={styles.offerPrice}>{offer.offered_price} DH</Text>
+              {driversInfo[offer.driver_id] && (
+                <Text style={styles.driverInfoText}>
+                  {[
+                    driversInfo[offer.driver_id].vehicle_category,
+                    driversInfo[offer.driver_id].vehicle_capacity_kg != null
+                      ? `${driversInfo[offer.driver_id].vehicle_capacity_kg} kg`
+                      : null,
+                    driversInfo[offer.driver_id].rating_average != null
+                      ? `\u2605 ${driversInfo[offer.driver_id].rating_average}`
+                      : null,
+                    driversInfo[offer.driver_id].total_missions != null
+                      ? `${driversInfo[offer.driver_id].total_missions} missions`
+                      : null,
+                  ].filter(Boolean).join('  \u00b7  ')}
+                </Text>
+              )}
 
               {state.kind === 'awaiting_response' && (
                 <TouchableOpacity
@@ -388,6 +417,7 @@ const styles = StyleSheet.create({
     gap: SPACING.sm,
   },
   offerPrice: { fontSize: 18, fontWeight: '700', color: COLORS.text },
+  driverInfoText: { fontSize: 13, color: COLORS.textMuted ?? '#666' },
   actionRow: { flexDirection: 'row', gap: SPACING.sm },
   acceptButton: {
     flex: 1,

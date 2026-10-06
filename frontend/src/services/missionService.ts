@@ -904,3 +904,28 @@ export async function chargeCommissionAnticipated(
   }
   return { success: true, balanceBefore: result.balance_before, balanceAfter: result.balance_after };
 }
+
+// ─── CHOIX DU CHAUFFEUR (vue securisee client_offer_drivers) ─────────────────
+
+export interface OfferDriverInfo {
+  driver_id: string;
+  vehicle_category: VehicleCategory;
+  vehicle_capacity_kg: number | null;
+  rating_average: number | null;
+  total_missions: number | null;
+}
+
+export async function getClientOfferDrivers(
+  missionId: string
+): Promise<{ drivers?: OfferDriverInfo[]; error?: string }> {
+  console.log('[FTM-DEBUG] Mission - Fetching client offer drivers', { missionId });
+  const { data, error } = await supabase
+    .from('client_offer_drivers')
+    .select('driver_id, vehicle_category, vehicle_capacity_kg, rating_average, total_missions')
+    .eq('mission_id', missionId);
+  if (error) {
+    console.log('[FTM-DEBUG] Mission - Fetch client offer drivers error', { error: error.message });
+    return { error: error.message };
+  }
+  return { drivers: (data as OfferDriverInfo[]) ?? [] };
+}
