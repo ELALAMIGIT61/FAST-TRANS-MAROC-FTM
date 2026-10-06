@@ -791,16 +791,22 @@ export async function validatePendingTransaction(
   transactionId: string
 ): Promise<{ success?: true; error?: string }> {
   console.log('[FTM-DEBUG] Admin - Validating pending transaction', { transactionId });
-  const { data: tx, error: fetchError } = await supabase
+  // Reservation atomique : on passe la demande a 'completed' UNIQUEMENT si elle
+  // est encore 'pending'. Un second clic (ou appel concurrent) n'affectera aucune
+  // ligne et s'arretera ici, ce qui empeche le double credit (modele aligne sur
+  // rejectPendingTransaction). Le credit n'a lieu qu'apres cette reservation reussie.
+  const { data: tx, error: reserveError } = await supabase
     .from('transactions')
-    .select('id, wallet_id, transaction_type, amount, status, mission_id, metadata')
+    .update({ status: 'completed', description: 'Demande validee -- creditee via nouvelle transaction' })
     .eq('id', transactionId)
-    .single();
-  if (fetchError) {
-    console.log('[FTM-DEBUG] Admin - Validate fetch error', { error: fetchError.message });
-    return { error: fetchError.message };
+    .eq('status', 'pending')
+    .select('id, wallet_id, transaction_type, amount, status, mission_id, metadata')
+    .maybeSingle();
+  if (reserveError) {
+    console.log('[FTM-DEBUG] Admin - Validate reserve error', { error: reserveError.message });
+    return { error: reserveError.message };
   }
-  if (tx.status !== 'pending') {
+  if (!tx) {
     return { error: 'Cette transaction a deja ete traitee.' };
   }
   const agentRef = (tx.metadata as { note?: string } | null)?.note || 'Demande validee';
@@ -809,13 +815,16 @@ export async function validatePendingTransaction(
       ? await refundWallet(tx.wallet_id, tx.amount, tx.mission_id, agentRef)
       : await topupWallet(tx.wallet_id, tx.amount, agentRef);
   if (result.error) {
-    console.log('[FTM-DEBUG] Admin - Validate credit error', { error: result.error });
+    // Le credit a echoue apres la reservation : on remet la demande en 'pending'
+    // pour qu'elle puisse etre re-traitee, plutot que de la laisser 'completed'
+    // sans credit effectif.
+    console.log('[FTM-DEBUG] Admin - Validate credit error, reverting to pending', { error: result.error });
+    await supabase
+      .from('transactions')
+      .update({ status: 'pending', description: 'Demande en attente (echec credit, a retraiter)' })
+      .eq('id', transactionId);
     return { error: result.error };
   }
-  await supabase
-    .from('transactions')
-    .update({ status: 'completed', description: 'Demande validee -- creditee via nouvelle transaction' })
-    .eq('id', transactionId);
   const { data: walletRow } = await supabase
     .from('wallet')
     .select('driver_id, drivers ( profile_id )')
