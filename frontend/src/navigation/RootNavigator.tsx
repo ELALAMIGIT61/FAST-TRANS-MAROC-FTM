@@ -80,10 +80,12 @@ export type DriverOnboardingStackParamList = {
   LegalDocuments: { driverId: string };
   DocumentUpload: { driverId: string };
   PendingVerification: { driverId: string };
+  DocumentStatus: undefined;
 };
 
 export type DriverPendingStackParamList = {
   PendingVerification: { driverId: string };
+  DocumentStatus: undefined;
 };
 
 export type AdminStackParamList = {
@@ -128,6 +130,8 @@ function DriverOnboardingNavigator() {
       <DriverOnboardingStack.Screen name="LegalDocuments" component={LegalDocumentsScreen as any} />
       <DriverOnboardingStack.Screen name="DocumentUpload" component={DocumentUploadScreen as any} />
       <DriverOnboardingStack.Screen name="PendingVerification" component={PendingVerificationScreen as any} />
+      {/* 4b-5 / C.1.2 : acces a « Mes documents » depuis l'ecran d'attente */}
+      <DriverOnboardingStack.Screen name="DocumentStatus" component={DocumentStatusScreen as any} />
     </DriverOnboardingStack.Navigator>
   );
 }
@@ -140,6 +144,8 @@ function DriverPendingNavigator({ driverId }: { driverId: string }) {
         component={PendingVerificationScreen as any}
         initialParams={{ driverId }}
       />
+      {/* 4b-5 / C.1.2 : acces a « Mes documents » depuis l'ecran d'attente */}
+      <DriverPendingStack.Screen name="DocumentStatus" component={DocumentStatusScreen as any} />
     </DriverPendingStack.Navigator>
   );
 }

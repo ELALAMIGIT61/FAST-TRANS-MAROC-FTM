@@ -1,5 +1,7 @@
 // /screens/driver/onboarding/PendingVerificationScreen.tsx
 // Fast Trans Maroc — P2 — Step 4
+// Volet 4b-5 / C.1.2 : bouton d'acces a « Mes documents » (remplacer un document
+// refuse ou expire, envoyer les documents d'un nouveau vehicule) pendant l'attente.
 
 import React, { useEffect, useState } from 'react';
 import {
@@ -125,6 +127,16 @@ export default function PendingVerificationScreen({ navigation, route }: Props) 
         </Text>
       </View>
 
+      <TouchableOpacity
+        style={styles.docsButton}
+        onPress={() => navigation.navigate('DocumentStatus')}
+      >
+        <Text style={styles.docsButtonText}>📄 Mettre à jour mes documents</Text>
+      </TouchableOpacity>
+      <Text style={styles.docsHint}>
+        Document refusé, expiré, ou changement de véhicule : envoyez ici vos nouveaux documents.
+      </Text>
+
       <View style={styles.walletBox}>
         <Text style={styles.walletText}>
           💰 Une fois votre dossier validé, vous pourrez recharger votre wallet (min. 100 DH) pour commencer à accepter des missions.
@@ -160,4 +172,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF8E7', width: '100%',
   },
   walletText:   { fontSize: 13, color: '#856404', lineHeight: 20 },
+  docsButton:   {
+    marginTop: 16, paddingVertical: 14, paddingHorizontal: 20, borderRadius: 12,
+    backgroundColor: COLORS.primary, width: '100%', alignItems: 'center',
+  },
+  docsButtonText: { color: '#FFFFFF', fontWeight: '700', fontSize: 15 },
+  docsHint:     { fontSize: 12, color: '#666', marginTop: 6, textAlign: 'center' },
 });

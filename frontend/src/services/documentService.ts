@@ -283,3 +283,58 @@ export async function saveRegistrationDates(
   console.log('[FTM-DEBUG] Document - Registration dates saved', { driverId });
   return { success: true };
 }
+
+/**
+ * Volet 4b-5 / C.1.2 — Changement de vehicule : enregistre les informations
+ * du vehicule saisies par le chauffeur (comme a l'inscription, etape 1).
+ * N'ecrit que les champs modifies. La plaque est ecrite dans license_plate ET
+ * vehicle_registration_number (doublon historique : un seul numero, la plaque).
+ * Cote base (migration 044) : la carte grise repasse en attente et le
+ * chauffeur devient indisponible jusqu'a la validation de l'administrateur.
+ * Verifie qu'une ligne a bien ete modifiee (RLS : 0 ligne, aucune erreur).
+ */
+export type VehicleCategoryCode = 'vul' | 'n2_medium' | 'n2_large';
+
+export interface VehicleChangeInput {
+  vehicle_category:    VehicleCategoryCode;
+  vehicle_brand:       string | null;
+  vehicle_model:       string | null;
+  license_plate:       string;
+  vehicle_capacity_kg: number | null;
+}
+
+export async function saveVehicleChange(
+  driverId: string,
+  changes: Partial<VehicleChangeInput>
+): Promise<{ success?: boolean; error?: string }> {
+  const update: Record<string, string | number | null> = { ...changes };
+  if (changes.license_plate) {
+    update.vehicle_registration_number = changes.license_plate;
+  }
+  if (Object.keys(update).length === 0) {
+    return { error: 'Aucune modification à enregistrer.' };
+  }
+
+  console.log('[FTM-DEBUG] Vehicle - Saving vehicle change', { driverId, fields: Object.keys(update) });
+
+  const { data, error } = await supabase
+    .from('drivers')
+    .update(update)
+    .eq('id', driverId)
+    .select('id');
+
+  if (error) {
+    console.log('[FTM-DEBUG] Vehicle - Save vehicle change error', { code: error.code, error: error.message });
+    if (error.code === '23505') {
+      return { error: 'Cette plaque est déjà enregistrée pour un autre chauffeur. Vérifiez la saisie ou contactez l\'administrateur.' };
+    }
+    return { error: error.message };
+  }
+  if (!data || data.length !== 1) {
+    console.log('[FTM-DEBUG] Vehicle - Save vehicle change: no row updated', { driverId });
+    return { error: "Les informations du véhicule n'ont pas pu être enregistrées (aucune ligne modifiée)." };
+  }
+
+  console.log('[FTM-DEBUG] Vehicle - Vehicle change saved', { driverId });
+  return { success: true };
+}

@@ -22,6 +22,7 @@ export async function getPendingDrivers() {
       vehicle_brand,
       vehicle_model,
       license_plate,
+      vehicle_capacity_kg,
       driver_license_number,
       driver_license_expiry,
       driver_license_verified,

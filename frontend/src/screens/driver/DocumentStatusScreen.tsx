@@ -3,10 +3,12 @@
 // Volet 4b-5 : saisie de la nouvelle date à chaque remplacement, remplacement
 // possible quel que soit le statut (renouvellement anticipé), affichage de la
 // carte grise (expiration + 1re mise en circulation), erreurs visibles.
+// C.1.2 : bloc « Mon véhicule » + changement de véhicule (même saisie qu'à
+// l'inscription, étape 1) ; tout changement est revalidé par l'administrateur.
 
 import React, { useEffect, useState } from 'react';
 import {
-  View, Text, TouchableOpacity, ScrollView,
+  View, Text, TextInput, TouchableOpacity, ScrollView,
   StyleSheet, Linking, ActivityIndicator, Alert, Platform,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -15,6 +17,7 @@ import {
   DOCUMENT_LABELS, DOCUMENT_TYPES, DocumentType,
   uploadDocument, saveDocumentReplacement,
   pickDocument, pickImageFromCamera,
+  saveVehicleChange, VehicleChangeInput, VehicleCategoryCode,
 } from '../../services/documentService';
 import DateOnlyField, { todayIsoDate, formatIsoDateFr } from '../../components/DateOnlyField';
 import { COLORS } from '../../constants/theme';
@@ -33,6 +36,33 @@ interface DocInfo {
 type Props = {
   navigation: NativeStackNavigationProp<any>;
 };
+
+interface VehicleInfo {
+  vehicle_category:    VehicleCategoryCode;
+  vehicle_brand:       string | null;
+  vehicle_model:       string | null;
+  license_plate:       string;
+  vehicle_capacity_kg: number | null;
+}
+
+// Mêmes catégories et même contrôle de plaque qu'à l'inscription (étape 1)
+const VEHICLE_CATEGORIES: { value: VehicleCategoryCode; label: string; description: string; icon: string }[] = [
+  { value: 'vul',       label: 'VUL',      description: '≤ 3,5 tonnes',     icon: '🚐' },
+  { value: 'n2_medium', label: 'N2 Moyen', description: '3,5 – 7,5 tonnes', icon: '🚛' },
+  { value: 'n2_large',  label: 'N2 Grand', description: '7,5 – 12 tonnes',  icon: '🚚' },
+];
+
+const LICENSE_PLATE_REGEX = /^[0-9]{1,6}-[A-Z]-[0-9]+$/;
+
+const VEHICLE_CHANGE_WARNING =
+  "Votre carte grise repassera en attente et vous serez indisponible jusqu'à " +
+  "la validation de l'administrateur. Pensez à remplacer aussi la carte grise, " +
+  "l'assurance et la visite technique du nouveau véhicule. Continuer ?";
+
+function categoryLabel(code: string | null | undefined): string {
+  const cat = VEHICLE_CATEGORIES.find(c => c.value === code);
+  return cat ? `${cat.icon} ${cat.label} (${cat.description})` : (code ?? '');
+}
 
 const TECHNICAL_INSPECTION_HINT =
   "NB : véhicule de moins de 5 ans — indiquez la date à laquelle la visite " +
@@ -84,6 +114,17 @@ export default function DocumentStatusScreen({ navigation }: Props) {
   const [draftFirstService, setDraftFirstService] = useState<string | null>(null);
   const [formError,         setFormError]         = useState<string | null>(null);
 
+  // Véhicule (C.1.2)
+  const [vehicle,        setVehicle]        = useState<VehicleInfo | null>(null);
+  const [editingVehicle, setEditingVehicle] = useState(false);
+  const [savingVehicle,  setSavingVehicle]  = useState(false);
+  const [vCategory,      setVCategory]      = useState<VehicleCategoryCode | null>(null);
+  const [vBrand,         setVBrand]         = useState('');
+  const [vModel,         setVModel]         = useState('');
+  const [vPlate,         setVPlate]         = useState('');
+  const [vCapacity,      setVCapacity]      = useState('');
+  const [vehicleError,   setVehicleError]   = useState<string | null>(null);
+
   useEffect(() => {
     loadDriver();
   }, []);
@@ -96,6 +137,7 @@ export default function DocumentStatusScreen({ navigation }: Props) {
       .from('drivers')
       .select(`
         id,
+        vehicle_category, vehicle_brand, vehicle_model, license_plate, vehicle_capacity_kg,
         driver_license_number, driver_license_expiry, driver_license_verified, driver_license_url,
         vehicle_registration_number, vehicle_registration_expiry, vehicle_first_service_date,
         vehicle_registration_verified, vehicle_registration_url,
@@ -110,6 +152,13 @@ export default function DocumentStatusScreen({ navigation }: Props) {
     if (!driver) { setIsLoading(false); return; }
 
     setDriverId(driver.id as string);
+    setVehicle({
+      vehicle_category:    driver.vehicle_category as VehicleCategoryCode,
+      vehicle_brand:       (driver.vehicle_brand as string) ?? null,
+      vehicle_model:       (driver.vehicle_model as string) ?? null,
+      license_plate:       driver.license_plate as string,
+      vehicle_capacity_kg: (driver.vehicle_capacity_kg as number) ?? null,
+    });
     setDocs([
       {
         docType: DOCUMENT_TYPES.DRIVER_LICENSE,
@@ -235,6 +284,78 @@ export default function DocumentStatusScreen({ navigation }: Props) {
     loadDriver();
   }
 
+  function openVehicleForm() {
+    if (!vehicle) return;
+    setVCategory(vehicle.vehicle_category);
+    setVBrand(vehicle.vehicle_brand ?? '');
+    setVModel(vehicle.vehicle_model ?? '');
+    setVPlate(vehicle.license_plate ?? '');
+    setVCapacity(vehicle.vehicle_capacity_kg ? String(vehicle.vehicle_capacity_kg) : '');
+    setVehicleError(null);
+    setEditingVehicle(true);
+  }
+
+  function closeVehicleForm() {
+    setEditingVehicle(false);
+    setVehicleError(null);
+  }
+
+  async function handleVehicleSave() {
+    if (!driverId || !vehicle) return;
+
+    const plate = vPlate.trim().toUpperCase();
+    if (!vCategory) {
+      setVehicleError('Choisissez la catégorie du véhicule.');
+      return;
+    }
+    if (!LICENSE_PLATE_REGEX.test(plate)) {
+      setVehicleError('Plaque invalide (format attendu : 12345-A-1).');
+      return;
+    }
+    const capacityText = vCapacity.trim();
+    const capacity = capacityText ? parseInt(capacityText, 10) : null;
+    if (capacityText && (!/^[0-9]+$/.test(capacityText) || !capacity || capacity <= 0)) {
+      setVehicleError('Capacité invalide (nombre de kg supérieur à 0).');
+      return;
+    }
+
+    // Seuls les champs réellement modifiés sont envoyés
+    const brand = vBrand.trim() || null;
+    const model = vModel.trim() || null;
+    const changes: Partial<VehicleChangeInput> = {};
+    if (vCategory !== vehicle.vehicle_category)               changes.vehicle_category    = vCategory;
+    if (brand !== (vehicle.vehicle_brand?.trim() || null))    changes.vehicle_brand       = brand;
+    if (model !== (vehicle.vehicle_model?.trim() || null))    changes.vehicle_model       = model;
+    if (plate !== vehicle.license_plate)                      changes.license_plate       = plate;
+    if (capacity !== (vehicle.vehicle_capacity_kg || null))   changes.vehicle_capacity_kg = capacity;
+
+    if (Object.keys(changes).length === 0) {
+      setVehicleError('Aucune modification à enregistrer.');
+      return;
+    }
+    setVehicleError(null);
+
+    const confirmed = await askConfirmation(VEHICLE_CHANGE_WARNING);
+    if (!confirmed) return;
+
+    setSavingVehicle(true);
+    const saved = await saveVehicleChange(driverId, changes);
+    setSavingVehicle(false);
+
+    if (saved.error) {
+      setVehicleError(saved.error);
+      return;
+    }
+
+    closeVehicleForm();
+    showMessage(
+      'Véhicule enregistré',
+      "Votre carte grise est en attente de validation par l'administrateur. " +
+      "Remplacez maintenant la carte grise, l'assurance et la visite technique du nouveau véhicule.",
+    );
+    loadDriver();
+  }
+
   if (isLoading) {
     return (
       <View style={styles.loader}>
@@ -245,7 +366,95 @@ export default function DocumentStatusScreen({ navigation }: Props) {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
+      {navigation.canGoBack() ? (
+        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+          <Text style={styles.backBtnText}>← Retour</Text>
+        </TouchableOpacity>
+      ) : null}
       <Text style={styles.title}>Mes documents</Text>
+
+      {vehicle ? (
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <Text style={styles.cardTitle}>🚐 Mon véhicule</Text>
+          </View>
+          <Text style={styles.detail}>Catégorie : {categoryLabel(vehicle.vehicle_category)}</Text>
+          {vehicle.vehicle_brand || vehicle.vehicle_model ? (
+            <Text style={styles.detail}>
+              Véhicule : {[vehicle.vehicle_brand, vehicle.vehicle_model].filter(Boolean).join(' ')}
+            </Text>
+          ) : null}
+          <Text style={styles.detail}>Plaque : {vehicle.license_plate}</Text>
+          {vehicle.vehicle_capacity_kg ? (
+            <Text style={styles.detail}>Capacité : {vehicle.vehicle_capacity_kg} kg</Text>
+          ) : null}
+
+          {!editingVehicle ? (
+            <View style={styles.actionRow}>
+              <TouchableOpacity style={styles.reuploadBtn} onPress={openVehicleForm}>
+                <Text style={styles.reuploadBtnText}>🚐 Changer de véhicule</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={styles.form}>
+              <View style={styles.categoryRow}>
+                {VEHICLE_CATEGORIES.map(cat => (
+                  <TouchableOpacity
+                    key={cat.value}
+                    style={[styles.categoryCard, vCategory === cat.value && styles.categoryCardSelected]}
+                    onPress={() => setVCategory(cat.value)}
+                  >
+                    <Text style={styles.categoryIcon}>{cat.icon}</Text>
+                    <Text style={styles.categoryLabel}>{cat.label}</Text>
+                    <Text style={styles.categoryDesc}>{cat.description}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <TextInput
+                style={styles.input}
+                placeholder="Marque (ex: Mercedes)"
+                value={vBrand}
+                onChangeText={setVBrand}
+              />
+              <TextInput
+                style={styles.input}
+                placeholder="Modèle (ex: Sprinter)"
+                value={vModel}
+                onChangeText={setVModel}
+              />
+              <TextInput
+                style={styles.input}
+                placeholder="Plaque (ex: 12345-A-1)"
+                value={vPlate}
+                onChangeText={t => setVPlate(t.toUpperCase())}
+                autoCapitalize="characters"
+              />
+              <TextInput
+                style={styles.input}
+                placeholder="Capacité max (kg)"
+                value={vCapacity}
+                onChangeText={setVCapacity}
+                keyboardType="numeric"
+              />
+
+              {vehicleError ? <Text style={styles.formError}>{vehicleError}</Text> : null}
+
+              {savingVehicle ? (
+                <ActivityIndicator color={COLORS.primary} />
+              ) : (
+                <View style={styles.actionRow}>
+                  <TouchableOpacity style={styles.reuploadBtn} onPress={handleVehicleSave}>
+                    <Text style={styles.reuploadBtnText}>💾 Enregistrer</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.cancelBtn} onPress={closeVehicleForm}>
+                    <Text style={styles.cancelBtnText}>Annuler</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+          )}
+        </View>
+      ) : null}
 
       {docs.map(doc => {
         const label     = DOCUMENT_LABELS[doc.docType];
@@ -359,6 +568,8 @@ export default function DocumentStatusScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   loader:       { flex: 1, justifyContent: 'center', alignItems: 'center' },
   container:    { padding: 20, paddingBottom: 40 },
+  backBtn:      { alignSelf: 'flex-start', paddingVertical: 6, marginBottom: 8 },
+  backBtnText:  { color: COLORS.primary, fontWeight: '600', fontSize: 15 },
   title:        { fontSize: 22, fontWeight: '700', marginBottom: 20, color: '#1A1A2E' },
   card:         {
     borderWidth: 1, borderColor: '#E0E0E0', borderRadius: 12,
@@ -390,4 +601,17 @@ const styles = StyleSheet.create({
     paddingVertical: 8, paddingHorizontal: 14,
   },
   cancelBtnText:  { color: '#555', fontWeight: '600', fontSize: 13 },
+  categoryRow:    { flexDirection: 'row', gap: 8, marginBottom: 12 },
+  categoryCard:   {
+    flex: 1, borderWidth: 1.5, borderColor: '#DDD', borderRadius: 10,
+    padding: 8, alignItems: 'center', backgroundColor: '#FFFFFF',
+  },
+  categoryCardSelected: { borderColor: COLORS.primary, backgroundColor: '#F0F4FF' },
+  categoryIcon:   { fontSize: 22 },
+  categoryLabel:  { fontWeight: '700', fontSize: 13, marginTop: 4, color: '#1A1A2E' },
+  categoryDesc:   { fontSize: 10, color: '#666', textAlign: 'center' },
+  input:          {
+    borderWidth: 1, borderColor: '#DDD', borderRadius: 10,
+    padding: 12, marginBottom: 10, fontSize: 15, backgroundColor: '#FFFFFF',
+  },
 });

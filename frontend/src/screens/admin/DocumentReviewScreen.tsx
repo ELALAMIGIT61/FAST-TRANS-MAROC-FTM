@@ -26,6 +26,7 @@ interface Driver {
   vehicle_brand: string;
   vehicle_model: string;
   license_plate: string;
+  vehicle_capacity_kg?: number | null;
   driver_license_number: string;
   driver_license_expiry: string;
   driver_license_verified: string;
@@ -219,6 +220,12 @@ export default function DocumentReviewScreen() {
             <Text style={styles.modalSub}>📞 {selectedDriver.profiles?.phone_number}</Text>
             <Text style={styles.modalSub}>🚐 {selectedDriver.vehicle_category} | {selectedDriver.vehicle_brand} {selectedDriver.vehicle_model}</Text>
             <Text style={styles.modalSub}>Plaque : {selectedDriver.license_plate}</Text>
+            {selectedDriver.vehicle_capacity_kg ? (
+              <Text style={styles.modalSub}>Capacité : {selectedDriver.vehicle_capacity_kg} kg</Text>
+            ) : null}
+            <Text style={styles.docHint}>
+              ⚠️ Avant de valider : vérifiez que la plaque {selectedDriver.license_plate} figure sur la carte grise, l'assurance et la visite technique, et que la catégorie correspond à la carte grise.
+            </Text>
 
             {selectedDriver.is_verified && (
               <View style={styles.verifiedBanner}>
