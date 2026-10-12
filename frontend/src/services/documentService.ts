@@ -248,3 +248,38 @@ export async function saveDocumentReplacement(
   console.log('[FTM-DEBUG] Document - Replacement saved', { driverId, docType });
   return { success: true };
 }
+
+/**
+ * Volet 4b-5 — Inscription (etape 2) : enregistre les 2 dates de la carte grise
+ * (expiration + 1re mise en circulation). Appelee juste apres saveDriverDocuments
+ * (driverService.ts, non modifie). Verifie qu'une ligne a bien ete modifiee
+ * (une ecriture bloquee par RLS echoue en silence : 0 ligne, aucune erreur).
+ */
+export async function saveRegistrationDates(
+  driverId: string,
+  expiry: string,
+  firstServiceDate: string
+): Promise<{ success?: boolean; error?: string }> {
+  console.log('[FTM-DEBUG] Document - Saving registration dates', { driverId, expiry, firstServiceDate });
+
+  const { data, error } = await supabase
+    .from('drivers')
+    .update({
+      vehicle_registration_expiry: expiry,
+      vehicle_first_service_date:  firstServiceDate,
+    })
+    .eq('id', driverId)
+    .select('id');
+
+  if (error) {
+    console.log('[FTM-DEBUG] Document - Save registration dates error', { error: error.message });
+    return { error: error.message };
+  }
+  if (!data || data.length !== 1) {
+    console.log('[FTM-DEBUG] Document - Save registration dates: no row updated', { driverId });
+    return { error: "Les dates de la carte grise n'ont pas pu etre enregistrees (aucune ligne modifiee)." };
+  }
+
+  console.log('[FTM-DEBUG] Document - Registration dates saved', { driverId });
+  return { success: true };
+}

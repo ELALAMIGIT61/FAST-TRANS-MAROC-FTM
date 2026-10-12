@@ -1,15 +1,18 @@
 // /screens/driver/onboarding/LegalDocumentsScreen.tsx
 // Fast Trans Maroc — P2 — Step 2
+// Volet 4b-5 : dates de la carte grise (expiration + 1re mise en circulation),
+// saisie des dates sans decalage de fuseau (DateOnlyField), NB visite technique.
 
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
   ScrollView, StyleSheet, ActivityIndicator, Alert, Platform,
 } from 'react-native';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
 import { saveDriverDocuments } from '../../../services/driverService';
+import { saveRegistrationDates } from '../../../services/documentService';
+import DateOnlyField, { todayIsoDate } from '../../../components/DateOnlyField';
 import { COLORS } from '../../../constants/theme';
 
 type Props = {
@@ -17,115 +20,68 @@ type Props = {
   route:      RouteProp<{ LegalDocuments: { driverId: string } }, 'LegalDocuments'>;
 };
 
-function formatDateForSQL(date: Date | null): string | null {
-  if (!date) return null;
-  return date.toISOString().split('T')[0];
+const TECHNICAL_INSPECTION_HINT =
+  "NB : véhicule de moins de 5 ans — indiquez la date à laquelle la visite " +
+  "technique deviendra obligatoire (date de 1re mise en circulation + 5 ans) " +
+  "et déposez, à l'étape suivante, une 2e copie de la carte grise à la place " +
+  "de la visite technique.";
+
+function showMessage(title: string, message: string) {
+  if (Platform.OS === 'web') {
+    window.alert(`${title}\n\n${message}`);
+  } else {
+    Alert.alert(title, message);
+  }
 }
 
-function validateExpiryDate(date: Date | null, label: string): string | null {
-  if (!date) return null;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  if (date < today) {
+// Dates au format 'YYYY-MM-DD' : la comparaison de chaines suffit.
+function validateExpiryDate(value: string | null, label: string): string | null {
+  if (!value) return null;
+  if (value < todayIsoDate()) {
     console.log('[FTM-DEBUG] Document - Expired date detected', {
-      documentLabel: label, expiry: date.toISOString(),
+      documentLabel: label, expiry: value,
     });
     return `${label} est déjà expiré(e). Renouvelez-le avant de vous inscrire.`;
   }
   return null;
 }
 
-interface DateFieldProps {
-  label: string;
-  value: Date | null;
-  onChange: (d: Date) => void;
-  error?: string | null;
-}
-
-function DateField({ label, value, onChange, error }: DateFieldProps) {
-  const [show, setShow] = useState(false);
-
-  if (Platform.OS === 'web') {
-    return (
-      <View style={{ marginBottom: 14 }}>
-        <Text style={dfStyles.label}>{label}</Text>
-        <input
-          type="date"
-          min={new Date().toISOString().split('T')[0]}
-          value={value ? value.toISOString().split('T')[0] : ''}
-          onChange={e => {
-            const val = (e.target as any).value;
-            if (val) onChange(new Date(val));
-          }}
-          style={{
-            border: error ? '1px solid #DC3545' : '1px solid #DDD',
-            borderRadius: 10,
-            padding: 14,
-            fontSize: 15,
-            backgroundColor: '#FAFAFA',
-            width: '100%',
-            boxSizing: 'border-box',
-          } as any}
-        />
-        {error ? <Text style={dfStyles.errorText}>{error}</Text> : null}
-      </View>
-    );
+function validatePastDate(value: string | null): string | null {
+  if (!value) return null;
+  if (value > todayIsoDate()) {
+    return 'La date de 1re mise en circulation ne peut pas être dans le futur.';
   }
-
-  return (
-    <View style={{ marginBottom: 14 }}>
-      <Text style={dfStyles.label}>{label}</Text>
-      <TouchableOpacity
-        style={[dfStyles.picker, error ? dfStyles.pickerError : null]}
-        onPress={() => setShow(true)}
-      >
-        <Text style={{ color: value ? '#1A1A2E' : '#999', fontSize: 15 }}>
-          {value ? value.toLocaleDateString('fr-FR') : 'Sélectionner une date'}
-        </Text>
-      </TouchableOpacity>
-      {show && (
-        <DateTimePicker
-          value={value ?? new Date()}
-          mode="date"
-          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-          minimumDate={new Date()}
-          onChange={(_e, d) => { setShow(false); if (d) onChange(d); }}
-        />
-      )}
-      {error ? <Text style={dfStyles.errorText}>{error}</Text> : null}
-    </View>
-  );
+  return null;
 }
-
-const dfStyles = StyleSheet.create({
-  label:       { fontSize: 13, color: '#666', marginBottom: 4 },
-  picker:      {
-    borderWidth: 1, borderColor: '#DDD', borderRadius: 10,
-    padding: 14, backgroundColor: '#FAFAFA',
-  },
-  pickerError: { borderColor: '#DC3545' },
-  errorText:   { color: '#DC3545', fontSize: 12, marginTop: 4 },
-});
 
 export default function LegalDocumentsScreen({ navigation, route }: Props) {
   const { driverId } = route.params;
 
-  const [licenseNumber,   setLicenseNumber]   = useState('');
-  const [licenseExpiry,   setLicenseExpiry]   = useState<Date | null>(null);
-  const [regNumber,       setRegNumber]       = useState('');
-  const [insuranceNumber, setInsuranceNumber] = useState('');
-  const [insuranceExpiry, setInsuranceExpiry] = useState<Date | null>(null);
-  const [techExpiry,      setTechExpiry]      = useState<Date | null>(null);
-  const [isLoading,       setIsLoading]       = useState(false);
+  const [licenseNumber,    setLicenseNumber]    = useState('');
+  const [licenseExpiry,    setLicenseExpiry]    = useState<string | null>(null);
+  const [regNumber,        setRegNumber]        = useState('');
+  const [regExpiry,        setRegExpiry]        = useState<string | null>(null);
+  const [firstServiceDate, setFirstServiceDate] = useState<string | null>(null);
+  const [insuranceNumber,  setInsuranceNumber]  = useState('');
+  const [insuranceExpiry,  setInsuranceExpiry]  = useState<string | null>(null);
+  const [techExpiry,       setTechExpiry]       = useState<string | null>(null);
+  const [isLoading,        setIsLoading]        = useState(false);
+
+  const today = todayIsoDate();
 
   const licenseExpiryError   = validateExpiryDate(licenseExpiry,   'Le permis de conduire');
+  const regExpiryError       = validateExpiryDate(regExpiry,       'La carte grise');
+  const firstServiceError    = validatePastDate(firstServiceDate);
   const insuranceExpiryError = validateExpiryDate(insuranceExpiry, "L'assurance");
   const techExpiryError      = validateExpiryDate(techExpiry,      'La visite technique');
 
-  const hasErrors = Boolean(licenseExpiryError || insuranceExpiryError || techExpiryError);
+  const hasErrors = Boolean(
+    licenseExpiryError || regExpiryError || firstServiceError ||
+    insuranceExpiryError || techExpiryError
+  );
   const isFormValid =
     licenseNumber.trim() && licenseExpiry &&
-    regNumber.trim() &&
+    regNumber.trim() && regExpiry && firstServiceDate &&
     insuranceNumber.trim() && insuranceExpiry &&
     techExpiry && !hasErrors;
 
@@ -135,17 +91,25 @@ export default function LegalDocumentsScreen({ navigation, route }: Props) {
 
     const result = await saveDriverDocuments(driverId, {
       driver_license_number:       licenseNumber.trim(),
-      driver_license_expiry:       formatDateForSQL(licenseExpiry)!,
+      driver_license_expiry:       licenseExpiry!,
       vehicle_registration_number: regNumber.trim(),
       insurance_number:            insuranceNumber.trim(),
-      insurance_expiry:            formatDateForSQL(insuranceExpiry)!,
-      technical_inspection_expiry: formatDateForSQL(techExpiry)!,
+      insurance_expiry:            insuranceExpiry!,
+      technical_inspection_expiry: techExpiry!,
     });
+
+    if (result.error) {
+      setIsLoading(false);
+      showMessage('Erreur', result.error);
+      return;
+    }
+
+    const regResult = await saveRegistrationDates(driverId, regExpiry!, firstServiceDate!);
 
     setIsLoading(false);
 
-    if (result.error) {
-      Alert.alert('Erreur', result.error);
+    if (regResult.error) {
+      showMessage('Erreur', regResult.error);
       return;
     }
 
@@ -168,10 +132,11 @@ export default function LegalDocumentsScreen({ navigation, route }: Props) {
         value={licenseNumber}
         onChangeText={setLicenseNumber}
       />
-      <DateField
+      <DateOnlyField
         label="Date d'expiration"
         value={licenseExpiry}
         onChange={setLicenseExpiry}
+        minDate={today}
         error={licenseExpiryError}
       />
 
@@ -182,6 +147,20 @@ export default function LegalDocumentsScreen({ navigation, route }: Props) {
         value={regNumber}
         onChangeText={setRegNumber}
       />
+      <DateOnlyField
+        label="Date d'expiration"
+        value={regExpiry}
+        onChange={setRegExpiry}
+        minDate={today}
+        error={regExpiryError}
+      />
+      <DateOnlyField
+        label="Date de 1re mise en circulation"
+        value={firstServiceDate}
+        onChange={setFirstServiceDate}
+        maxDate={today}
+        error={firstServiceError}
+      />
 
       <Text style={styles.sectionTitle}>🛡️ Assurance</Text>
       <TextInput
@@ -190,18 +169,21 @@ export default function LegalDocumentsScreen({ navigation, route }: Props) {
         value={insuranceNumber}
         onChangeText={setInsuranceNumber}
       />
-      <DateField
+      <DateOnlyField
         label="Date d'expiration"
         value={insuranceExpiry}
         onChange={setInsuranceExpiry}
+        minDate={today}
         error={insuranceExpiryError}
       />
 
       <Text style={styles.sectionTitle}>🔧 Visite technique</Text>
-      <DateField
+      <DateOnlyField
         label="Date d'expiration"
         value={techExpiry}
         onChange={setTechExpiry}
+        minDate={today}
+        hint={TECHNICAL_INSPECTION_HINT}
         error={techExpiryError}
       />
 
