@@ -1,34 +1,47 @@
 // /screens/driver/DocumentStatusScreen.tsx
 // Fast Trans Maroc — P2 — Suivi vérifications post-onboarding
+// Volet 4b-5 : saisie de la nouvelle date à chaque remplacement, remplacement
+// possible quel que soit le statut (renouvellement anticipé), affichage de la
+// carte grise (expiration + 1re mise en circulation), erreurs visibles.
 
 import React, { useEffect, useState } from 'react';
 import {
   View, Text, TouchableOpacity, ScrollView,
-  StyleSheet, Linking, ActivityIndicator,
+  StyleSheet, Linking, ActivityIndicator, Alert, Platform,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { supabase } from '../../lib/supabaseClient';
 import {
   DOCUMENT_LABELS, DOCUMENT_TYPES, DocumentType,
-  uploadDocument, saveDocumentUrl,
+  uploadDocument, saveDocumentReplacement,
   pickDocument, pickImageFromCamera,
 } from '../../services/documentService';
-import { resetDocumentStatus } from '../../services/driverService';
+import DateOnlyField, { todayIsoDate, formatIsoDateFr } from '../../components/DateOnlyField';
 import { COLORS } from '../../constants/theme';
 
 type VerificationStatus = 'pending' | 'verified' | 'rejected' | 'expired';
 
 interface DocInfo {
-  docType:        DocumentType;
-  number?:        string;
-  expiry?:        string;
-  status:         VerificationStatus;
-  url?:           string;
+  docType:           DocumentType;
+  number?:           string;
+  expiry?:           string;
+  firstServiceDate?: string;
+  status:            VerificationStatus;
+  url?:              string;
 }
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
 };
+
+const TECHNICAL_INSPECTION_HINT =
+  "NB : véhicule de moins de 5 ans — indiquez la date à laquelle la visite " +
+  "technique deviendra obligatoire (date de 1re mise en circulation + 5 ans) " +
+  "et joignez une copie de la carte grise.";
+
+const REPLACE_VALID_WARNING =
+  "Ce document sera revérifié par l'administrateur. Vous serez indisponible " +
+  "jusqu'à sa validation. Continuer ?";
 
 function statusConfig(s: VerificationStatus) {
   switch (s) {
@@ -39,11 +52,37 @@ function statusConfig(s: VerificationStatus) {
   }
 }
 
+function showMessage(title: string, message: string) {
+  if (Platform.OS === 'web') {
+    window.alert(`${title}\n\n${message}`);
+  } else {
+    Alert.alert(title, message);
+  }
+}
+
+function askConfirmation(message: string): Promise<boolean> {
+  if (Platform.OS === 'web') {
+    return Promise.resolve(window.confirm(message));
+  }
+  return new Promise(resolve => {
+    Alert.alert('Confirmation', message, [
+      { text: 'Annuler',   style: 'cancel', onPress: () => resolve(false) },
+      { text: 'Continuer', onPress: () => resolve(true) },
+    ]);
+  });
+}
+
 export default function DocumentStatusScreen({ navigation }: Props) {
   const [docs,      setDocs]      = useState<DocInfo[]>([]);
   const [driverId,  setDriverId]  = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [uploading, setUploading] = useState<DocumentType | null>(null);
+
+  // Formulaire de remplacement (un seul document à la fois)
+  const [editing,           setEditing]           = useState<DocumentType | null>(null);
+  const [draftExpiry,       setDraftExpiry]       = useState<string | null>(null);
+  const [draftFirstService, setDraftFirstService] = useState<string | null>(null);
+  const [formError,         setFormError]         = useState<string | null>(null);
 
   useEffect(() => {
     loadDriver();
@@ -58,7 +97,8 @@ export default function DocumentStatusScreen({ navigation }: Props) {
       .select(`
         id,
         driver_license_number, driver_license_expiry, driver_license_verified, driver_license_url,
-        vehicle_registration_number, vehicle_registration_verified, vehicle_registration_url,
+        vehicle_registration_number, vehicle_registration_expiry, vehicle_first_service_date,
+        vehicle_registration_verified, vehicle_registration_url,
         insurance_number, insurance_expiry, insurance_verified, insurance_url,
         technical_inspection_expiry, technical_inspection_verified, technical_inspection_url
       `)
@@ -79,10 +119,12 @@ export default function DocumentStatusScreen({ navigation }: Props) {
         url:     driver.driver_license_url as string,
       },
       {
-        docType: DOCUMENT_TYPES.VEHICLE_REGISTRATION,
-        number:  driver.vehicle_registration_number as string,
-        status:  driver.vehicle_registration_verified as VerificationStatus,
-        url:     driver.vehicle_registration_url as string,
+        docType:          DOCUMENT_TYPES.VEHICLE_REGISTRATION,
+        number:           driver.vehicle_registration_number as string,
+        expiry:           driver.vehicle_registration_expiry as string,
+        firstServiceDate: driver.vehicle_first_service_date as string,
+        status:           driver.vehicle_registration_verified as VerificationStatus,
+        url:              driver.vehicle_registration_url as string,
       },
       {
         docType: DOCUMENT_TYPES.INSURANCE,
@@ -101,23 +143,95 @@ export default function DocumentStatusScreen({ navigation }: Props) {
     setIsLoading(false);
   }
 
-  async function handleReupload(docType: DocumentType, fromCamera: boolean) {
+  function openReplaceForm(doc: DocInfo) {
+    setEditing(doc.docType);
+    setDraftExpiry(doc.expiry ? doc.expiry.slice(0, 10) : null);
+    setDraftFirstService(doc.firstServiceDate ? doc.firstServiceDate.slice(0, 10) : null);
+    setFormError(null);
+  }
+
+  function closeReplaceForm() {
+    setEditing(null);
+    setDraftExpiry(null);
+    setDraftFirstService(null);
+    setFormError(null);
+  }
+
+  function validateForm(doc: DocInfo): string | null {
+    const today = todayIsoDate();
+    if (!draftExpiry) {
+      return "Indiquez la nouvelle date d'expiration du document.";
+    }
+    if (draftExpiry < today) {
+      return "La date d'expiration ne peut pas être déjà passée.";
+    }
+    if (doc.docType === DOCUMENT_TYPES.VEHICLE_REGISTRATION) {
+      if (!draftFirstService) {
+        return 'Indiquez la date de 1re mise en circulation du véhicule.';
+      }
+      if (draftFirstService > today) {
+        return 'La date de 1re mise en circulation ne peut pas être dans le futur.';
+      }
+    }
+    return null;
+  }
+
+  async function handleReplace(doc: DocInfo, fromCamera: boolean) {
     if (!driverId) return;
-    console.log('[FTM-DEBUG] Document - Re-upload initiated', { driverId, docType });
 
-    setUploading(docType);
+    const validationError = validateForm(doc);
+    if (validationError) {
+      setFormError(validationError);
+      return;
+    }
+    setFormError(null);
 
+    console.log('[FTM-DEBUG] Document - Replacement initiated', { driverId, docType: doc.docType });
+
+    // Le selecteur de fichier doit s'ouvrir directement apres le clic :
+    // sur le web, une boite de confirmation prealable bloque son ouverture
+    // ("File chooser dialog can only be shown with a user activation").
     const picked = fromCamera ? await pickImageFromCamera() : await pickDocument();
-    if (!picked) { setUploading(null); return; }
+    if (!picked) return;
 
-    await resetDocumentStatus(driverId, docType);
-
-    const result = await uploadDocument(driverId, docType, picked.uri, picked.mimeType);
-    if (!result.error) {
-      await saveDocumentUrl(driverId, docType, result.url!);
+    // Renouvellement anticipe d'un document encore valide : avertissement (C.2),
+    // demande apres le choix du fichier et AVANT tout envoi.
+    if (doc.status === 'verified') {
+      const confirmed = await askConfirmation(REPLACE_VALID_WARNING);
+      if (!confirmed) return;
     }
 
+    setUploading(doc.docType);
+
+    // 1. Envoi du fichier d'abord : en cas d'échec, rien n'est enregistré
+    const result = await uploadDocument(driverId, doc.docType, picked.uri, picked.mimeType);
+    if (result.error || !result.url) {
+      setUploading(null);
+      showMessage('Envoi impossible', result.error ?? "Le fichier n'a pas pu être envoyé.");
+      return;
+    }
+
+    // 2. Puis lien + date(s) + statut 'pending', en une seule écriture
+    const saved = await saveDocumentReplacement(
+      driverId,
+      doc.docType,
+      result.url,
+      draftExpiry as string,
+      doc.docType === DOCUMENT_TYPES.VEHICLE_REGISTRATION ? draftFirstService : null,
+    );
+
     setUploading(null);
+
+    if (saved.error) {
+      showMessage('Enregistrement impossible', saved.error);
+      return;
+    }
+
+    closeReplaceForm();
+    showMessage(
+      'Document envoyé',
+      "Votre document est en attente de validation par l'administrateur.",
+    );
     loadDriver();
   }
 
@@ -134,8 +248,11 @@ export default function DocumentStatusScreen({ navigation }: Props) {
       <Text style={styles.title}>Mes documents</Text>
 
       {docs.map(doc => {
-        const label  = DOCUMENT_LABELS[doc.docType];
-        const config = statusConfig(doc.status);
+        const label     = DOCUMENT_LABELS[doc.docType];
+        const config    = statusConfig(doc.status);
+        const isEditing = editing === doc.docType;
+        const isCarteGrise = doc.docType === DOCUMENT_TYPES.VEHICLE_REGISTRATION;
+        const isVisiteTechnique = doc.docType === DOCUMENT_TYPES.TECHNICAL_INSPECTION;
 
         return (
           <View key={doc.docType} style={styles.card}>
@@ -151,7 +268,12 @@ export default function DocumentStatusScreen({ navigation }: Props) {
             ) : null}
             {doc.expiry ? (
               <Text style={styles.detail}>
-                Expire : {new Date(doc.expiry).toLocaleDateString('fr-FR')}
+                Expire : {formatIsoDateFr(doc.expiry)}
+              </Text>
+            ) : null}
+            {isCarteGrise && doc.firstServiceDate ? (
+              <Text style={styles.detail}>
+                1re mise en circulation : {formatIsoDateFr(doc.firstServiceDate)}
               </Text>
             ) : null}
 
@@ -171,27 +293,62 @@ export default function DocumentStatusScreen({ navigation }: Props) {
                 </TouchableOpacity>
               ) : null}
 
-              {(doc.status === 'rejected' || doc.status === 'expired') ? (
-                uploading === doc.docType ? (
+              {!isEditing && uploading === null ? (
+                <TouchableOpacity
+                  style={styles.reuploadBtn}
+                  onPress={() => openReplaceForm(doc)}
+                >
+                  <Text style={styles.reuploadBtnText}>🔄 Remplacer</Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
+
+            {isEditing ? (
+              <View style={styles.form}>
+                <DateOnlyField
+                  label="Nouvelle date d'expiration"
+                  value={draftExpiry}
+                  onChange={setDraftExpiry}
+                  minDate={todayIsoDate()}
+                  hint={isVisiteTechnique ? TECHNICAL_INSPECTION_HINT : null}
+                />
+                {isCarteGrise ? (
+                  <DateOnlyField
+                    label="Date de 1re mise en circulation"
+                    value={draftFirstService}
+                    onChange={setDraftFirstService}
+                    maxDate={todayIsoDate()}
+                  />
+                ) : null}
+
+                {formError ? <Text style={styles.formError}>{formError}</Text> : null}
+
+                {uploading === doc.docType ? (
                   <ActivityIndicator color={COLORS.primary} />
                 ) : (
                   <View style={styles.actionRow}>
                     <TouchableOpacity
                       style={styles.reuploadBtn}
-                      onPress={() => handleReupload(doc.docType, true)}
+                      onPress={() => handleReplace(doc, true)}
                     >
                       <Text style={styles.reuploadBtnText}>📷 Photo</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={styles.reuploadBtn}
-                      onPress={() => handleReupload(doc.docType, false)}
+                      onPress={() => handleReplace(doc, false)}
                     >
                       <Text style={styles.reuploadBtnText}>📁 Fichier</Text>
                     </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.cancelBtn}
+                      onPress={closeReplaceForm}
+                    >
+                      <Text style={styles.cancelBtnText}>Annuler</Text>
+                    </TouchableOpacity>
                   </View>
-                )
-              ) : null}
-            </View>
+                )}
+              </View>
+            ) : null}
           </View>
         );
       })}
@@ -223,4 +380,14 @@ const styles = StyleSheet.create({
     paddingVertical: 8, paddingHorizontal: 14,
   },
   reuploadBtnText: { color: '#DC3545', fontWeight: '600', fontSize: 13 },
+  form:           {
+    marginTop: 12, paddingTop: 12,
+    borderTopWidth: 1, borderTopColor: '#E0E0E0',
+  },
+  formError:      { color: '#DC3545', fontSize: 13, marginBottom: 6 },
+  cancelBtn:      {
+    borderWidth: 1, borderColor: '#999', borderRadius: 8,
+    paddingVertical: 8, paddingHorizontal: 14,
+  },
+  cancelBtnText:  { color: '#555', fontWeight: '600', fontSize: 13 },
 });

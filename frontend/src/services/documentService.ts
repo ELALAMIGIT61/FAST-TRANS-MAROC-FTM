@@ -188,3 +188,63 @@ export async function pickImageFromCamera(): Promise<{
     name:     'photo.jpg',
   };
 }
+
+/**
+ * Volet 4b-5 — Enregistre le remplacement d'un document en UNE seule ecriture :
+ * lien du fichier + nouvelle date d'expiration (+ date de 1re mise en circulation
+ * pour la carte grise) + statut remis a 'pending'.
+ * A appeler UNIQUEMENT apres un upload reussi.
+ * Cote base (migration 043) : le document repasse en attente et le chauffeur
+ * devient indisponible jusqu'a la validation de l'administrateur.
+ * Verifie qu'une ligne a bien ete modifiee (une ecriture bloquee par RLS
+ * echoue en silence : 0 ligne, aucune erreur).
+ */
+export async function saveDocumentReplacement(
+  driverId: string,
+  docType: DocumentType,
+  url: string,
+  expiry: string,
+  firstServiceDate?: string | null
+): Promise<{ success?: boolean; error?: string }> {
+  const columns: Record<DocumentType, { url: string; expiry: string; verified: string }> = {
+    driver_license:       { url: 'driver_license_url',       expiry: 'driver_license_expiry',       verified: 'driver_license_verified' },
+    vehicle_registration: { url: 'vehicle_registration_url', expiry: 'vehicle_registration_expiry', verified: 'vehicle_registration_verified' },
+    insurance:            { url: 'insurance_url',            expiry: 'insurance_expiry',            verified: 'insurance_verified' },
+    technical_inspection: { url: 'technical_inspection_url', expiry: 'technical_inspection_expiry', verified: 'technical_inspection_verified' },
+  };
+
+  const col = columns[docType];
+  if (!col) {
+    console.log('[FTM-DEBUG] Document - Unknown docType', { docType });
+    return { error: 'Type de document inconnu.' };
+  }
+
+  const update: Record<string, string> = {
+    [col.url]:      url,
+    [col.expiry]:   expiry,
+    [col.verified]: 'pending',
+  };
+  if (docType === 'vehicle_registration' && firstServiceDate) {
+    update.vehicle_first_service_date = firstServiceDate;
+  }
+
+  console.log('[FTM-DEBUG] Document - Saving replacement', { driverId, docType, expiry, firstServiceDate });
+
+  const { data, error } = await supabase
+    .from('drivers')
+    .update(update)
+    .eq('id', driverId)
+    .select('id');
+
+  if (error) {
+    console.log('[FTM-DEBUG] Document - Save replacement error', { error: error.message });
+    return { error: error.message };
+  }
+  if (!data || data.length !== 1) {
+    console.log('[FTM-DEBUG] Document - Save replacement: no row updated', { driverId, docType });
+    return { error: "Le document n'a pas pu etre enregistre (aucune ligne modifiee)." };
+  }
+
+  console.log('[FTM-DEBUG] Document - Replacement saved', { driverId, docType });
+  return { success: true };
+}
