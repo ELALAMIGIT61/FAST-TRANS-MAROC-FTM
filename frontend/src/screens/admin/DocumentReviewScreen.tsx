@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { COLORS } from '../../constants/theme';
 import { getPendingDrivers, verifyDocument, rejectDocument } from '../../services/adminService';
+import { formatIsoDateFr } from '../../components/DateOnlyField';
 
 type DocumentType = 'driver_license' | 'vehicle_registration' | 'insurance' | 'technical_inspection';
 
@@ -32,6 +33,8 @@ interface Driver {
   vehicle_registration_number: string;
   vehicle_registration_verified: string;
   vehicle_registration_url: string;
+  vehicle_registration_expiry: string | null;
+  vehicle_first_service_date: string | null;
   insurance_number: string;
   insurance_expiry: string;
   insurance_verified: string;
@@ -64,6 +67,13 @@ function statusIcon(status: string) {
   return '🟡';
 }
 
+// Volet 4b-5 : date a partir de laquelle la visite technique est exigee
+// (1re mise en circulation + 5 ans), aide au controle de l'administrateur.
+function inspectionRequiredFrom(firstServiceDate: string): string {
+  const [y, m, d] = firstServiceDate.slice(0, 10).split('-');
+  return `${d}/${m}/${Number(y) + 5}`;
+}
+
 function statusLabel(status: string) {
   if (status === 'verified') return 'Vérifié';
   if (status === 'rejected') return 'Rejeté';
@@ -79,14 +89,41 @@ export default function DocumentReviewScreen() {
   const [rejectTarget, setRejectTarget] = useState<DocumentType | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const loadDrivers = useCallback(async () => {
+  const loadDrivers = useCallback(async (): Promise<Driver[]> => {
     const result = await getPendingDrivers();
+    let list: Driver[] = [];
     if (result.success && result.drivers) {
-      setDrivers(result.drivers as Driver[]);
+      list = result.drivers as Driver[];
+      setDrivers(list);
     }
     setLoading(false);
     setRefreshing(false);
+    return list;
   }, []);
+
+  // Volet 4b-5 : rafraichit la fiche ouverte a partir de la liste FRAICHE
+  // (l'ancien code relisait l'ancienne liste : la fiche ne se mettait pas a jour).
+  // Si le chauffeur n'est plus en attente, il sort de la liste : on met a jour
+  // la fiche localement avec le nouveau statut.
+  const refreshSelected = (
+    driver: Driver,
+    list: Driver[],
+    docType: DocumentType,
+    newStatus: 'verified' | 'rejected',
+  ) => {
+    const fresh = list.find(d => d.id === driver.id);
+    if (fresh) {
+      setSelectedDriver(fresh);
+      return;
+    }
+    const local = { ...driver, [`${docType}_verified`]: newStatus } as Driver;
+    local.is_verified =
+      local.driver_license_verified === 'verified' &&
+      local.vehicle_registration_verified === 'verified' &&
+      local.insurance_verified === 'verified' &&
+      local.technical_inspection_verified === 'verified';
+    setSelectedDriver(local);
+  };
 
   useEffect(() => { loadDrivers(); }, [loadDrivers]);
 
@@ -99,11 +136,8 @@ export default function DocumentReviewScreen() {
     setIsProcessing(true);
     const result = await verifyDocument(driver.id, docType, driver.profile_id);
     if (result.success) {
-      await loadDrivers();
-      if (selectedDriver) {
-        const updated = drivers.find(d => d.id === driver.id);
-        if (updated) setSelectedDriver(updated);
-      }
+      const list = await loadDrivers();
+      refreshSelected(driver, list, docType, 'verified');
     } else {
       Alert.alert('Erreur', result.error ?? 'Une erreur est survenue');
     }
@@ -118,9 +152,11 @@ export default function DocumentReviewScreen() {
     setIsProcessing(true);
     const result = await rejectDocument(selectedDriver.id, rejectTarget, selectedDriver.profile_id, rejectReason.trim());
     if (result.success) {
+      const rejectedDoc = rejectTarget;
       setRejectTarget(null);
       setRejectReason('');
-      await loadDrivers();
+      const list = await loadDrivers();
+      refreshSelected(selectedDriver, list, rejectedDoc, 'rejected');
     } else {
       Alert.alert('Erreur', result.error ?? 'Une erreur est survenue');
     }
@@ -129,7 +165,7 @@ export default function DocumentReviewScreen() {
 
   const docs: { key: DocumentType; label: string; verifiedField: string; urlField: string; numberField: string; expiryField: string }[] = [
     { key: 'driver_license', label: DOC_LABELS.driver_license, verifiedField: 'driver_license_verified', urlField: 'driver_license_url', numberField: 'driver_license_number', expiryField: 'driver_license_expiry' },
-    { key: 'vehicle_registration', label: DOC_LABELS.vehicle_registration, verifiedField: 'vehicle_registration_verified', urlField: 'vehicle_registration_url', numberField: 'vehicle_registration_number', expiryField: '' },
+    { key: 'vehicle_registration', label: DOC_LABELS.vehicle_registration, verifiedField: 'vehicle_registration_verified', urlField: 'vehicle_registration_url', numberField: 'vehicle_registration_number', expiryField: 'vehicle_registration_expiry' },
     { key: 'insurance', label: DOC_LABELS.insurance, verifiedField: 'insurance_verified', urlField: 'insurance_url', numberField: 'insurance_number', expiryField: 'insurance_expiry' },
     { key: 'technical_inspection', label: DOC_LABELS.technical_inspection, verifiedField: 'technical_inspection_verified', urlField: 'technical_inspection_url', numberField: '', expiryField: 'technical_inspection_expiry' },
   ];
@@ -200,7 +236,17 @@ export default function DocumentReviewScreen() {
                   <Text style={styles.docSectionTitle}>── {doc.label} ──</Text>
                   <Text style={styles.docStatus}>{statusIcon(status)} {statusLabel(status)}</Text>
                   {number ? <Text style={styles.docInfo}>N° : {number}</Text> : null}
-                  {expiry ? <Text style={styles.docInfo}>Expire : {new Date(expiry).toLocaleDateString('fr-MA')}</Text> : null}
+                  {expiry ? <Text style={styles.docInfo}>Expire : {formatIsoDateFr(expiry)}</Text> : null}
+                  {doc.key === 'vehicle_registration' && selectedDriver.vehicle_first_service_date ? (
+                    <Text style={styles.docInfo}>
+                      1re mise en circulation : {formatIsoDateFr(selectedDriver.vehicle_first_service_date)}
+                    </Text>
+                  ) : null}
+                  {doc.key === 'technical_inspection' && selectedDriver.vehicle_first_service_date ? (
+                    <Text style={styles.docHint}>
+                      Véhicule mis en circulation le {formatIsoDateFr(selectedDriver.vehicle_first_service_date)} → visite technique exigée à partir du {inspectionRequiredFrom(selectedDriver.vehicle_first_service_date)}
+                    </Text>
+                  ) : null}
                   {url ? (
                     <TouchableOpacity onPress={() => Linking.openURL(url)}>
                       <Text style={styles.viewDocBtn}>🔍 Voir le document</Text>
@@ -301,6 +347,7 @@ const styles = StyleSheet.create({
   docSectionTitle: { fontSize: 14, fontWeight: '700', color: '#333', marginBottom: 6 },
   docStatus: { fontSize: 13, color: '#555', marginBottom: 4 },
   docInfo: { fontSize: 13, color: '#444', marginBottom: 2 },
+  docHint: { fontSize: 12, color: '#555', fontStyle: 'italic', marginTop: 2, marginBottom: 2 },
   viewDocBtn: { color: COLORS.primary, fontWeight: '600', fontSize: 13, marginTop: 6 },
   actionRow: { flexDirection: 'row', gap: 10, marginTop: 10 },
   actionBtn: {

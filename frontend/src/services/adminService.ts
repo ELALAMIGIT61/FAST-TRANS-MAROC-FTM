@@ -29,6 +29,8 @@ export async function getPendingDrivers() {
       vehicle_registration_number,
       vehicle_registration_verified,
       vehicle_registration_url,
+      vehicle_registration_expiry,
+      vehicle_first_service_date,
       insurance_number,
       insurance_expiry,
       insurance_verified,
