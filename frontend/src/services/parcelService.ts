@@ -192,11 +192,11 @@ export async function getParcelByTrackingNumber(
     trackingNumber: normalized,
   });
 
+  // Volet 5 lot D-bis : la vue n'est plus lisible directement ; la fonction
+  // get_public_parcel_tracking ne renvoie que le colis demande.
   const { data, error } = await supabase
-    .from('public_parcel_tracking')
-    .select('*')
-    .eq('tracking_number', normalized)
-    .single();
+    .rpc('get_public_parcel_tracking', { p_tracking_number: normalized })
+    .single<any>();
 
   if (error) {
     console.log('[FTM-DEBUG] Parcel - Tracking fetch error', {
