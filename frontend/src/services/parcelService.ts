@@ -156,13 +156,11 @@ async function notifyRecipientBySMS(parcel: any, mission: any): Promise<void> {
   });
 
   try {
+    // Volet 5 lot D-bis : la fonction serveur lit destinataire, telephone et
+    // villes dans la fiche du colis ; seul le numero de suivi est transmis.
     const { error } = await supabase.functions.invoke('send-tracking-sms', {
       body: {
-        to: parcel.recipient_phone,
-        recipient_name: parcel.recipient_name,
         tracking_number: parcel.tracking_number,
-        pickup_city: mission.pickup_city,
-        dropoff_city: mission.dropoff_city,
       },
     });
 
