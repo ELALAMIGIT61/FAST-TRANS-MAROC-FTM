@@ -241,6 +241,22 @@ export async function notifyDriverOfferNotSelected(
   );
 }
 
+export async function notifyClientOfferWithdrawn(
+  clientProfileId: string,
+  mission: { id: string; mission_number: string }
+) {
+  console.log('[FTM-DEBUG] Push - Notify client offer withdrawn', {
+    clientProfileId, missionId: mission.id,
+  });
+  return insertNotification(
+    clientProfileId,
+    'offer_update',
+    'ℹ️ Offre retirée',
+    `Le chauffeur a retiré son offre pour la mission ${mission.mission_number}. Vous pouvez choisir une autre offre.`,
+    { mission_id: mission.id, screen: 'MissionOfferScreen' }
+  );
+}
+
 // ─── CANAL VOCAL ───────────────────────────────────────────────────────────────
 
 export async function notifyVoiceChannelOpened(

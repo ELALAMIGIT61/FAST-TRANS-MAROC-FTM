@@ -10,6 +10,12 @@ export const COLORS = {
   white:      '#FFFFFF',
   textDark:   '#1A1A2E',
   textMuted:  '#6C757D',
+  // Volet 5 lot E (14/10/2026) : couleurs utilisees par 12 ecrans mais jamais
+  // definies (affichage par defaut et 113 erreurs TypeScript).
+  text:          '#1A1A2E', // = textDark — texte principal
+  textSecondary: '#6C757D', // = textMuted — texte secondaire
+  surface:       '#FFFFFF', // fond des cartes
+  border:        '#DEE2E6', // bordures (gris clair)
 } as const;
  
 export const FONTS = {

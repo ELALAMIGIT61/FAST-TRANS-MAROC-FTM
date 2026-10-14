@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabaseClient';
-import { notifyMissionStarted, notifyMissionAccepted, notifyMissionCompleted, notifyMissionCancelled, notifyClientOfferUpdate, notifyDriverCounterOffer, notifyOfferAcceptancePending, notifyDriverOfferNotSelected } from './notificationTemplates';
+import { notifyMissionStarted, notifyMissionAccepted, notifyMissionCompleted, notifyMissionCancelled, notifyClientOfferUpdate, notifyDriverCounterOffer, notifyOfferAcceptancePending, notifyDriverOfferNotSelected, notifyClientOfferWithdrawn } from './notificationTemplates';
 import { insertNotification } from './pushNotificationService';
 
 export type VehicleCategory = 'vul' | 'n2_medium' | 'n2_large';
@@ -671,32 +671,9 @@ export async function acceptMissionOffer(
 
   try {
     if (data.status === 'accepted') {
-      // Le trigger AFTER UPDATE sync_mission_on_offer_accepted s'exécute de façon
-      // synchrone dans la même transaction SQL, avant que cette requête ne retourne
-      // son résultat — les autres offres de la mission sont donc déjà basculées à
-      // 'not_selected' au moment où on les relit ici. Comportement à confirmer lors
-      // du test d'exécution réel de cette étape.
-      const { data: losingOffers } = await supabase
-        .from('mission_offers')
-        .select('driver_id')
-        .eq('mission_id', data.mission_id)
-        .eq('status', 'not_selected');
-
-      if (losingOffers) {
-        for (const losingOffer of losingOffers) {
-          try {
-            await notifyDriverOfferNotSelected(losingOffer.driver_id, {
-              id: mission?.id ?? data.mission_id,
-              mission_number: mission?.mission_number ?? '',
-            });
-          } catch (notifyError) {
-            console.log('[FTM-DEBUG] MissionOffer - Notify not-selected failed for one driver (non-blocking)', {
-              driverId: losingOffer.driver_id,
-              notifyError,
-            });
-          }
-        }
-      }
+      // Volet 5 lot E (14/10/2026) : les chauffeurs non retenus sont notifies
+      // par la base elle-meme (trigger sync_mission_on_offer_accepted, migration
+      // 051), quel que soit le dernier a accepter. Rien a faire ici.
     } else if (acceptedBy === 'client') {
       // Le client vient d'accepter : on notifie le chauffeur, dont il faut
       // résoudre le profileId via la jointure drivers -> profiles.
@@ -823,7 +800,8 @@ export async function rejectOfferAcceptance(
 
   try {
     if (rejectedBy === 'driver' && mission?.client_id) {
-      await notifyDriverOfferNotSelected(data.driver_id, {
+      // Volet 5 lot E (14/10/2026) : c'est le client qui doit etre prevenu.
+      await notifyClientOfferWithdrawn(mission.client_id, {
         id: mission.id,
         mission_number: mission.mission_number,
       });
