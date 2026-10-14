@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabaseClient';
-import { notifyMissionStarted, notifyMissionAccepted, notifyMissionCompleted, notifyMissionCancelled, notifyClientOfferUpdate, notifyDriverCounterOffer, notifyOfferAcceptancePending, notifyDriverOfferNotSelected, notifyClientOfferWithdrawn } from './notificationTemplates';
+import { notifyMissionStarted, notifyMissionAccepted, notifyMissionCompleted, notifyMissionCancelled } from './notificationTemplates';
 import { insertNotification } from './pushNotificationService';
 
 export type VehicleCategory = 'vul' | 'n2_medium' | 'n2_large';
@@ -538,25 +538,8 @@ export async function createMissionOffer(
     offeredPrice: data.offered_price,
   });
 
-  if (mission.client_id) {
-    try {
-      const { data: driverProfile } = await supabase
-        .from('drivers')
-        .select('profiles ( full_name )')
-        .eq('id', driverId)
-        .single();
-      const driverName = (driverProfile?.profiles as { full_name?: string } | null)?.full_name ?? 'Un chauffeur';
-      await notifyClientOfferUpdate(
-        mission.client_id,
-        { id: mission.id, mission_number: mission.mission_number },
-        driverName,
-        offeredPrice,
-        1
-      );
-    } catch (notifyError) {
-      console.log('[FTM-DEBUG] MissionOffer - Notify client (create) failed (non-blocking)', { notifyError });
-    }
-  }
+  // Volet 5 lot E-ter (14/10/2026) : le client est notifie par la base
+  // (trigger notify_mission_offer_events, migration 053).
 
   return { success: true, offer: data as MissionOffer };
 }
@@ -602,33 +585,8 @@ export async function counterMissionOffer(
     roundNumber: data.round_number,
   });
 
-  const mission = data.missions as { id: string; mission_number: string; client_id: string | null } | null;
-
-  try {
-    if (actor === 'client' && data.driver_id) {
-      await notifyDriverCounterOffer(
-        data.driver_id,
-        { id: mission?.id ?? data.mission_id, mission_number: mission?.mission_number ?? '' },
-        newPrice
-      );
-    } else if (actor === 'driver' && mission?.client_id) {
-      const { data: driverProfile } = await supabase
-        .from('drivers')
-        .select('profiles ( full_name )')
-        .eq('id', data.driver_id)
-        .single();
-      const driverName = (driverProfile?.profiles as { full_name?: string } | null)?.full_name ?? 'Un chauffeur';
-      await notifyClientOfferUpdate(
-        mission.client_id,
-        { id: mission.id, mission_number: mission.mission_number },
-        driverName,
-        newPrice,
-        2
-      );
-    }
-  } catch (notifyError) {
-    console.log('[FTM-DEBUG] MissionOffer - Notify counter failed (non-blocking)', { notifyError });
-  }
+  // Volet 5 lot E-ter (14/10/2026) : l'autre partie est notifiee par la base
+  // (trigger notify_mission_offer_events, migration 053).
 
   return { success: true, offer: data as unknown as MissionOffer };
 }
@@ -669,39 +627,9 @@ export async function acceptMissionOffer(
 
   const mission = data.missions as { id: string; mission_number: string; client_id: string | null; status: string; pickup_address: string; pickup_city: string; dropoff_address: string; dropoff_city: string; driver_id: string | null; vehicle_category: string; actual_pickup_time: string | null } | null;
 
-  try {
-    if (data.status === 'accepted') {
-      // Volet 5 lot E (14/10/2026) : les chauffeurs non retenus sont notifies
-      // par la base elle-meme (trigger sync_mission_on_offer_accepted, migration
-      // 051), quel que soit le dernier a accepter. Rien a faire ici.
-    } else if (acceptedBy === 'client') {
-      // Le client vient d'accepter : on notifie le chauffeur, dont il faut
-      // résoudre le profileId via la jointure drivers -> profiles.
-      const { data: driverProfile } = await supabase
-        .from('drivers')
-        .select('profiles ( id )')
-        .eq('id', data.driver_id)
-        .single();
-      const driverProfileId = (driverProfile?.profiles as { id?: string } | null)?.id;
-      if (driverProfileId) {
-        await notifyOfferAcceptancePending(
-          driverProfileId,
-          { id: mission?.id ?? data.mission_id, mission_number: mission?.mission_number ?? '' },
-          data.offered_price
-        );
-      }
-    } else if (acceptedBy === 'driver' && mission?.client_id) {
-      // Le chauffeur vient d'accepter : on notifie directement le client,
-      // dont le profileId est déjà disponible via la jointure missions.
-      await notifyOfferAcceptancePending(
-        mission.client_id,
-        { id: mission.id, mission_number: mission.mission_number },
-        data.offered_price
-      );
-    }
-  } catch (notifyError) {
-    console.log('[FTM-DEBUG] MissionOffer - Notify acceptance failed (non-blocking)', { notifyError });
-  }
+  // Volet 5 lot E-ter (14/10/2026) : toutes les notifications d'acceptation
+  // (confirmation attendue, offres non retenues) sont deposees par la base
+  // (migrations 051 et 053).
 
   return { success: true, offer: data as unknown as MissionOffer, mission: mission as Record<string, unknown> | null };
 }
@@ -796,32 +724,8 @@ export async function rejectOfferAcceptance(
     rejectedBy,
   });
 
-  const mission = data.missions as { id: string; mission_number: string; client_id: string | null } | null;
-
-  try {
-    if (rejectedBy === 'driver' && mission?.client_id) {
-      // Volet 5 lot E (14/10/2026) : c'est le client qui doit etre prevenu.
-      await notifyClientOfferWithdrawn(mission.client_id, {
-        id: mission.id,
-        mission_number: mission.mission_number,
-      });
-    } else if (rejectedBy === 'client') {
-      const { data: driverProfile } = await supabase
-        .from('drivers')
-        .select('profiles ( id )')
-        .eq('id', data.driver_id)
-        .single();
-      const driverProfileId = (driverProfile?.profiles as { id?: string } | null)?.id;
-      if (driverProfileId) {
-        await notifyDriverOfferNotSelected(driverProfileId, {
-          id: mission?.id ?? data.mission_id,
-          mission_number: mission?.mission_number ?? '',
-        });
-      }
-    }
-  } catch (notifyError) {
-    console.log('[FTM-DEBUG] MissionOffer - Notify rejection failed (non-blocking)', { notifyError });
-  }
+  // Volet 5 lot E-ter (14/10/2026) : l'autre partie est notifiee par la base
+  // (trigger notify_mission_offer_events, migration 053).
 
   return { success: true, offer: data as unknown as MissionOffer };
 }
