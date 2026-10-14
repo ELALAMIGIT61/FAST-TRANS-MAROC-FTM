@@ -9,6 +9,8 @@ import {
   submitClientCounterOffer,
   getMissionById,
   getClientOfferDrivers,
+  getMissionOffersForClient,
+  getDriverOfferForMission,
 } from '../../services/missionService';
 import type { MissionOffer, OfferDriverInfo } from '../../services/missionService';
 import {
@@ -127,6 +129,30 @@ export default function MissionOfferScreen({ missionId, role, driverId, onMissio
     return () => {
       unsubscribeChannel(channelRef.current);
     };
+  }, [role, missionId, driverId]);
+
+  // Volet 5 lot E-bis : charger les offres deja existantes a l'ouverture ;
+  // l'ecoute en direct prend ensuite le relais pour les changements.
+  useEffect(() => {
+    let cancelled = false;
+    if (role === 'client') {
+      getMissionOffersForClient(missionId).then((result) => {
+        if (cancelled || !result.offers) return;
+        const loaded = result.offers;
+        setClientOffers((prev) => {
+          const byId = new Map(prev.map((o) => [o.id, o]));
+          loaded.forEach((o) => { if (!byId.has(o.id)) byId.set(o.id, o); });
+          return Array.from(byId.values());
+        });
+      });
+    } else if (role === 'driver' && driverId) {
+      getDriverOfferForMission(missionId, driverId).then((result) => {
+        if (cancelled || !result.offer) return;
+        const loaded = result.offer;
+        setDriverOffer((prev) => prev ?? loaded);
+      });
+    }
+    return () => { cancelled = true; };
   }, [role, missionId, driverId]);
 
   useEffect(() => {

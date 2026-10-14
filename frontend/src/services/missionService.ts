@@ -907,3 +907,42 @@ export async function getClientOfferDrivers(
   }
   return { drivers: (data as OfferDriverInfo[]) ?? [] };
 }
+
+// ─── Volet 5 lot E-bis (14/10/2026) : chargement initial des offres ──────────
+// L'ecran des offres ne recevait que les changements en direct : les offres
+// deja existantes a son ouverture n'apparaissaient jamais.
+
+export async function getMissionOffersForClient(
+  missionId: string
+): Promise<{ offers?: MissionOffer[]; error?: string }> {
+  console.log('[FTM-DEBUG] MissionOffer - Loading offers (client)', { missionId });
+  const { data, error } = await supabase
+    .from('mission_offers')
+    .select('*')
+    .eq('mission_id', missionId)
+    .order('created_at', { ascending: true });
+  if (error) {
+    console.log('[FTM-DEBUG] MissionOffer - Load offers error (client)', { error: error.message });
+    return { error: error.message };
+  }
+  return { offers: (data ?? []) as MissionOffer[] };
+}
+
+export async function getDriverOfferForMission(
+  missionId: string,
+  driverId: string
+): Promise<{ offer?: MissionOffer | null; error?: string }> {
+  console.log('[FTM-DEBUG] MissionOffer - Loading own offer (driver)', { missionId, driverId });
+  const { data, error } = await supabase
+    .from('mission_offers')
+    .select('*')
+    .eq('mission_id', missionId)
+    .eq('driver_id', driverId)
+    .order('created_at', { ascending: false })
+    .limit(1);
+  if (error) {
+    console.log('[FTM-DEBUG] MissionOffer - Load own offer error (driver)', { error: error.message });
+    return { error: error.message };
+  }
+  return { offer: ((data ?? [])[0] as MissionOffer | undefined) ?? null };
+}
