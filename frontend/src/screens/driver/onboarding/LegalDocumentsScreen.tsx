@@ -4,6 +4,7 @@
 // saisie des dates sans decalage de fuseau (DateOnlyField), NB visite technique.
 
 import React, { useState } from 'react';
+import BackButton from '../../../components/BackButton';
 import {
   View, Text, TextInput, TouchableOpacity,
   ScrollView, StyleSheet, ActivityIndicator, Alert, Platform,
@@ -118,6 +119,7 @@ export default function LegalDocumentsScreen({ navigation, route }: Props) {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
+      <BackButton />
       <Text style={styles.step}>Étape 2 sur 4</Text>
       <View style={styles.progressBar}>
         <View style={[styles.progressFill, { width: '50%' }]} />

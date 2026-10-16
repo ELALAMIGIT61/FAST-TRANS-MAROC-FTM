@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import BackButton from '../../components/BackButton';
 import {
   ActivityIndicator,
   Alert,
@@ -96,6 +97,7 @@ export default function BankReconciliationScreen() {
       style={styles.container}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
     >
+      <BackButton />
       <Text style={styles.title}>🏦 Rapprochement bancaire</Text>
       <Text style={styles.subtitle}>
         Paiements deja credites, en attente de verification sur le releve bancaire reel.

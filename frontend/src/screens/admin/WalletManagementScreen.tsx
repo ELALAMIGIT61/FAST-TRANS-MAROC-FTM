@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import BackButton from '../../components/BackButton';
 import {
   View,
   Text,
@@ -130,6 +131,7 @@ export default function WalletManagementScreen() {
 
   return (
     <View style={styles.container}>
+      <BackButton />
       <TextInput
         style={styles.searchInput}
         placeholder="Recherche par nom / téléphone"

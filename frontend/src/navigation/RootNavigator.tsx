@@ -45,6 +45,7 @@ import WalletManagementScreen from "../screens/admin/WalletManagementScreen";
 import PendingTransactionsScreen from "../screens/admin/PendingTransactionsScreen";
 import BankReconciliationScreen from "../screens/admin/BankReconciliationScreen";
 import NotificationCenterScreen from "../screens/notifications/NotificationCenterScreen";
+import AccountSuspendedScreen from "../screens/auth/AccountSuspendedScreen";
 
 import type { AppRoute } from "../types/database";
 
@@ -356,6 +357,11 @@ export default function RootNavigator() {
   const showDriverOnboarding = initialRoute === "DriverOnboardingStack";
   const showDriverPending = initialRoute === "DriverPendingStack";
   const showAdmin = initialRoute === "AdminStack";
+
+  // Session 2.21 : compte suspendu -> ecran dedie (auparavant ecran blanc)
+  if (initialRoute === "AccountSuspendedScreen") {
+    return <AccountSuspendedScreen />;
+  }
 
   return (
     <NavigationContainer>

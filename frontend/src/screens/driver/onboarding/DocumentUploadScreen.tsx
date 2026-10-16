@@ -2,6 +2,7 @@
 // Fast Trans Maroc — P2 — Step 3
 
 import React, { useState } from 'react';
+import BackButton from '../../../components/BackButton';
 import {
   View, Text, TouchableOpacity, ScrollView,
   StyleSheet, ActivityIndicator,
@@ -88,6 +89,7 @@ export default function DocumentUploadScreen({ navigation, route }: Props) {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
+      <BackButton />
       <Text style={styles.step}>Étape 3 sur 4</Text>
       <View style={styles.progressBar}>
         <View style={[styles.progressFill, { width: '75%' }]} />

@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import BackButton from '../../components/BackButton';
 import {
   View,
   Text,
@@ -197,6 +198,7 @@ export default function DocumentReviewScreen() {
 
   return (
     <View style={styles.container}>
+      <BackButton />
       <FlatList
         data={drivers}
         keyExtractor={item => item.id}

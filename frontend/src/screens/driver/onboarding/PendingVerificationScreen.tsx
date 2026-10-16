@@ -4,6 +4,7 @@
 // refuse ou expire, envoyer les documents d'un nouveau vehicule) pendant l'attente.
 
 import React, { useEffect, useState } from 'react';
+import LogoutButton from '../../../components/LogoutButton';
 import {
   View, Text, TouchableOpacity, ScrollView,
   StyleSheet, Alert, Platform,
@@ -97,6 +98,7 @@ export default function PendingVerificationScreen({ navigation, route }: Props) 
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
+      <LogoutButton />
       <Text style={styles.step}>Étape 4 sur 4</Text>
       <View style={styles.progressBar}>
         <View style={[styles.progressFill, { width: '100%' }]} />

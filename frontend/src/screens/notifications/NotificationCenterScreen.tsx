@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import BackButton from '../../components/BackButton';
 import {
   View,
   Text,
@@ -123,6 +124,7 @@ export default function NotificationCenterScreen() {
   if (!profileId) {
     return (
       <View style={styles.center}>
+        <BackButton />
         <Text style={styles.emptyText}>Impossible de charger vos notifications.</Text>
       </View>
     );
@@ -130,6 +132,7 @@ export default function NotificationCenterScreen() {
 
   return (
     <View style={styles.container}>
+      <BackButton />
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Notifications</Text>

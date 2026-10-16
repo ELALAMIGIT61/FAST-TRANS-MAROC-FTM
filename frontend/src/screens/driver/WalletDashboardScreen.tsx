@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import BackButton from '../../components/BackButton';
 import {
   ActivityIndicator,
   RefreshControl,
@@ -99,6 +100,7 @@ export default function WalletDashboardScreen({ route }: NativeStackScreenProps<
   if (!dashboard) {
     return (
       <View style={styles.centered}>
+        <BackButton />
         <Text style={styles.errorText}>Impossible de charger le wallet.</Text>
       </View>
     );
@@ -117,6 +119,7 @@ export default function WalletDashboardScreen({ route }: NativeStackScreenProps<
       contentContainerStyle={styles.content}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
     >
+      <BackButton />
       <Text style={styles.screenTitle}>💰 Mon Wallet</Text>
 
       <View style={styles.balanceCard}>

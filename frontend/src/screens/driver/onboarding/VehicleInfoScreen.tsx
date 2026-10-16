@@ -1,7 +1,8 @@
 // /screens/driver/onboarding/VehicleInfoScreen.tsx
 // Fast Trans Maroc — P2 — Step 1
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import LogoutButton from '../../../components/LogoutButton';
 import {
   View, Text, TextInput, TouchableOpacity,
   ScrollView, StyleSheet, ActivityIndicator,
@@ -49,6 +50,32 @@ export default function VehicleInfoScreen({ navigation }: Props) {
   const [licensePlate,    setLicensePlate]    = useState('');
   const [capacityKg,      setCapacityKg]      = useState('');
   const [isLoading,       setIsLoading]       = useState(false);
+  // Session 2.21 : fiche chauffeur deja creee (retour depuis l'etape 2,
+  // ou inscription reprise apres avoir quitte l'application)
+  const [existingDriverId, setExistingDriverId] = useState<string | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data: profile } = await supabase
+        .from('profiles').select('id').eq('user_id', user.id).maybeSingle();
+      if (!profile) return;
+      const { data: driver } = await supabase
+        .from('drivers')
+        .select('id, vehicle_category, vehicle_brand, vehicle_model, license_plate, vehicle_capacity_kg')
+        .eq('profile_id', profile.id)
+        .maybeSingle();
+      if (!driver) return;
+      console.log('[FTM-DEBUG] Onboarding - Existing driver found, form prefilled', { driverId: driver.id });
+      setExistingDriverId(driver.id as string);
+      setVehicleCategory((driver.vehicle_category as VehicleCategory) ?? null);
+      setVehicleBrand((driver.vehicle_brand as string) ?? '');
+      setVehicleModel((driver.vehicle_model as string) ?? '');
+      setLicensePlate((driver.license_plate as string) ?? '');
+      setCapacityKg(driver.vehicle_capacity_kg ? String(driver.vehicle_capacity_kg) : '');
+    })();
+  }, []);
 
   const isFormValid =
     vehicleCategory !== null &&
@@ -58,6 +85,31 @@ export default function VehicleInfoScreen({ navigation }: Props) {
   async function handleNext() {
     if (!isFormValid) return;
     setIsLoading(true);
+
+    // Session 2.21 : fiche deja existante -> mise a jour du vehicule
+    // (une seule fiche chauffeur par compte : une seconde creation echouerait)
+    if (existingDriverId) {
+      const { error } = await supabase
+        .from('drivers')
+        .update({
+          vehicle_category:    vehicleCategory!,
+          vehicle_brand:       vehicleBrand.trim(),
+          vehicle_model:       vehicleModel.trim(),
+          license_plate:       licensePlate.trim().toUpperCase(),
+          vehicle_capacity_kg: capacityKg ? parseInt(capacityKg, 10) : 0,
+        })
+        .eq('id', existingDriverId);
+      setIsLoading(false);
+      if (error) {
+        console.log('[FTM-DEBUG] Onboarding - Vehicle update error', { error: error.message });
+        showMessage('Erreur', error.code === '23505'
+          ? "Cette plaque d'immatriculation est déjà enregistrée."
+          : error.message);
+        return;
+      }
+      navigation.navigate('LegalDocuments', { driverId: existingDriverId });
+      return;
+    }
 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setIsLoading(false); return; }
@@ -85,11 +137,13 @@ export default function VehicleInfoScreen({ navigation }: Props) {
       return;
     }
 
+    setExistingDriverId((result.driver as any).id);
     navigation.navigate('LegalDocuments', { driverId: (result.driver as any).id });
   }
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
+      <LogoutButton />
       <Text style={styles.step}>Étape 1 sur 4</Text>
       <View style={styles.progressBar}>
         <View style={[styles.progressFill, { width: '25%' }]} />

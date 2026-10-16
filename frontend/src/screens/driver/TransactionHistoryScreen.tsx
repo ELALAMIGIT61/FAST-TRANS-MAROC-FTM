@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import BackButton from '../../components/BackButton';
 import {
   ActivityIndicator,
   FlatList,
@@ -230,6 +231,7 @@ export default function TransactionHistoryScreen({
 
   return (
     <View style={styles.container}>
+      <BackButton />
       {/* Filter tabs */}
       <View style={styles.filterRow}>
         {FILTERS.map((f) => (

@@ -1,4 +1,7 @@
 import React from 'react';
+import { View } from 'react-native';
+import { COLORS } from '../../constants/theme';
+import BackButton from '../../components/BackButton';
 import MissionOfferScreen from '../driver/MissionOfferScreen';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
@@ -13,12 +16,15 @@ export default function ClientMissionOfferScreen({ route, navigation }: Props) {
   const { missionId } = route.params;
 
   return (
-    <MissionOfferScreen
-      missionId={missionId}
-      role="client"
-      onMissionResolved={(mission) => {
-        navigation.replace('MissionTracking', { mission });
-      }}
-    />
+    <View style={{ flex: 1, backgroundColor: COLORS.background }}>
+      <BackButton />
+      <MissionOfferScreen
+        missionId={missionId}
+        role="client"
+        onMissionResolved={(mission) => {
+          navigation.replace('MissionTracking', { mission });
+        }}
+      />
+    </View>
   );
 }

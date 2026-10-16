@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import BackButton from '../../components/BackButton';
 import {
   ActivityIndicator,
   Alert,
@@ -118,6 +119,7 @@ export default function PendingTransactionsScreen() {
       style={styles.container}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
     >
+      <BackButton />
       <Text style={styles.title}>💰 Demandes en attente</Text>
       {transactions.length === 0 && (
         <Text style={styles.emptyText}>Aucune demande en attente.</Text>
