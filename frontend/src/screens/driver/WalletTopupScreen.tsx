@@ -11,6 +11,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { showMessage } from '../../utils/dialogs';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
@@ -81,7 +82,7 @@ export default function WalletTopupScreen() {
       setIsUploadingProof(false);
       if (uploadResult.error) {
         setIsLoading(false);
-        Alert.alert('Erreur', uploadResult.error);
+        showMessage('Erreur', uploadResult.error);
         return;
       }
       proofUrl = uploadResult.url ?? null;
@@ -90,7 +91,7 @@ export default function WalletTopupScreen() {
     setIsLoading(false);
 
     if (result.error) {
-      Alert.alert('Erreur', result.error);
+      showMessage('Erreur', result.error);
       return;
     }
 

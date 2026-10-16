@@ -8,6 +8,7 @@ import {
   Alert,
   Platform,
 } from 'react-native';
+import { showMessage, confirmAction } from '../../utils/dialogs';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../constants/theme';
 import { startMission, completeMission, getDriverProfileId, chargeCommissionAnticipated } from '../../services/missionService';
 import { requestRefund } from '../../services/walletService';
@@ -105,30 +106,24 @@ export default function MissionActiveScreen({ route, navigation }: Props) {
   const handleStart = async () => {
     const result = await startMission(mission.id, mission.driver_id ?? '');
     if (result.error) {
-      Alert.alert('Erreur', result.error);
+      showMessage('Erreur', result.error);
     } else if (result.mission) {
       setMission(result.mission);
     }
   };
 
   const handleComplete = async () => {
-    Alert.alert('Terminer la mission', 'Confirmer la livraison ?', [
-      { text: 'Annuler', style: 'cancel' },
-      {
-        text: 'Confirmer',
-        onPress: async () => {
-          const result = await completeMission(mission.id, mission.driver_id ?? '');
-          if (result.error) {
-            Alert.alert('Erreur', result.error);
-          } else {
-            navigation.replace('DriverHome', {
-              driverId: mission.driver_id ?? '',
-              vehicleCategory: mission.vehicle_category,
-            });
-          }
-        },
-      },
-    ]);
+    const confirmed = await confirmAction('Terminer la mission', 'Confirmer la livraison ?');
+    if (!confirmed) return;
+    const result = await completeMission(mission.id, mission.driver_id ?? '');
+    if (result.error) {
+      showMessage('Erreur', result.error);
+    } else {
+      navigation.replace('DriverHome', {
+        driverId: mission.driver_id ?? '',
+        vehicleCategory: mission.vehicle_category,
+      });
+    }
   };
 
   if (mission.status === 'accepted') {
@@ -146,7 +141,7 @@ export default function MissionActiveScreen({ route, navigation }: Props) {
           style={styles.mapsButton}
           onPress={() => {
             /* pickup_location is a PostGIS geography — coordinates not directly available here */
-            Alert.alert('Navigation', 'Ouvrez Google Maps avec les coordonnées du point de départ.');
+            showMessage('Navigation', 'Ouvrez Google Maps avec les coordonnées du point de départ.');
           }}
         >
           <Text style={styles.mapsButtonText}>🗺 Ouvrir dans Maps</Text>
@@ -182,7 +177,7 @@ export default function MissionActiveScreen({ route, navigation }: Props) {
         <TouchableOpacity
           style={styles.mapsButton}
           onPress={() => {
-            Alert.alert('Navigation', 'Ouvrez Google Maps avec les coordonnées de destination.');
+            showMessage('Navigation', 'Ouvrez Google Maps avec les coordonnées de destination.');
           }}
         >
           <Text style={styles.mapsButtonText}>🗺 Ouvrir dans Maps</Text>

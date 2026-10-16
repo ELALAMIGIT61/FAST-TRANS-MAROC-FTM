@@ -6,8 +6,8 @@ import {
   StyleSheet,
   ActivityIndicator,
   Linking,
-  Alert,
 } from 'react-native';
+import { showMessage, confirmAction } from '../../utils/dialogs';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../constants/theme';
 import {
@@ -134,17 +134,14 @@ export default function MissionTrackingScreen({ route, navigation }: Props) {
   }, [mission.status, mission.driver_id, mission.scheduled_pickup_time]);
 
   const handleCancel = async () => {
-    Alert.alert('Annuler la mission', 'Êtes-vous sûr de vouloir annuler ?', [
-      { text: 'Non', style: 'cancel' },
-      {
-        text: 'Oui, annuler',
-        style: 'destructive',
-        onPress: async () => {
-          const result = await cancelMission(mission.id, mission.client_id ?? '', 'client');
-          if (result.error) Alert.alert('Erreur', result.error);
-        },
-      },
-    ]);
+    const confirmed = await confirmAction('Annuler la mission', 'Êtes-vous sûr de vouloir annuler ?', {
+      confirmLabel: 'Oui, annuler',
+      cancelLabel: 'Non',
+      destructive: true,
+    });
+    if (!confirmed) return;
+    const result = await cancelMission(mission.id, mission.client_id ?? '', 'client');
+    if (result.error) showMessage('Erreur', result.error);
   };
 
   const callDriver = () => {

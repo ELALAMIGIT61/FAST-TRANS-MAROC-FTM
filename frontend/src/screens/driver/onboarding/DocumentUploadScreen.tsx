@@ -4,8 +4,9 @@
 import React, { useState } from 'react';
 import {
   View, Text, TouchableOpacity, ScrollView,
-  StyleSheet, ActivityIndicator, Alert,
+  StyleSheet, ActivityIndicator,
 } from 'react-native';
+import { showMessage } from '../../../utils/dialogs';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
 import {
@@ -58,7 +59,7 @@ export default function DocumentUploadScreen({ navigation, route }: Props) {
     if (result.error) {
       console.log('[FTM-DEBUG] Document - Upload failed', { docType, error: result.error });
       setUploadStatus(prev => ({ ...prev, [docType]: { status: 'error', url: null } }));
-      Alert.alert('Erreur', result.error);
+      showMessage('Erreur', result.error);
       return;
     }
 

@@ -4,8 +4,9 @@
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
-  ScrollView, StyleSheet, ActivityIndicator, Alert,
+  ScrollView, StyleSheet, ActivityIndicator,
 } from 'react-native';
+import { showMessage } from '../../../utils/dialogs';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { createDriverProfile, VehicleCategory } from '../../../services/driverService';
 import { supabase } from '../../../lib/supabaseClient';
@@ -80,7 +81,7 @@ export default function VehicleInfoScreen({ navigation }: Props) {
     setIsLoading(false);
 
     if (result.error) {
-      Alert.alert('Erreur', result.error);
+      showMessage('Erreur', result.error);
       return;
     }
 

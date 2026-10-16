@@ -8,6 +8,7 @@ import {
   Alert,
   Platform,
 } from 'react-native';
+import { showMessage } from '../../utils/dialogs';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../constants/theme';
 import { startBackgroundTracking, stopBackgroundTracking } from '../../services/locationService';
@@ -61,7 +62,7 @@ export default function DriverHomeScreen({ route, navigation }: Props) {
     if (newStatus) {
       const trackResult = await startBackgroundTracking(driverId);
       if (trackResult.error) {
-        Alert.alert('GPS requis', trackResult.error);
+        showMessage('GPS requis', trackResult.error);
         return;
       }
     } else {
@@ -78,7 +79,7 @@ export default function DriverHomeScreen({ route, navigation }: Props) {
       .update({ is_available: newStatus })
       .eq('id', driverId);
     if (error) {
-      Alert.alert('Erreur', error.message);
+      showMessage('Erreur', error.message);
       if (newStatus) await stopBackgroundTracking();
       return;
     }

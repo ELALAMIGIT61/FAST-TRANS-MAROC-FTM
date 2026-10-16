@@ -9,8 +9,8 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   StyleSheet,
-  Alert,
 } from 'react-native';
+import { showMessage } from '../../utils/dialogs';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 import { COLORS, FONT_SIZES, RADIUS, SPACING } from '../../constants/theme';
@@ -100,7 +100,7 @@ export default function OTPVerificationScreen({ navigation, route }: Props) {
     if (countdown > 0) return;
     const result = await handleSendOTP(formattedPhone);
     if (result.error) {
-      Alert.alert('Erreur', result.error);
+      showMessage('Erreur', result.error);
     } else {
       setCountdown(RESEND_COUNTDOWN);
       setDigits(Array(OTP_LENGTH).fill(''));

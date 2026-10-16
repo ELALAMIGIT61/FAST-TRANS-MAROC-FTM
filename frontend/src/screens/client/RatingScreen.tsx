@@ -6,8 +6,8 @@ import {
   TextInput,
   StyleSheet,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
+import { showMessage } from '../../utils/dialogs';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../constants/theme';
 import { submitClientRating } from '../../services/missionService';
 import type { Mission } from '../../services/missionService';
@@ -36,7 +36,7 @@ export default function RatingScreen({ route, navigation }: Props) {
 
   const handleSubmit = async () => {
     if (rating === 0) {
-      Alert.alert('Note requise', 'Veuillez sélectionner une note.');
+      showMessage('Note requise', 'Veuillez sélectionner une note.');
       return;
     }
     setIsLoading(true);
@@ -44,7 +44,7 @@ export default function RatingScreen({ route, navigation }: Props) {
     setIsLoading(false);
 
     if (result.error) {
-      Alert.alert('Erreur', result.error);
+      showMessage('Erreur', result.error);
     } else {
       navigation.replace('ClientHome', { clientProfileId: mission.client_id ?? '' });
     }

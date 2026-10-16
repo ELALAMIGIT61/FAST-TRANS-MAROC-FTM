@@ -12,6 +12,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { showMessage } from '../../utils/dialogs';
 import { COLORS, FONTS, SPACING, BORDER_RADIUS } from '../../constants/theme';
 import { getClientCurrentLocation, reverseGeocode } from '../../services/locationService';
 import { createMission, VehicleCategory } from '../../services/missionService';
@@ -59,7 +60,7 @@ export default function CreateMissionScreen({ route, navigation }: Props) {
       setPickupAddress(geo.address);
       setPickupCity(geo.city);
     } else {
-      Alert.alert('Localisation', result.error ?? 'Erreur inconnue');
+      showMessage('Localisation', result.error ?? 'Erreur inconnue');
     }
     setIsLocating(false);
   }, []);
@@ -94,7 +95,7 @@ export default function CreateMissionScreen({ route, navigation }: Props) {
     setIsLoading(false);
 
     if (result.error) {
-      Alert.alert('Erreur', result.error);
+      showMessage('Erreur', result.error);
     } else if (result.mission) {
       navigation.replace('MissionTracking', { mission: result.mission as unknown as Record<string, unknown> });
     }

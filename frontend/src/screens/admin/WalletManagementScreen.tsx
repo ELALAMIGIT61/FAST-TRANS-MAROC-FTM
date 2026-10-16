@@ -9,8 +9,8 @@ import {
   Modal,
   RefreshControl,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
+import { showMessage } from '../../utils/dialogs';
 import { COLORS } from '../../constants/theme';
 import { getAllDrivers, adminTopupDriverWallet } from '../../services/adminService';
 
@@ -67,24 +67,24 @@ export default function WalletManagementScreen() {
 
   const handleTopup = async () => {
     if (!topupDriver || !topupAmount || !topupRef.trim()) {
-      Alert.alert('Requis', 'Montant et référence requis.');
+      showMessage('Requis', 'Montant et référence requis.');
       return;
     }
     const amount = parseFloat(topupAmount);
     if (isNaN(amount) || amount <= 0) {
-      Alert.alert('Invalide', 'Montant invalide.');
+      showMessage('Invalide', 'Montant invalide.');
       return;
     }
     setIsProcessing(true);
     const result = await adminTopupDriverWallet(topupDriver.id, amount, topupRef.trim());
     if (result.success) {
-      Alert.alert('Succès', `Wallet rechargé. Nouveau solde : ${result.balanceAfter} DH`);
+      showMessage('Succès', `Wallet rechargé. Nouveau solde : ${result.balanceAfter} DH`);
       setTopupDriver(null);
       setTopupAmount('');
       setTopupRef('');
       await loadDrivers();
     } else {
-      Alert.alert('Erreur', result.error ?? 'Une erreur est survenue');
+      showMessage('Erreur', result.error ?? 'Une erreur est survenue');
     }
     setIsProcessing(false);
   };

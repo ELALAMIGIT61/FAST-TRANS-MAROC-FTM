@@ -10,9 +10,9 @@ import {
   RefreshControl,
   ActivityIndicator,
   Linking,
-  Alert,
   ScrollView,
 } from 'react-native';
+import { showMessage } from '../../utils/dialogs';
 import { COLORS } from '../../constants/theme';
 import { getPendingDrivers, verifyDocument, rejectDocument } from '../../services/adminService';
 import { formatIsoDateFr } from '../../components/DateOnlyField';
@@ -140,14 +140,14 @@ export default function DocumentReviewScreen() {
       const list = await loadDrivers();
       refreshSelected(driver, list, docType, 'verified');
     } else {
-      Alert.alert('Erreur', result.error ?? 'Une erreur est survenue');
+      showMessage('Erreur', result.error ?? 'Une erreur est survenue');
     }
     setIsProcessing(false);
   };
 
   const handleRejectConfirm = async () => {
     if (!selectedDriver || !rejectTarget || !rejectReason.trim()) {
-      Alert.alert('Requis', 'Veuillez saisir un motif de rejet.');
+      showMessage('Requis', 'Veuillez saisir un motif de rejet.');
       return;
     }
     setIsProcessing(true);
@@ -159,7 +159,7 @@ export default function DocumentReviewScreen() {
       const list = await loadDrivers();
       refreshSelected(selectedDriver, list, rejectedDoc, 'rejected');
     } else {
-      Alert.alert('Erreur', result.error ?? 'Une erreur est survenue');
+      showMessage('Erreur', result.error ?? 'Une erreur est survenue');
     }
     setIsProcessing(false);
   };
