@@ -16,7 +16,6 @@ import {
   unsubscribeChannel,
 } from '../../services/realtimeService';
 import { cancelMission, expireMission } from '../../services/missionService';
-import { notifyVoiceChannelOpened } from '../../services/notificationTemplates';
 import type { Mission } from '../../services/missionService';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
@@ -102,7 +101,6 @@ export default function MissionTrackingScreen({ route, navigation }: Props) {
   }, [mission.status, mission.scheduled_pickup_time, mission.id]);
 
   const [voiceChannelOpen, setVoiceChannelOpen] = useState(false);
-  const voiceChannelNotifiedRef = useRef(false);
 
   useEffect(() => {
     const eligibleStatus = mission.status === 'accepted' || mission.status === 'in_progress';
@@ -115,17 +113,9 @@ export default function MissionTrackingScreen({ route, navigation }: Props) {
       const scheduledTime = new Date(mission.scheduled_pickup_time as string).getTime();
       const openAt = scheduledTime - VOICE_CHANNEL_OPEN_BEFORE_MS;
       const isOpen = Date.now() >= openAt;
+      // Session 2.23 : l'annonce de la messagerie est faite par le serveur
+      // (tache planifiee, migration 054).
       setVoiceChannelOpen(isOpen);
-      if (isOpen && !voiceChannelNotifiedRef.current) {
-        voiceChannelNotifiedRef.current = true;
-        if (mission.client_id) {
-          notifyVoiceChannelOpened(mission.client_id, {
-            id: mission.id,
-            mission_number: mission.mission_number,
-            scheduled_pickup_time: mission.scheduled_pickup_time as string,
-          });
-        }
-      }
     };
 
     checkVoiceChannelWindow();

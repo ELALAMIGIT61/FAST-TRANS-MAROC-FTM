@@ -10,9 +10,8 @@ import {
 } from 'react-native';
 import { showMessage, confirmAction } from '../../utils/dialogs';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../constants/theme';
-import { startMission, completeMission, getDriverProfileId, chargeCommissionAnticipated } from '../../services/missionService';
+import { startMission, completeMission } from '../../services/missionService';
 import { requestRefund } from '../../services/walletService';
-import { notifyVoiceChannelOpened } from '../../services/notificationTemplates';
 import type { Mission } from '../../services/missionService';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
@@ -55,7 +54,6 @@ export default function MissionActiveScreen({ route, navigation }: Props) {
   }, [mission.status, mission.actual_pickup_time]);
 
   const [voiceChannelOpen, setVoiceChannelOpen] = useState(false);
-  const voiceChannelNotifiedRef = useRef(false);
 
   useEffect(() => {
     const eligibleStatus = mission.status === 'accepted' || mission.status === 'in_progress';
@@ -68,26 +66,9 @@ export default function MissionActiveScreen({ route, navigation }: Props) {
       const scheduledTime = new Date(mission.scheduled_pickup_time as string).getTime();
       const openAt = scheduledTime - VOICE_CHANNEL_OPEN_BEFORE_MS;
       const isOpen = Date.now() >= openAt;
+      // Session 2.23 : le prelevement de la commission et l'annonce de la
+      // messagerie sont faits par le serveur (tache planifiee, migration 054).
       setVoiceChannelOpen(isOpen);
-      if (isOpen && !voiceChannelNotifiedRef.current) {
-        voiceChannelNotifiedRef.current = true;
-        if (mission.driver_id) {
-          getDriverProfileId(mission.driver_id).then((result) => {
-            if (result.success && result.profileId) {
-              notifyVoiceChannelOpened(result.profileId, {
-                id: mission.id,
-                mission_number: mission.mission_number,
-                scheduled_pickup_time: mission.scheduled_pickup_time as string,
-              });
-            }
-          });
-        }
-        chargeCommissionAnticipated(mission.id).then((result) => {
-          if (result.error) {
-            console.log('[FTM-DEBUG] MissionActive - Anticipated commission charge failed', { error: result.error });
-          }
-        });
-      }
     };
 
     checkVoiceChannelWindow();
