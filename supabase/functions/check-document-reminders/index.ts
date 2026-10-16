@@ -39,17 +39,9 @@ async function insertNotification(
     throw error;
   }
 
-  await supabase.functions.invoke('send-push-notification', {
-    body: {
-      profile_id:      profileId,
-      notification_id: notif.id,
-      type,
-      title,
-      body,
-      data:            { ...data, notification_id: notif.id },
-      channel_id:      'ftm_documents',
-    },
-  });
+  // Session 2.26 : la sonnerie est demandee par la base elle-meme (trigger
+  // notifications_push_dispatch, migration 057).
+  console.log('[FTM-DEBUG] Reminders - Notification inserted', { id: notif.id, type });
 }
 
 async function notifyDocumentExpiry(

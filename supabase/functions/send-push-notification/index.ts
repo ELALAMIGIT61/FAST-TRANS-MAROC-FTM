@@ -16,6 +16,13 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
  *    ce destinataire (fonction SQL can_notify_profile) et que la notification
  *    a moins de 10 minutes ;
  *  - réponse CORS pour l'application web.
+ *
+ * Session 2.26 (16/10/2026) : sonnerie déclenchée par le serveur.
+ *  - la base appelle désormais cette fonction pour chaque notification
+ *    enregistrée (trigger notifications_push_dispatch, migration 057) ;
+ *  - envoi unique : la colonne push_sent_at est cochée avant l'envoi ; un
+ *    second appel pour la même notification est ignoré (pas de doublon) ;
+ *  - le canal Android est choisi ici, d'après le type de la notification.
  */
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -27,6 +34,23 @@ const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
+};
+
+// Canaux Android (créés par l'application, pushNotificationService.ts)
+const CHANNEL_BY_TYPE: Record<string, string> = {
+  new_mission:        'ftm_missions',
+  mission_accepted:   'ftm_missions',
+  mission_started:    'ftm_missions',
+  mission_completed:  'ftm_missions',
+  mission_cancelled:  'ftm_missions',
+  offer_update:       'ftm_missions',
+  parcel_status:      'ftm_missions',
+  voice_channel_opened: 'ftm_missions',
+  wallet_low_balance: 'ftm_wallet',
+  commission_insufficient_balance: 'ftm_wallet',
+  document_expiry:    'ftm_documents',
+  document_rejected:  'ftm_documents',
+  document_verified:  'ftm_documents',
 };
 
 const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
@@ -58,7 +82,7 @@ serve(async (req) => {
     }
 
     // 2. Charger la notification enregistrée
-    const { notification_id, channel_id = 'ftm_default' } = await req.json();
+    const { notification_id } = await req.json();
     if (!notification_id) {
       return reply(400, { error: 'Missing required field: notification_id' });
     }
@@ -92,7 +116,24 @@ serve(async (req) => {
       }
     }
 
-    // 4. Récupérer les tokens du destinataire
+    // 4. Envoi unique : réserver la notification (push_sent_at), sinon ignorer
+    const { data: claimed, error: claimError } = await supabase
+      .from('notifications')
+      .update({ push_sent_at: new Date().toISOString() })
+      .eq('id', notif.id)
+      .is('push_sent_at', null)
+      .select('id');
+
+    if (claimError) {
+      console.error('[FTM-DEBUG] Push - Claim error', claimError.message);
+      return reply(500, { error: claimError.message });
+    }
+    if (!claimed || claimed.length === 0) {
+      console.log('[FTM-DEBUG] Push - Already sent, skipped', { notification_id: notif.id });
+      return reply(200, { success: true, sent: 0, message: 'Already sent' });
+    }
+
+    // 5. Récupérer les tokens du destinataire
     const { data: tokens, error: tokensError } = await supabase
       .from('push_tokens')
       .select('token, platform')
@@ -108,16 +149,17 @@ serve(async (req) => {
       return reply(200, { success: true, sent: 0, message: 'No push tokens registered' });
     }
 
-    // 5. Préparer et envoyer les messages via l'API Expo Push
+    // 6. Préparer et envoyer les messages via l'API Expo Push
     const type = String(notif.type ?? '');
+    const channelId = CHANNEL_BY_TYPE[type] ?? 'ftm_default';
     const messages = tokens.map((t: { token: string; platform: string }) => ({
       to:        t.token,
       title:     notif.title,
       body:      notif.body,
-      data:      { ...(notif.data ?? {}), type, notification_id: notif.id, channel_id },
+      data:      { ...(notif.data ?? {}), type, notification_id: notif.id, channel_id: channelId },
       sound:     'default',
-      channelId: channel_id,
-      priority:  type.includes('mission') ? 'high' : 'normal',
+      channelId: channelId,
+      priority:  channelId === 'ftm_missions' ? 'high' : 'normal',
     }));
 
     const expoPushResp = await fetch('https://exp.host/--/api/v2/push/send', {

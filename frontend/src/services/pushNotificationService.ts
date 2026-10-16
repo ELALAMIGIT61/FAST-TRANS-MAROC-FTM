@@ -152,43 +152,10 @@ export async function insertNotification(
     type,
   });
 
-  await dispatchPushNotification(profileId, type, title, body, data, notif.id);
+  // Session 2.26 : la sonnerie est demandee par la base elle-meme (trigger
+  // notifications_push_dispatch, migration 057), pour toutes les notifications.
 
   return { success: true, notification: notif };
-}
-
-async function dispatchPushNotification(
-  profileId: string,
-  type: string,
-  title: string,
-  body: string,
-  data: Record<string, unknown>,
-  notifId: string
-): Promise<void> {
-  console.log('[FTM-DEBUG] Push - Dispatching push notification', { profileId, type, notifId });
-
-  try {
-    const { error } = await supabase.functions.invoke('send-push-notification', {
-      body: {
-        profile_id:      profileId,
-        notification_id: notifId,
-        type,
-        title,
-        body,
-        data:            { ...data, notification_id: notifId },
-        channel_id:      getChannelForType(type),
-      },
-    });
-
-    if (error) {
-      console.log('[FTM-DEBUG] Push - Dispatch error', { error: error.message, type, notifId });
-    } else {
-      console.log('[FTM-DEBUG] Push - Dispatched successfully', { notifId, type });
-    }
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err);
-    console.log('[FTM-DEBUG] Push - Dispatch exception', { err: msg });
-  }
 }
 
 // ─── LECTURE / MISE À JOUR ─────────────────────────────────────────────────────
