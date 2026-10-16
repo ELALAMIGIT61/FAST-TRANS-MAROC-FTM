@@ -78,6 +78,17 @@ function formatTransactionDate(isoDate: string | null): string {
   });
 }
 
+// Session 2.22 : effet reel d'une operation sur le solde (solde apres - solde avant).
+// Une demande de recharge validee peut laisser une ligne de trace dont le
+// credit a ete verse par une autre transaction : son solde ne bouge pas.
+function balanceEffect(tx: Transaction): number {
+  return Number(tx.balance_after) - Number(tx.balance_before);
+}
+
+function isTraceOnly(tx: Transaction): boolean {
+  return tx.status === 'completed' && Number(tx.amount) !== 0 && balanceEffect(tx) === 0;
+}
+
 // ─── TransactionCard ──────────────────────────────────────────────────────────
 
 interface TransactionCardProps {
@@ -88,6 +99,7 @@ interface TransactionCardProps {
 function TransactionCard({ tx, onPress }: TransactionCardProps) {
   const cfg = TRANSACTION_CONFIG[tx.transaction_type] ?? TRANSACTION_CONFIG.commission;
   const isFailed = tx.status === 'failed';
+  const isTrace = isTraceOnly(tx);
 
   return (
     <TouchableOpacity
@@ -99,7 +111,9 @@ function TransactionCard({ tx, onPress }: TransactionCardProps) {
         <Text style={styles.cardIcon}>{cfg.icon}</Text>
         <View style={{ flex: 1 }}>
           <View style={styles.cardTitleRow}>
-            <Text style={styles.cardType}>{cfg.label}</Text>
+            <Text style={styles.cardType}>
+              {isTrace ? 'Demande validée (déjà créditée)' : cfg.label}
+            </Text>
             {isFailed && (
               <View style={styles.failedBadge}>
                 <Text style={styles.failedBadgeText}>ÉCHOUÉ</Text>
@@ -125,8 +139,8 @@ function TransactionCard({ tx, onPress }: TransactionCardProps) {
           </Text>
         </View>
       </View>
-      <Text style={[styles.cardAmount, { color: cfg.color }]}>
-        {cfg.sign} {tx.amount.toFixed(2)} DH
+      <Text style={[styles.cardAmount, { color: isTrace ? COLORS.textSecondary : cfg.color }]}>
+        {isTrace ? '' : `${cfg.sign} `}{Number(tx.amount).toFixed(2)} DH
       </Text>
     </TouchableOpacity>
   );
@@ -218,12 +232,14 @@ export default function TransactionHistoryScreen({
   };
 
   // Summary
+  // Session 2.22 : totaux calcules sur l'effet reel de chaque operation
+  // (les lignes de trace, sans effet sur le solde, ne comptent plus)
   const totalDebit = transactions
-    .filter((t) => t.transaction_type === 'commission' && t.status === 'completed')
-    .reduce((s, t) => s + t.amount, 0);
+    .filter((t) => t.status === 'completed')
+    .reduce((s, t) => s + Math.max(0, -balanceEffect(t)), 0);
   const totalCredit = transactions
-    .filter((t) => t.transaction_type !== 'commission' && t.status === 'completed')
-    .reduce((s, t) => s + t.amount, 0);
+    .filter((t) => t.status === 'completed')
+    .reduce((s, t) => s + Math.max(0, balanceEffect(t)), 0);
 
   const handleCardPress = (tx: Transaction) => {
     onTransactionPress?.(tx);
