@@ -460,7 +460,7 @@ export async function getTransactionHistory(
 
   return {
     success: true,
-    transactions: (data as Transaction[]) || [],
+    transactions: (data as unknown as Transaction[]) || [],
     totalCount: count ?? 0,
     hasMore: (from + PAGE_SIZE) < (count ?? 0),
   };

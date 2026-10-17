@@ -64,7 +64,7 @@ export async function getPendingDrivers() {
   }
 
   console.log('[FTM-DEBUG] Admin - Pending drivers fetched', { count: data?.length || 0 });
-  return { success: true, drivers: data || [] };
+  return { success: true, drivers: (data ?? []) as unknown[] };
 }
 
 export async function verifyDocument(driverId: string, documentType: DocumentType, profileId: string) {
@@ -168,7 +168,7 @@ export async function getAllDrivers(filter: string = 'all') {
   }
 
   console.log('[FTM-DEBUG] Admin - All drivers fetched', { count: data?.length || 0, filter });
-  return { success: true, drivers: data || [] };
+  return { success: true, drivers: (data ?? []) as unknown[] };
 }
 
 export async function toggleUserActive(profileId: string, isActive: boolean) {
@@ -196,7 +196,7 @@ export async function toggleUserActive(profileId: string, isActive: boolean) {
   return { success: true };
 }
 
-export async function getAdminMissions(filters: Record<string, string> = {}, page: number = 0) {
+export async function getAdminMissions(filters: Record<string, string | undefined> = {}, page: number = 0) {
   const PAGE_SIZE = 25;
   const from = page * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;
@@ -246,7 +246,7 @@ export async function getAdminMissions(filters: Record<string, string> = {}, pag
   }
 
   console.log('[FTM-DEBUG] Admin - Missions fetched', { count: data?.length, totalCount: count, page, filters });
-  return { success: true, missions: data || [], totalCount: count };
+  return { success: true, missions: (data ?? []) as unknown[], totalCount: count };
 }
 
 export async function getAdminStats() {

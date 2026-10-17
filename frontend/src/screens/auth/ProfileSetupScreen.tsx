@@ -23,7 +23,7 @@ type RoleOption = "client" | "driver";
 type Props = {
   navigation: NativeStackNavigationProp<AuthStackParamList, "ProfileSetup">;
   route: RouteProp<AuthStackParamList, "ProfileSetup">;
-  onProfileCreated?: (role: string) => void;
+  onProfileCreated?: (role: string, profileId: string) => void;
 };
 
 export default function ProfileSetupScreen({ navigation, route, onProfileCreated }: Props) {

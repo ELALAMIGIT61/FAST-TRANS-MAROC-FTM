@@ -250,7 +250,7 @@ export async function loadVoiceMessages(missionId: string): Promise<{
       const tsPart   = parts[1]?.split('.')[0];
 
       return {
-        id:        file.id,
+        id:        file.id ?? file.name,
         fileName:  file.name,
         url:       signed?.signedUrl ?? null,
         sender:    senderPart,
