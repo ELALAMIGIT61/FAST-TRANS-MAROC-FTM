@@ -30,25 +30,6 @@ export const NOTIF_ICONS: Record<string, string> = {
   parcel_status:      '📦',
 };
 
-// ─── MAPPING TYPE → CHANNEL ANDROID ───────────────────────────────────────────
-
-function getChannelForType(type: string): string {
-  const channelMap: Record<string, string> = {
-    new_mission:        'ftm_missions',
-    mission_accepted:   'ftm_missions',
-    mission_started:    'ftm_missions',
-    mission_completed:  'ftm_missions',
-    mission_cancelled:  'ftm_missions',
-    wallet_low_balance: 'ftm_wallet',
-    document_expiry:    'ftm_documents',
-    document_rejected:  'ftm_documents',
-    document_verified:  'ftm_documents',
-    parcel_status:      'ftm_missions',
-    offer_update:       'ftm_missions',
-  };
-  return channelMap[type] || 'ftm_default';
-}
-
 // ─── SETUP CHANNELS ANDROID ───────────────────────────────────────────────────
 
 export async function setupNotificationChannels(): Promise<void> {
