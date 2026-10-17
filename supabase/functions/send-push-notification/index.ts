@@ -55,6 +55,22 @@ const CHANNEL_BY_TYPE: Record<string, string> = {
 
 const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
+// Session 2.26 (correctif) : role inscrit dans un jeton JWT. La passerelle de
+// Supabase verifie la signature du jeton avant d'appeler la fonction
+// (verification JWT active par defaut) : un jeton falsifie n'arrive jamais ici.
+function jwtRole(authHeader: string): string | null {
+  try {
+    const token = authHeader.replace(/^Bearer\s+/i, '');
+    const part = token.split('.')[1];
+    if (!part) return null;
+    const b64 = part.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(part.length / 4) * 4, '=');
+    const payload = JSON.parse(atob(b64));
+    return typeof payload.role === 'string' ? payload.role : null;
+  } catch {
+    return null;
+  }
+}
+
 function reply(status: number, payload: Record<string, unknown>) {
   return new Response(JSON.stringify(payload), {
     status,
@@ -70,7 +86,8 @@ serve(async (req) => {
   try {
     // 1. Identifier l'appelant
     const authHeader = req.headers.get('Authorization') ?? '';
-    const isService = authHeader === `Bearer ${SERVICE_ROLE_KEY}`;
+    const isService = authHeader === `Bearer ${SERVICE_ROLE_KEY}`
+      || jwtRole(authHeader) === 'service_role';
     const userClient = createClient(SUPABASE_URL, ANON_KEY, {
       global: { headers: { Authorization: authHeader } },
     });
