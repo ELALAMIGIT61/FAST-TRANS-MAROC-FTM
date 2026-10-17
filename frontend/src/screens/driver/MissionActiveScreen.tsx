@@ -5,7 +5,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   Linking,
-  Alert,
   Platform,
 } from 'react-native';
 import { showMessage, confirmAction } from '../../utils/dialogs';
@@ -192,7 +191,7 @@ export default function MissionActiveScreen({ route, navigation }: Props) {
     const result = await requestRefund(mission.id, mission.driver_id as string);
     setIsRequestingRefund(false);
     if (result.error) {
-      Platform.OS === 'web' ? window.alert(result.error) : Alert.alert('Erreur', result.error);
+      showMessage('Erreur', result.error);
       return;
     }
     setRefundRequested(true);

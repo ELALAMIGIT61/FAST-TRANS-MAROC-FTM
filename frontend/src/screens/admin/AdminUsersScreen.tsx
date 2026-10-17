@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl, ActivityIndicator, TextInput, Alert } from 'react-native';
+import { showMessage, confirmAction } from '../../utils/dialogs';
 import { useNavigation } from '@react-navigation/native';
 import { COLORS } from '../../constants/theme';
 import { getAllDrivers, toggleUserActive } from '../../services/adminService';
@@ -35,12 +36,12 @@ export default function AdminUsersScreen() {
   const handleToggleActive = async (driver: DriverUser) => {
     const newStatus = driver.profiles.is_active === false;
     const action = newStatus ? 'activer' : 'suspendre';
-    const confirmed = window.confirm('Voulez-vous ' + action + ' le compte de ' + driver.profiles.full_name + ' ?');
+    const confirmed = await confirmAction('Confirmation', 'Voulez-vous ' + action + ' le compte de ' + driver.profiles.full_name + ' ?');
     if (confirmed === false) return;
     setProcessing(driver.id);
     const result = await toggleUserActive(driver.profiles.id, newStatus);
     if (result.success) { await loadUsers(); }
-    else { window.alert('Erreur : ' + (result.error ?? 'Une erreur est survenue')); }
+    else { showMessage('Erreur', result.error ?? 'Une erreur est survenue'); }
     setProcessing(null);
   };
   const renderUserCard = ({ item }: { item: DriverUser }) => (

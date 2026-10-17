@@ -8,9 +8,16 @@
 
 import React, { useEffect, useState } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity, ScrollView,
-  StyleSheet, Linking, ActivityIndicator, Alert, Platform,
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  ScrollView,
+  StyleSheet,
+  Linking,
+  ActivityIndicator,
 } from 'react-native';
+import { showMessage, confirmAction } from '../../utils/dialogs';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { supabase } from '../../lib/supabaseClient';
 import {
@@ -82,24 +89,9 @@ function statusConfig(s: VerificationStatus) {
   }
 }
 
-function showMessage(title: string, message: string) {
-  if (Platform.OS === 'web') {
-    window.alert(`${title}\n\n${message}`);
-  } else {
-    Alert.alert(title, message);
-  }
-}
-
+// Session 2.28 : messages et confirmations du module commun utils/dialogs.ts
 function askConfirmation(message: string): Promise<boolean> {
-  if (Platform.OS === 'web') {
-    return Promise.resolve(window.confirm(message));
-  }
-  return new Promise(resolve => {
-    Alert.alert('Confirmation', message, [
-      { text: 'Annuler',   style: 'cancel', onPress: () => resolve(false) },
-      { text: 'Continuer', onPress: () => resolve(true) },
-    ]);
-  });
+  return confirmAction('Confirmation', message, { confirmLabel: 'Continuer' });
 }
 
 export default function DocumentStatusScreen({ navigation }: Props) {

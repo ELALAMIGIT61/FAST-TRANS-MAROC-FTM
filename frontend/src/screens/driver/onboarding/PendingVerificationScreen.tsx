@@ -6,9 +6,13 @@
 import React, { useEffect, useState } from 'react';
 import LogoutButton from '../../../components/LogoutButton';
 import {
-  View, Text, TouchableOpacity, ScrollView,
-  StyleSheet, Alert, Platform,
+  View,
+  Text,
+  TouchableOpacity,
+  ScrollView,
+  StyleSheet,
 } from 'react-native';
+import { showMessage } from '../../../utils/dialogs';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
 import { supabase } from '../../../lib/supabaseClient';
@@ -80,14 +84,9 @@ export default function PendingVerificationScreen({ navigation, route }: Props) 
           ]);
 
           if (n.is_verified === true) {
-            if (Platform.OS === 'web') {
-              window.alert('✅ Dossier validé !\n\nVotre compte chauffeur est actif.');
-              navigation.replace('DriverHome');
-            } else {
-              Alert.alert('✅ Dossier validé !', 'Votre compte chauffeur est actif.', [
-                { text: 'Commencer', onPress: () => navigation.replace('DriverHome') },
-              ]);
-            }
+            showMessage('✅ Dossier validé !', 'Votre compte chauffeur est actif.', () =>
+              navigation.replace('DriverHome'),
+            );
           }
         }
       )

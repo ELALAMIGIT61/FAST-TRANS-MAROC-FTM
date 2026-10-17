@@ -2,9 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import BackButton from '../../components/BackButton';
 import {
   ActivityIndicator,
-  Alert,
   Linking,
-  Platform,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -12,6 +10,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { showMessage, confirmAction } from '../../utils/dialogs';
 import {
   getUnreconciledTransactions,
   markBankReconciled,
@@ -57,26 +56,21 @@ export default function BankReconciliationScreen() {
     loadTransactions();
   };
 
-  const handleConfirmReconciliation = (tx: UnreconciledTx) => {
-    const confirmMessage = `Confirmer que ce paiement de ${tx.amount} DH a bien ete verifie sur le releve bancaire ?`;
-    const doConfirm = async () => {
-      setProcessingId(tx.id);
-      const result = await markBankReconciled(tx.id);
-      setProcessingId(null);
-      if (result.error) {
-        Platform.OS === 'web' ? window.alert(result.error) : Alert.alert('Erreur', result.error);
-        return;
-      }
-      loadTransactions();
-    };
-    if (Platform.OS === 'web') {
-      if (window.confirm(confirmMessage)) doConfirm();
-    } else {
-      Alert.alert('Confirmer', confirmMessage, [
-        { text: 'Annuler', style: 'cancel' },
-        { text: 'Confirmer', onPress: doConfirm },
-      ]);
+  const handleConfirmReconciliation = async (tx: UnreconciledTx) => {
+    const ok = await confirmAction(
+      'Confirmer',
+      `Confirmer que ce paiement de ${tx.amount} DH a bien ete verifie sur le releve bancaire ?`,
+      { confirmLabel: 'Confirmer' },
+    );
+    if (!ok) return;
+    setProcessingId(tx.id);
+    const result = await markBankReconciled(tx.id);
+    setProcessingId(null);
+    if (result.error) {
+      showMessage('Erreur', result.error);
+      return;
     }
+    loadTransactions();
   };
 
   const openProof = (tx: UnreconciledTx) => {

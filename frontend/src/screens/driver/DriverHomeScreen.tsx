@@ -5,10 +5,8 @@ import {
   TouchableOpacity,
   StyleSheet,
   Switch,
-  Alert,
-  Platform,
 } from 'react-native';
-import { showMessage } from '../../utils/dialogs';
+import { showMessage, confirmAction } from '../../utils/dialogs';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../constants/theme';
 import { startBackgroundTracking, stopBackgroundTracking } from '../../services/locationService';
@@ -138,26 +136,14 @@ export default function DriverHomeScreen({ route, navigation }: Props) {
     }
   }, [isAvailable, driverId, vehicleCategory, clearPendingMissionWatch]);
 
-  const handleLogout = () => {
-    const confirmMessage = 'Voulez-vous vraiment vous déconnecter ?';
-    const doLogout = async () => {
-      const result = await handleSignOut();
-      if (result.error) {
-        Platform.OS === 'web'
-          ? window.alert(result.error)
-          : Alert.alert('Erreur', result.error);
-      }
-    };
-    if (Platform.OS === 'web') {
-      if (window.confirm(confirmMessage)) {
-        doLogout();
-      }
-    } else {
-      Alert.alert('Déconnexion', confirmMessage, [
-        { text: 'Annuler', style: 'cancel' },
-        { text: 'Se déconnecter', style: 'destructive', onPress: doLogout },
-      ]);
-    }
+  const handleLogout = async () => {
+    const ok = await confirmAction('Déconnexion', 'Voulez-vous vraiment vous déconnecter ?', {
+      confirmLabel: 'Se déconnecter',
+      destructive: true,
+    });
+    if (!ok) return;
+    const result = await handleSignOut();
+    if (result.error) showMessage('Erreur', result.error);
   };
 
   useEffect(() => {

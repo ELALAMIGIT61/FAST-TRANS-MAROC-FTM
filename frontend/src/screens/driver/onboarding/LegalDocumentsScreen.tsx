@@ -6,9 +6,15 @@
 import React, { useState } from 'react';
 import BackButton from '../../../components/BackButton';
 import {
-  View, Text, TextInput, TouchableOpacity,
-  ScrollView, StyleSheet, ActivityIndicator, Alert, Platform,
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  ScrollView,
+  StyleSheet,
+  ActivityIndicator,
 } from 'react-native';
+import { showMessage } from '../../../utils/dialogs';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
 import { saveDriverDocuments } from '../../../services/driverService';
@@ -26,14 +32,6 @@ const TECHNICAL_INSPECTION_HINT =
   "technique deviendra obligatoire (date de 1re mise en circulation + 5 ans) " +
   "et déposez, à l'étape suivante, une 2e copie de la carte grise à la place " +
   "de la visite technique.";
-
-function showMessage(title: string, message: string) {
-  if (Platform.OS === 'web') {
-    window.alert(`${title}\n\n${message}`);
-  } else {
-    Alert.alert(title, message);
-  }
-}
 
 // Dates au format 'YYYY-MM-DD' : la comparaison de chaines suffit.
 function validateExpiryDate(value: string | null, label: string): string | null {

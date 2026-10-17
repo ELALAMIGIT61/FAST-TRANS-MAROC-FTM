@@ -7,9 +7,8 @@ import {
   TouchableOpacity,
   RefreshControl,
   ActivityIndicator,
-  Alert,
-  Platform,
 } from 'react-native';
+import { showMessage, confirmAction } from '../../utils/dialogs';
 import { useNavigation } from '@react-navigation/native';
 import { COLORS } from '../../constants/theme';
 import { getAdminStats } from '../../services/adminService';
@@ -52,26 +51,14 @@ export default function AdminDashboardScreen() {
     setRefreshing(true);
     loadStats();
   }, [loadStats]);
-  const handleLogout = () => {
-    const confirmMessage = 'Voulez-vous vraiment vous déconnecter ?';
-    const doLogout = async () => {
-      const result = await handleSignOut();
-      if (result.error) {
-        Platform.OS === 'web'
-          ? window.alert(result.error)
-          : Alert.alert('Erreur', result.error);
-      }
-    };
-    if (Platform.OS === 'web') {
-      if (window.confirm(confirmMessage)) {
-        doLogout();
-      }
-    } else {
-      Alert.alert('Déconnexion', confirmMessage, [
-        { text: 'Annuler', style: 'cancel' },
-        { text: 'Se déconnecter', style: 'destructive', onPress: doLogout },
-      ]);
-    }
+  const handleLogout = async () => {
+    const ok = await confirmAction('Déconnexion', 'Voulez-vous vraiment vous déconnecter ?', {
+      confirmLabel: 'Se déconnecter',
+      destructive: true,
+    });
+    if (!ok) return;
+    const result = await handleSignOut();
+    if (result.error) showMessage('Erreur', result.error);
   };
 
 

@@ -2,9 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import BackButton from '../../components/BackButton';
 import {
   ActivityIndicator,
-  Alert,
   Linking,
-  Platform,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -12,6 +10,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { showMessage, confirmAction } from '../../utils/dialogs';
 import {
   getPendingTransactions,
   validatePendingTransaction,
@@ -57,48 +56,35 @@ export default function PendingTransactionsScreen() {
     loadTransactions();
   };
 
-  const handleValidate = (tx: PendingTx) => {
-    const confirmMessage = `Valider cette transaction de ${tx.amount} DH ?`;
-    const doValidate = async () => {
-      setProcessingId(tx.id);
-      const result = await validatePendingTransaction(tx.id);
-      setProcessingId(null);
-      if (result.error) {
-        Platform.OS === 'web' ? window.alert(result.error) : Alert.alert('Erreur', result.error);
-        return;
-      }
-      loadTransactions();
-    };
-    if (Platform.OS === 'web') {
-      if (window.confirm(confirmMessage)) doValidate();
-    } else {
-      Alert.alert('Valider', confirmMessage, [
-        { text: 'Annuler', style: 'cancel' },
-        { text: 'Valider', onPress: doValidate },
-      ]);
+  const handleValidate = async (tx: PendingTx) => {
+    const ok = await confirmAction('Valider', `Valider cette transaction de ${tx.amount} DH ?`, {
+      confirmLabel: 'Valider',
+    });
+    if (!ok) return;
+    setProcessingId(tx.id);
+    const result = await validatePendingTransaction(tx.id);
+    setProcessingId(null);
+    if (result.error) {
+      showMessage('Erreur', result.error);
+      return;
     }
+    loadTransactions();
   };
 
-  const handleReject = (tx: PendingTx) => {
-    const confirmMessage = `Rejeter cette transaction de ${tx.amount} DH ?`;
-    const doReject = async () => {
-      setProcessingId(tx.id);
-      const result = await rejectPendingTransaction(tx.id, 'Rejetee par admin');
-      setProcessingId(null);
-      if (result.error) {
-        Platform.OS === 'web' ? window.alert(result.error) : Alert.alert('Erreur', result.error);
-        return;
-      }
-      loadTransactions();
-    };
-    if (Platform.OS === 'web') {
-      if (window.confirm(confirmMessage)) doReject();
-    } else {
-      Alert.alert('Rejeter', confirmMessage, [
-        { text: 'Annuler', style: 'cancel' },
-        { text: 'Rejeter', style: 'destructive', onPress: doReject },
-      ]);
+  const handleReject = async (tx: PendingTx) => {
+    const ok = await confirmAction('Rejeter', `Rejeter cette transaction de ${tx.amount} DH ?`, {
+      confirmLabel: 'Rejeter',
+      destructive: true,
+    });
+    if (!ok) return;
+    setProcessingId(tx.id);
+    const result = await rejectPendingTransaction(tx.id, 'Rejetee par admin');
+    setProcessingId(null);
+    if (result.error) {
+      showMessage('Erreur', result.error);
+      return;
     }
+    loadTransactions();
   };
 
   const openProof = (tx: PendingTx) => {

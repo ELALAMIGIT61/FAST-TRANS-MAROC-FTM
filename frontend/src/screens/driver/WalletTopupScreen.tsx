@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -95,16 +94,11 @@ export default function WalletTopupScreen() {
       return;
     }
 
-    if (Platform.OS === 'web') {
-      window.alert('📨 Demande transmise\n\nVotre demande de recharge a ete transmise. Elle sera traitee par l\'administrateur.');
-      navigation.goBack();
-    } else {
-      Alert.alert(
-        '📨 Demande transmise',
-        "Votre demande de recharge a ete transmise. Elle sera traitee par l'administrateur.",
-        [{ text: 'OK', onPress: () => navigation.goBack() }]
-      );
-    }
+    showMessage(
+      '📨 Demande transmise',
+      "Votre demande de recharge a ete transmise. Elle sera traitee par l'administrateur.",
+      () => navigation.goBack(),
+    );
   };
 
   return (
