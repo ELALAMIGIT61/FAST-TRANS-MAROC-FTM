@@ -1,0 +1,20 @@
+{
+  "expo": {
+    "name": "BiniBinak",
+    "slug": "fast-trans-maroc",
+    "version": "1.0.0",
+    "android": {
+      "package": "ma.fasttrans.binibinak",
+      "googleServicesFile": "./google-services.json"
+    },
+    "ios": {
+      "bundleIdentifier": "ma.fasttrans.binibinak"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "76b918d4-738e-49de-ad82-9ebfd749ed7d"
+      }
+    },
+    "owner": "elalamifasttransmaroc"
+  }
+}

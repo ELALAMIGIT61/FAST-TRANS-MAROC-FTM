@@ -83,3 +83,11 @@ coverage/
 tmp/
 temp/
 *.tmp
+
+# ====================================
+# Session 3.4 : secrets Firebase / Google
+# La cle de compte de service FCM ne doit jamais etre committee
+# ====================================
+*firebase-adminsdk*.json
+*service-account*.json
+secrets/

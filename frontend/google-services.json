@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "604087390458",
+    "project_id": "fast-trans-maroc",
+    "storage_bucket": "fast-trans-maroc.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:604087390458:android:6d021c6e0feff423be3943",
+        "android_client_info": {
+          "package_name": "ma.fasttrans.binibinak"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA5SbllqHzGZpdMNA2OpTKlaGNnpHqNc14"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
