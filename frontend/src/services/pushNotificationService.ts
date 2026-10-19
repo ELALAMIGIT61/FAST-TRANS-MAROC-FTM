@@ -1,5 +1,6 @@
 import * as Notifications from 'expo-notifications';
 import * as Haptics from 'expo-haptics';
+import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import { supabase } from '../lib/supabaseClient';
 
@@ -49,6 +50,12 @@ export async function setupNotificationChannels(): Promise<void> {
     importance: Notifications.AndroidImportance.DEFAULT,
     sound:      'default',
   });
+  // Session 3.4 : categorie utilisee par le serveur pour les autres types
+  await Notifications.setNotificationChannelAsync('ftm_default', {
+    name:       'Notifications FTM',
+    importance: Notifications.AndroidImportance.DEFAULT,
+    sound:      'default',
+  });
 }
 
 // ─── PERMISSION & TOKEN ────────────────────────────────────────────────────────
@@ -71,7 +78,10 @@ export async function requestPushPermission(): Promise<{ granted: boolean; token
     return { granted: false };
   }
 
-  const tokenData = await Notifications.getExpoPushTokenAsync();
+  // Session 3.4 : le numero de projet Expo est obligatoire hors Expo Go
+  const tokenData = await Notifications.getExpoPushTokenAsync({
+    projectId: Constants.expoConfig?.extra?.eas?.projectId,
+  });
   const token = tokenData.data;
 
   console.log('[FTM-DEBUG] Push - Token obtained', {

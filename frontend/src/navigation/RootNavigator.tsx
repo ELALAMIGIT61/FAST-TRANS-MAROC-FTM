@@ -9,6 +9,7 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { supabase } from "../lib/supabaseClient";
 import { loadSavedLanguage } from "../services/i18nService";
 import { COLORS } from "../constants/theme";
+import { navigationRef, setupDevicePush, resetDevicePush } from "../services/pushSetup";
 
 // Auth screens
 import PhoneInputScreen from "../screens/auth/PhoneInputScreen";
@@ -342,6 +343,19 @@ export default function RootNavigator() {
     return () => subscription.unsubscribe();
   }, []);
 
+  // Session 3.4 : equipement du telephone pour les notifications (inactif sur le web)
+  useEffect(() => {
+    if (
+      initialRoute === "AuthStack" ||
+      initialRoute === "ProfileSetupScreen" ||
+      initialRoute === "AccountSuspendedScreen"
+    ) {
+      resetDevicePush();
+      return;
+    }
+    setupDevicePush();
+  }, [initialRoute]);
+
   if (isLoading) {
     return (
       <View style={styles.splash}>
@@ -364,7 +378,7 @@ export default function RootNavigator() {
   }
 
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navigationRef}>
       {showAuth && (
         <AuthStack.Navigator screenOptions={{ headerShown: false }}>
           <AuthStack.Screen name="PhoneInput" component={PhoneInputScreen} />
