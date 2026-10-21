@@ -14,9 +14,10 @@ import { subscribeToNewMissions, subscribeToMissionUpdates, unsubscribeChannel }
 import { supabase } from '../../lib/supabaseClient';
 import NewMissionModal from './NewMissionModal';
 import NotificationBell from '../../components/NotificationBell';
-import { handleSignOut } from '../../services/authService';
+import { signOutAndUnregisterDevice as handleSignOut } from '../../services/pushSetup';
 import type { Mission, VehicleCategory } from '../../services/missionService';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useFocusEffect } from '@react-navigation/native';
 
 type RootStackParamList = {
   DriverHome: { driverId: string; vehicleCategory: VehicleCategory };
@@ -32,21 +33,33 @@ export default function DriverHomeScreen({ route, navigation }: Props) {
   const { driverId, vehicleCategory } = route.params;
   const [isAvailable, setIsAvailable] = useState(false);
   const [walletBalance, setWalletBalance] = useState<number | null>(null);
+  const [walletError, setWalletError] = useState(false);
   const [pendingMission, setPendingMission] = useState<Mission | null>(null);
   const missionChannelRef = useRef<RealtimeChannel | null>(null);
   const pendingMissionUpdateChannelRef = useRef<RealtimeChannel | null>(null);
 
-  useEffect(() => {
-    const fetchWallet = async () => {
-      const { data } = await supabase
-        .from('wallet')
-        .select('balance')
-        .eq('driver_id', driverId)
-        .single();
-      if (data) setWalletBalance(data.balance as number);
-    };
-    fetchWallet();
+  // Session 3.4 : solde relu a chaque retour sur l'accueil ; en cas d'echec,
+  // la carte reste visible et propose de reessayer (au lieu de disparaitre).
+  const fetchWallet = useCallback(async () => {
+    const { data, error } = await supabase
+      .from('wallet')
+      .select('balance')
+      .eq('driver_id', driverId)
+      .single();
+    if (data) {
+      setWalletBalance(data.balance as number);
+      setWalletError(false);
+    } else {
+      console.log('[FTM-DEBUG] Wallet - Balance fetch failed', { error: error?.message });
+      setWalletError(true);
+    }
   }, [driverId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchWallet();
+    }, [fetchWallet])
+  );
 
   const clearPendingMissionWatch = useCallback(async () => {
     if (pendingMissionUpdateChannelRef.current) {
@@ -171,7 +184,7 @@ export default function DriverHomeScreen({ route, navigation }: Props) {
           <Text style={styles.logoutButtonText}>🚪 Se déconnecter</Text>
         </TouchableOpacity>
       </View>
-      {walletBalance !== null && (
+      {walletBalance !== null ? (
         <TouchableOpacity
           style={[styles.walletCard, { borderColor: walletColor }]}
           onPress={() => navigation.navigate('WalletDashboard', { driverId })}
@@ -179,6 +192,17 @@ export default function DriverHomeScreen({ route, navigation }: Props) {
           <Text style={styles.walletLabel}>💰 Wallet</Text>
           <Text style={[styles.walletAmount, { color: walletColor }]}>
             {walletBalance.toFixed(2)} DH
+          </Text>
+        </TouchableOpacity>
+      ) : (
+        <TouchableOpacity
+          style={[styles.walletCard, { borderColor: COLORS.border }]}
+          onPress={fetchWallet}
+          disabled={!walletError}
+        >
+          <Text style={styles.walletLabel}>💰 Wallet</Text>
+          <Text style={styles.walletPending}>
+            {walletError ? 'Solde indisponible — toucher pour réessayer' : 'Chargement…'}
           </Text>
         </TouchableOpacity>
       )}
@@ -244,6 +268,7 @@ const styles = StyleSheet.create({
   },
   walletLabel: { fontSize: 16, color: COLORS.text, fontWeight: '600' },
   walletAmount: { fontSize: 22, fontWeight: '700' },
+  walletPending: { fontSize: 13, color: COLORS.textSecondary, flexShrink: 1, marginLeft: 8, textAlign: 'right' },
   toggleCard: {
     backgroundColor: COLORS.surface,
     borderRadius: BORDER_RADIUS.lg,

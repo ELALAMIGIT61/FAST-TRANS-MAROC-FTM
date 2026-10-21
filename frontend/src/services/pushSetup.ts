@@ -21,6 +21,8 @@ import {
   handleNotificationTap,
   getCurrentProfileId,
 } from './pushNotificationService';
+import { supabase } from '../lib/supabaseClient';
+import { handleSignOut } from './authService';
 
 // « Telecommande » de navigation : permet d'ouvrir un ecran depuis une
 // notification, en dehors des ecrans eux-memes.
@@ -46,6 +48,7 @@ async function waitForNavigation(maxMs = 5000): Promise<boolean> {
 let handlersInstalled = false;
 let initialResponseChecked = false;
 let registeredProfileId: string | null = null;
+let registeredToken: string | null = null;
 
 // A appeler quand un utilisateur connecte arrive sur son espace.
 export async function setupDevicePush(): Promise<void> {
@@ -72,7 +75,10 @@ export async function setupDevicePush(): Promise<void> {
       const { granted, token } = await requestPushPermission();
       if (granted && token) {
         const result = await registerPushToken(profileId, token, Platform.OS);
-        if (result.success) registeredProfileId = profileId;
+        if (result.success) {
+          registeredProfileId = profileId;
+          registeredToken = token;
+        }
       }
     }
 
@@ -107,4 +113,37 @@ export async function setupDevicePush(): Promise<void> {
 // A appeler a la deconnexion : la prochaine connexion reinscrira le telephone.
 export function resetDevicePush(): void {
   registeredProfileId = null;
+  registeredToken = null;
+}
+
+// Session 3.4 : a la deconnexion, le telephone cesse de recevoir les
+// notifications de ce compte. La suppression se fait AVANT la deconnexion
+// (l'utilisateur doit encore etre identifie : regle push_tokens_delete_own).
+// Elle ne bloque jamais la deconnexion : 3 secondes maximum, erreurs ignorees.
+async function unregisterDevicePush(): Promise<void> {
+  if (Platform.OS === 'web' || !registeredProfileId || !registeredToken) return;
+  const profileId = registeredProfileId;
+  const token = registeredToken;
+  try {
+    const removal = supabase
+      .from('push_tokens')
+      .delete()
+      .eq('profile_id', profileId)
+      .eq('token', token)
+      .then(({ error }) => {
+        if (error) console.log('[FTM-DEBUG] Push - Token removal error', { error: error.message });
+        else console.log('[FTM-DEBUG] Push - Token removed at sign out', { profileId });
+      });
+    await Promise.race([removal, new Promise((resolve) => setTimeout(resolve, 3000))]);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.log('[FTM-DEBUG] Push - Token removal exception', { error: msg });
+  }
+  resetDevicePush();
+}
+
+// Deconnexion utilisee par les boutons « Se deconnecter » de l'application.
+export async function signOutAndUnregisterDevice(): Promise<{ success?: boolean; error?: string }> {
+  await unregisterDevicePush();
+  return handleSignOut();
 }

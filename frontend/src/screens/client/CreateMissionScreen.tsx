@@ -17,7 +17,7 @@ import { getClientCurrentLocation, reverseGeocode } from '../../services/locatio
 import { createMission, VehicleCategory } from '../../services/missionService';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import NotificationBell from '../../components/NotificationBell';
-import { handleSignOut } from '../../services/authService';
+import { signOutAndUnregisterDevice as handleSignOut } from '../../services/pushSetup';
 import DateTimeField from '../../components/DateTimeField';
 
 type RootStackParamList = {
@@ -64,9 +64,8 @@ export default function CreateMissionScreen({ route, navigation }: Props) {
     setIsLocating(false);
   }, []);
 
-  useEffect(() => {
-    locateClient();
-  }, [locateClient]);
+  // Session 3.4 : plus de localisation automatique a l'ouverture de la page.
+  // Le client la demande lui-meme avec le bouton « Ma position actuelle ».
 
   const selectedVehicle = VEHICLE_OPTIONS.find((v) => v.key === vehicleCategory);
   const canSubmit = !!pickupCoords && !!dropoffAddress && !!vehicleCategory && !!scheduledPickupTime && !isLoading;
@@ -140,6 +139,11 @@ export default function CreateMissionScreen({ route, navigation }: Props) {
           placeholder="Adresse de départ"
           placeholderTextColor={COLORS.textSecondary}
         />
+        {!pickupCoords && (
+          <Text style={styles.pickupHint}>
+            Touchez « 🎯 Ma position actuelle » pour indiquer le point de départ.
+          </Text>
+        )}
 
         {/* ARRIVÉE */}
         <Text style={styles.sectionLabel}>🏁 ARRIVÉE</Text>
@@ -274,6 +278,7 @@ const styles = StyleSheet.create({
     minHeight: 44,
   },
   gpsButtonText: { color: COLORS.primary, fontWeight: '600', fontSize: 15 },
+  pickupHint: { color: COLORS.textSecondary, fontSize: 13, marginTop: -4, marginBottom: 8 },
   input: {
     backgroundColor: COLORS.surface,
     borderWidth: 1,

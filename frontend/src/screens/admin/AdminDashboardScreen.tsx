@@ -13,7 +13,7 @@ import { useNavigation } from '@react-navigation/native';
 import { COLORS } from '../../constants/theme';
 import { getAdminStats } from '../../services/adminService';
 import NotificationBell from '../../components/NotificationBell';
-import { handleSignOut } from '../../services/authService';
+import { signOutAndUnregisterDevice as handleSignOut } from '../../services/pushSetup';
 
 interface AdminStats {
   totalMissions: number | null;
@@ -201,6 +201,11 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: COLORS.primary,
     marginTop: 8,
+    // Session 3.4 : le titre se replie sur deux lignes si l'ecran est etroit,
+    // pour laisser la place a la cloche et au bouton de deconnexion.
+    flex: 1,
+    flexShrink: 1,
+    marginRight: 8,
   },
   sectionTitle: {
     fontSize: 14,

@@ -300,11 +300,15 @@ export default function RootNavigator() {
   const initialRouteRef = useRef<AppRoute>("AuthStack");
 
   useEffect(() => {
+    // Session 3.4 : l'identifiant du chauffeur est enregistre AVANT de changer
+    // d'espace. Sur telephone, chaque changement d'etat affiche aussitot
+    // l'ecran : sinon l'accueil chauffeur s'ouvrait avec un identifiant vide
+    // (solde indisponible, categorie de vehicule absente).
     initializeApp().then(({ route, driverId, vehicleCategory }) => {
-      setInitialRoute(route);
-      initialRouteRef.current = route;
       if (driverId) setDriverProfileId(driverId);
       if (vehicleCategory) setDriverVehicleCategory(vehicleCategory);
+      setInitialRoute(route);
+      initialRouteRef.current = route;
       setIsLoading(false);
     });
 
@@ -327,10 +331,10 @@ export default function RootNavigator() {
           initialRouteRef.current !== "AdminStack"
         ) {
           initializeApp().then(({ route, driverId, vehicleCategory }) => {
-            setInitialRoute(route);
-            initialRouteRef.current = route;
             if (driverId) setDriverProfileId(driverId);
             if (vehicleCategory) setDriverVehicleCategory(vehicleCategory);
+            setInitialRoute(route);
+            initialRouteRef.current = route;
           });
         }
       }
@@ -403,7 +407,7 @@ export default function RootNavigator() {
         </AuthStack.Navigator>
       )}
       {showClient && <ClientNavigator clientProfileId={clientProfileId} />}
-      {showDriver && <DriverNavigator driverId={driverProfileId} vehicleCategory={driverVehicleCategory} />}
+      {showDriver && <DriverNavigator key={driverProfileId} driverId={driverProfileId} vehicleCategory={driverVehicleCategory} />}
       {showDriverOnboarding && <DriverOnboardingNavigator />}
       {showDriverPending && <DriverPendingNavigator driverId={driverProfileId} />}
       {showAdmin && <AdminNavigator />}

@@ -2,7 +2,7 @@ import React from 'react';
 import { TouchableOpacity, Text, StyleSheet } from 'react-native';
 import type { StyleProp, ViewStyle } from 'react-native';
 import { COLORS, SPACING } from '../constants/theme';
-import { handleSignOut } from '../services/authService';
+import { signOutAndUnregisterDevice as handleSignOut } from '../services/pushSetup';
 import { confirmAction, showMessage } from '../utils/dialogs';
 
 /*
