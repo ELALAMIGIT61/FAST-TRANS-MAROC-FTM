@@ -323,34 +323,62 @@ export async function handleNotificationTap(
     screen:  notification.data?.screen,
   });
 
-  if (notification.id && notification.profile_id) {
-    markNotificationRead(notification.id, notification.profile_id);
+  // Session 3.4 : la notification recue sur le telephone ne porte pas le
+  // profil du destinataire ; on prend celui de l'utilisateur connecte.
+  const profileId = notification.profile_id || (await getCurrentProfileId());
+  if (notification.id && profileId) {
+    markNotificationRead(notification.id, profileId);
   }
 
+  // Session 3.4 (correction 8) : les ecrans de mission attendent la mission
+  // complete, et le portefeuille l'identifiant du chauffeur. La notification
+  // ne porte que des identifiants : on va chercher ce qu'il faut avant d'ouvrir
+  // l'ecran (sinon l'ecran s'ouvrait vide ou plantait).
+  const missionId = notification.data?.mission_id ? String(notification.data.mission_id) : null;
+
+  const openWithMission = async (screen: string) => {
+    if (!missionId) return;
+    const { data: mission, error } = await supabase
+      .from('missions')
+      .select('*')
+      .eq('id', missionId)
+      .single();
+    if (mission) navigate(screen, { mission });
+    else console.log('[FTM-DEBUG] Push - Mission not found for notification', { missionId, error: error?.message });
+  };
+
+  const currentDriverId = async (): Promise<string | null> => {
+    if (!profileId) return null;
+    const { data: driverRow } = await supabase
+      .from('drivers')
+      .select('id')
+      .eq('profile_id', profileId)
+      .single();
+    return driverRow?.id ?? null;
+  };
+
+  const openWallet = async () => {
+    const driverId = await currentDriverId();
+    if (driverId) navigate('WalletDashboard', { driverId });
+    else console.log('[FTM-DEBUG] Push - Driver not found for wallet notification');
+  };
+
   const screenMap: Record<string, () => void | Promise<void>> = {
-    MissionTrackingScreen: () =>
-      navigate('MissionTracking', { missionId: notification.data?.mission_id }),
+    MissionTrackingScreen: () => openWithMission('MissionTracking'),
     NewMissionModal: () =>
       navigate('DriverHome', { openMission: notification.data?.mission_id }),
-    WalletDashboardScreen: () => navigate('WalletDashboard'),
+    WalletDashboardScreen: openWallet,
     WalletTopupScreen:     () => navigate('WalletTopup'),
     DocumentStatusScreen:  () =>
       navigate('DocumentStatus', { highlight: notification.data?.document_type }),
-    RatingScreen: () =>
-      navigate('Rating', { missionId: notification.data?.mission_id }),
-    VoiceChat: () =>
-      navigate('VoiceChat', { missionId: notification.data?.mission_id }),
-    WalletDashboard: () => navigate('WalletDashboard'),
+    RatingScreen: () => openWithMission('Rating'),
+    VoiceChat: () => openWithMission('VoiceChat'),
+    WalletDashboard: openWallet,
     DriverHomeScreen: () => navigate('DriverHome'),
     MissionOfferScreen: async () => {
-      const missionId = notification.data?.mission_id;
-      const { data: driverRow } = await supabase
-        .from('drivers')
-        .select('id')
-        .eq('profile_id', notification.profile_id)
-        .single();
-      if (driverRow) {
-        navigate('MissionOffer', { missionId, driverId: driverRow.id });
+      const driverId = await currentDriverId();
+      if (driverId) {
+        navigate('MissionOffer', { missionId, driverId });
       } else {
         navigate('MissionOffer', { missionId });
       }

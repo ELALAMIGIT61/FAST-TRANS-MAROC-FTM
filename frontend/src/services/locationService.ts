@@ -127,8 +127,10 @@ export async function getClientCurrentLocation(): Promise<{
   }
 
   try {
+    // Session 3.4 : haute precision (GPS) pour le point de depart d'une mission ;
+    // la precision « equilibree » se contentait souvent du quartier.
     const location = await Location.getCurrentPositionAsync({
-      accuracy: Location.Accuracy.Balanced,
+      accuracy: Location.Accuracy.High,
     });
 
     const { latitude, longitude } = location.coords;

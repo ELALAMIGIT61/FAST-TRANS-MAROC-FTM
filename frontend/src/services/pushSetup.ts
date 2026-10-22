@@ -28,12 +28,29 @@ import { handleSignOut } from './authService';
 // notification, en dehors des ecrans eux-memes.
 export const navigationRef = createNavigationContainerRef<any>();
 
+// Session 3.4 (correction 7) : si l'application vient d'etre ouverte par le
+// toucher d'une notification, les ecrans ne sont pas encore prets. Au lieu
+// d'abandonner, on attend qu'ils le soient (10 secondes au plus). Un meme
+// ecran demande deux fois de suite (deux chemins de detection) n'est ouvert
+// qu'une fois.
+let lastNavigation: { key: string; at: number } | null = null;
+
 function navigate(screen: string, params?: Record<string, unknown>): void {
+  const key = screen + JSON.stringify(params ?? {});
+  const now = Date.now();
+  if (lastNavigation && lastNavigation.key === key && now - lastNavigation.at < 3000) return;
+  lastNavigation = { key, at: now };
+
+  const go = () => navigationRef.dispatch(CommonActions.navigate({ name: screen, params }));
   if (navigationRef.isReady()) {
-    navigationRef.dispatch(CommonActions.navigate({ name: screen, params }));
-  } else {
-    console.log('[FTM-DEBUG] Push - Navigation not ready', { screen });
+    go();
+    return;
   }
+  console.log('[FTM-DEBUG] Push - Navigation not ready, waiting', { screen });
+  waitForNavigation(10000).then((ready) => {
+    if (ready) go();
+    else console.log('[FTM-DEBUG] Push - Navigation still not ready, abandoned', { screen });
+  });
 }
 
 async function waitForNavigation(maxMs = 5000): Promise<boolean> {
@@ -47,6 +64,16 @@ async function waitForNavigation(maxMs = 5000): Promise<boolean> {
 
 let handlersInstalled = false;
 let initialResponseChecked = false;
+
+// Session 3.4 (correction 7) : ecoute posee des le demarrage de l'application,
+// avant meme la connexion, pour ne pas manquer le toucher qui l'a ouverte.
+// La reponse est gardee de cote jusqu'a ce que l'utilisateur soit sur son espace.
+let earlyResponse: Notifications.NotificationResponse | null = null;
+if (Platform.OS !== 'web') {
+  Notifications.addNotificationResponseReceivedListener((response) => {
+    if (!handlersInstalled) earlyResponse = response;
+  });
+}
 let registeredProfileId: string | null = null;
 let registeredToken: string | null = null;
 
@@ -54,11 +81,42 @@ let registeredToken: string | null = null;
 export async function setupDevicePush(): Promise<void> {
   if (Platform.OS === 'web') return;
 
-  try {
-    if (!handlersInstalled) {
-      setupPushHandlers(navigate);
-      handlersInstalled = true;
+  if (!handlersInstalled) {
+    setupPushHandlers(navigate);
+    handlersInstalled = true;
+  }
+
+  // Session 3.4 (correction 7) : application ouverte par le toucher d'une
+  // notification alors qu'elle etait fermee. Verifie EN PREMIER et a part :
+  // une erreur plus loin (autorisation, inscription) ne doit pas l'empecher.
+  if (!initialResponseChecked) {
+    initialResponseChecked = true;
+    try {
+      const response = earlyResponse ?? (await Notifications.getLastNotificationResponseAsync());
+      earlyResponse = null;
+      if (response && (await waitForNavigation(10000))) {
+        const data = response.notification.request.content.data as Record<string, unknown>;
+        console.log('[FTM-DEBUG] Push - App opened from notification', {
+          type: data?.type,
+          screen: data?.screen,
+        });
+        await handleNotificationTap(
+          {
+            id: String(data?.notification_id || ''),
+            profile_id: String(data?.profile_id || ''),
+            type: String(data?.type || ''),
+            data,
+          },
+          navigate
+        );
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.log('[FTM-DEBUG] Push - Initial notification error', { error: msg });
     }
+  }
+
+  try {
 
     // Android : les categories doivent exister avant la demande d'autorisation.
     if (Platform.OS === 'android') {
@@ -82,28 +140,6 @@ export async function setupDevicePush(): Promise<void> {
       }
     }
 
-    // Application ouverte par le toucher d'une notification alors qu'elle
-    // etait fermee : on ouvre l'ecran correspondant une seule fois.
-    if (!initialResponseChecked) {
-      initialResponseChecked = true;
-      const response = await Notifications.getLastNotificationResponseAsync();
-      if (response && (await waitForNavigation())) {
-        const data = response.notification.request.content.data as Record<string, unknown>;
-        console.log('[FTM-DEBUG] Push - App opened from notification', {
-          type: data?.type,
-          screen: data?.screen,
-        });
-        await handleNotificationTap(
-          {
-            id: String(data?.notification_id || ''),
-            profile_id: String(data?.profile_id || ''),
-            type: String(data?.type || ''),
-            data,
-          },
-          navigate
-        );
-      }
-    }
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     console.log('[FTM-DEBUG] Push - Device setup error', { error: msg });
