@@ -782,10 +782,11 @@ export async function getClientOfferDrivers(
   missionId: string
 ): Promise<{ drivers?: OfferDriverInfo[]; error?: string }> {
   console.log('[FTM-DEBUG] Mission - Fetching client offer drivers', { missionId });
-  const { data, error } = await supabase
-    .from('client_offer_drivers')
-    .select('driver_id, vehicle_category, vehicle_capacity_kg, rating_average, total_missions')
-    .eq('mission_id', missionId);
+  // A1 (correction 19, migration 058) : la vue client_offer_drivers renvoyait
+  // toujours une liste vide depuis la migration 034 ; fonction serveur securisee.
+  const { data, error } = await supabase.rpc('get_client_offer_drivers', {
+    p_mission_id: missionId,
+  });
   if (error) {
     console.log('[FTM-DEBUG] Mission - Fetch client offer drivers error', { error: error.message });
     return { error: error.message };
