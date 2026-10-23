@@ -46,12 +46,12 @@ export default function RatingScreen({ route, navigation }: Props) {
     if (result.error) {
       showMessage('Erreur', result.error);
     } else {
-      navigation.replace('ClientHome', { clientProfileId: mission.client_id ?? '' });
+      navigation.navigate('ClientHome', { clientProfileId: mission.client_id ?? '' });
     }
   };
 
   const handleSkip = () => {
-    navigation.replace('ClientHome', { clientProfileId: mission.client_id ?? '' });
+    navigation.navigate('ClientHome', { clientProfileId: mission.client_id ?? '' });
   };
 
   const starColor = rating > 0 ? STAR_COLORS[rating] : COLORS.border;

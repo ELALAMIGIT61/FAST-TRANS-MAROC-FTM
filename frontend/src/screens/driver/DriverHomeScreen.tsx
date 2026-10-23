@@ -34,6 +34,33 @@ export default function DriverHomeScreen({ route, navigation }: Props) {
   const [isAvailable, setIsAvailable] = useState(false);
   const [walletBalance, setWalletBalance] = useState<number | null>(null);
   const [walletError, setWalletError] = useState(false);
+  // A1 (correction 20) : mission conclue ou en cours, pour pouvoir la reprendre
+  // apres une fermeture de l'application (auparavant : impossible d'y revenir).
+  const [activeMission, setActiveMission] = useState<Record<string, unknown> | null>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      supabase
+        .from('missions')
+        .select('*')
+        .eq('driver_id', driverId)
+        .in('status', ['accepted', 'in_progress'])
+        .order('scheduled_pickup_time', { ascending: true })
+        .limit(1)
+        .then(({ data, error }) => {
+          if (cancelled) return;
+          if (error) {
+            console.log('[FTM-DEBUG] Driver - Active mission read failed', { error: error.message });
+            return;
+          }
+          setActiveMission(data && data.length > 0 ? (data[0] as Record<string, unknown>) : null);
+        });
+      return () => {
+        cancelled = true;
+      };
+    }, [driverId])
+  );
   const [pendingMission, setPendingMission] = useState<Mission | null>(null);
   const missionChannelRef = useRef<RealtimeChannel | null>(null);
   const pendingMissionUpdateChannelRef = useRef<RealtimeChannel | null>(null);
@@ -68,6 +95,61 @@ export default function DriverHomeScreen({ route, navigation }: Props) {
     }
   }, []);
 
+  // A1 (correction 12) : ecoute des nouvelles missions, isolee pour etre
+  // relancee aussi a l'ouverture de l'ecran quand le chauffeur est deja disponible.
+  const subscribeMissions = useCallback(() => {
+    if (missionChannelRef.current) return;
+    missionChannelRef.current = subscribeToNewMissions(
+      vehicleCategory,
+      null,
+      async (missionData) => {
+        const mission = missionData as unknown as Mission;
+        const rawMission = missionData as Record<string, unknown>;
+        const pickupLocation = rawMission.pickup_location as string | null;
+
+        if (pickupLocation) {
+          const { data: nearbyDrivers, error: nearbyError } = await supabase.rpc('find_nearby_drivers', {
+            client_point: pickupLocation,
+            radius_meters: 60000,
+            p_vehicle_category: vehicleCategory,
+          });
+
+          if (nearbyError) {
+            console.log('[FTM-DEBUG] Driver - Distance check error, showing mission by default', {
+              missionId: mission.id,
+              error: nearbyError.message,
+            });
+          } else {
+            const isWithinRadius = (nearbyDrivers as { id: string }[] | null)?.some((d) => d.id === driverId);
+            if (!isWithinRadius) {
+              console.log('[FTM-DEBUG] Driver - Mission outside radius, skipping', {
+                missionId: mission.id,
+                driverId,
+              });
+              return;
+            }
+          }
+        }
+
+        setPendingMission(mission);
+        pendingMissionUpdateChannelRef.current = subscribeToMissionUpdates(
+          mission.id,
+          (updated) => {
+            const updatedStatus = (updated as Record<string, unknown>).status;
+            if (updatedStatus !== 'pending') {
+              console.log('[FTM-DEBUG] Driver - Mission no longer pending, dismissing modal', {
+                missionId: mission.id,
+                status: updatedStatus,
+              });
+              setPendingMission(null);
+              clearPendingMissionWatch();
+            }
+          }
+        );
+      }
+    );
+  }, [driverId, vehicleCategory, clearPendingMissionWatch]);
+
   const handleToggleAvailability = useCallback(async () => {
     const newStatus = !isAvailable;
     if (newStatus) {
@@ -96,58 +178,38 @@ export default function DriverHomeScreen({ route, navigation }: Props) {
     }
     console.log('[FTM-DEBUG] Driver - Availability updated', { driverId, isAvailable: newStatus });
     setIsAvailable(newStatus);
-    if (newStatus) {
-      missionChannelRef.current = subscribeToNewMissions(
-        vehicleCategory,
-        null,
-        async (missionData) => {
-          const mission = missionData as unknown as Mission;
-          const rawMission = missionData as Record<string, unknown>;
-          const pickupLocation = rawMission.pickup_location as string | null;
+    if (newStatus) subscribeMissions();
+  }, [isAvailable, driverId, clearPendingMissionWatch, subscribeMissions]);
 
-          if (pickupLocation) {
-            const { data: nearbyDrivers, error: nearbyError } = await supabase.rpc('find_nearby_drivers', {
-              client_point: pickupLocation,
-              radius_meters: 60000,
-              p_vehicle_category: vehicleCategory,
-            });
-
-            if (nearbyError) {
-              console.log('[FTM-DEBUG] Driver - Distance check error, showing mission by default', {
-                missionId: mission.id,
-                error: nearbyError.message,
-              });
-            } else {
-              const isWithinRadius = (nearbyDrivers as { id: string }[] | null)?.some((d) => d.id === driverId);
-              if (!isWithinRadius) {
-                console.log('[FTM-DEBUG] Driver - Mission outside radius, skipping', {
-                  missionId: mission.id,
-                  driverId,
-                });
-                return;
-              }
-            }
-          }
-
-          setPendingMission(mission);
-          pendingMissionUpdateChannelRef.current = subscribeToMissionUpdates(
-            mission.id,
-            (updated) => {
-              const updatedStatus = (updated as Record<string, unknown>).status;
-              if (updatedStatus !== 'pending') {
-                console.log('[FTM-DEBUG] Driver - Mission no longer pending, dismissing modal', {
-                  missionId: mission.id,
-                  status: updatedStatus,
-                });
-                setPendingMission(null);
-                clearPendingMissionWatch();
-              }
-            }
-          );
-        }
-      );
-    }
-  }, [isAvailable, driverId, vehicleCategory, clearPendingMissionWatch]);
+  // A1 (correction 12) : a l'ouverture, l'ecran affiche l'etat reel enregistre
+  // dans la base (choix du porteur : le chauffeur reste disponible quand il quitte
+  // l'application) ; s'il est disponible, le suivi et l'ecoute reprennent.
+  useEffect(() => {
+    let cancelled = false;
+    const restoreAvailability = async () => {
+      const { data, error } = await supabase
+        .from('drivers')
+        .select('is_available')
+        .eq('id', driverId)
+        .single();
+      if (cancelled) return;
+      if (error || !data) {
+        console.log('[FTM-DEBUG] Driver - Availability read failed', { error: error?.message });
+        return;
+      }
+      if (data.is_available !== true) return;
+      const trackResult = await startBackgroundTracking(driverId);
+      if (cancelled) return;
+      if (trackResult.error) showMessage('GPS requis', trackResult.error);
+      setIsAvailable(true);
+      subscribeMissions();
+      console.log('[FTM-DEBUG] Driver - Availability restored from database', { driverId });
+    };
+    if (driverId) restoreAvailability();
+    return () => {
+      cancelled = true;
+    };
+  }, [driverId, subscribeMissions]);
 
   const handleLogout = async () => {
     const ok = await confirmAction('Déconnexion', 'Voulez-vous vraiment vous déconnecter ?', {
@@ -184,6 +246,19 @@ export default function DriverHomeScreen({ route, navigation }: Props) {
           <Text style={styles.logoutButtonText}>🚪 Se déconnecter</Text>
         </TouchableOpacity>
       </View>
+      {activeMission && (
+        <TouchableOpacity
+          style={styles.activeMissionCard}
+          onPress={() => navigation.navigate('MissionActive', { mission: activeMission })}
+        >
+          <Text style={styles.activeMissionTitle}>
+            {activeMission.status === 'in_progress' ? '🚚 Mission en cours' : '📅 Mission à venir'}
+          </Text>
+          <Text style={styles.activeMissionText}>
+            N° {String(activeMission.mission_number ?? '')} — toucher pour reprendre
+          </Text>
+        </TouchableOpacity>
+      )}
       {walletBalance !== null ? (
         <TouchableOpacity
           style={[styles.walletCard, { borderColor: walletColor }]}
@@ -256,6 +331,14 @@ const styles = StyleSheet.create({
   },
   greeting: { fontSize: 22, fontWeight: '700', color: COLORS.text },
   vehicleInfo: { fontSize: 14, color: COLORS.textSecondary, marginTop: 2 },
+  activeMissionCard: {
+    backgroundColor: COLORS.primary,
+    borderRadius: BORDER_RADIUS.md,
+    padding: SPACING.md,
+    marginBottom: SPACING.md,
+  },
+  activeMissionTitle: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  activeMissionText: { color: '#fff', fontSize: 14, marginTop: 4 },
   walletCard: {
     backgroundColor: COLORS.surface,
     borderRadius: BORDER_RADIUS.md,

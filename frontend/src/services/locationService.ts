@@ -21,7 +21,17 @@ export async function requestLocationPermissions(): Promise<{
 
   console.log('[FTM-DEBUG] GPS - Foreground permission granted');
 
-  const { status: bgStatus } = await Location.requestBackgroundPermissionsAsync();
+  // A1 (correction 10) : sans declaration de la position en arriere-plan dans
+  // app.json, Android refuse la demande par une erreur (et non par un refus).
+  // On la traite comme un refus : le suivi continue pendant l'utilisation.
+  let bgStatus: string = 'denied';
+  try {
+    const bg = await Location.requestBackgroundPermissionsAsync();
+    bgStatus = bg.status;
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.log('[FTM-DEBUG] GPS - Background permission unavailable', { err: message });
+  }
 
   if (bgStatus !== 'granted') {
     console.log('[FTM-DEBUG] GPS - Background permission denied', { status: bgStatus });
@@ -47,7 +57,16 @@ let locationSubscription: Location.LocationSubscription | null = null;
 export async function startBackgroundTracking(driverId: string): Promise<{ success?: boolean; error?: string }> {
   console.log('[FTM-DEBUG] GPS - Starting background tracking', { driverId });
 
-  const perms = await requestLocationPermissions();
+  // A1 (correction 10) : une erreur inattendue renvoie un message au lieu de
+  // tout arreter en silence.
+  let perms: Awaited<ReturnType<typeof requestLocationPermissions>>;
+  try {
+    perms = await requestLocationPermissions();
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.log('[FTM-DEBUG] GPS - Permission request error', { err: message });
+    return { error: "Impossible d'activer la localisation. Réessayez." };
+  }
   if (!perms.granted) {
     console.log('[FTM-DEBUG] GPS - Cannot start tracking: permissions denied');
     return { error: perms.error };

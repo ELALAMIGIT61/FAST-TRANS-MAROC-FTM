@@ -249,8 +249,11 @@ export function subscribeToNotifications(
 ) {
   console.log('[FTM-DEBUG] Push - Subscribing to notifications', { profileId });
 
+  // A1 (correction 21b) : nom de canal unique a chaque abonnement, pour que deux
+  // cloches ouvertes en meme temps ne se marchent plus dessus (plantage).
+  const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const channel = supabase
-    .channel(`notifications-${profileId}`)
+    .channel(`notifications-${profileId}-${suffix}`)
     .on(
       'postgres_changes',
       {

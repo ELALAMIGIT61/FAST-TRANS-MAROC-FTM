@@ -445,8 +445,10 @@ const styles = StyleSheet.create({
   offerPrice: { fontSize: 18, fontWeight: '700', color: COLORS.text },
   driverInfoText: { fontSize: 13, color: COLORS.textMuted ?? '#666' },
   actionRow: { flexDirection: 'row', gap: SPACING.sm },
+  // A1 (correction 16) : flex: 1 ecrasait la hauteur du bouton dans une colonne
+  // (texte coupe, invisible sur Android) ; flexGrow garde le partage en ligne.
   acceptButton: {
-    flex: 1,
+    flexGrow: 1,
     backgroundColor: COLORS.success ?? '#38A169',
     borderRadius: BORDER_RADIUS.lg,
     padding: SPACING.md,
@@ -454,7 +456,7 @@ const styles = StyleSheet.create({
   },
   acceptButtonText: { color: '#fff', fontSize: 15, fontWeight: '700' },
   refuseButton: {
-    flex: 1,
+    flexGrow: 1,
     backgroundColor: (COLORS.alert ?? '#E53E3E') + '15',
     borderRadius: BORDER_RADIUS.lg,
     padding: SPACING.md,

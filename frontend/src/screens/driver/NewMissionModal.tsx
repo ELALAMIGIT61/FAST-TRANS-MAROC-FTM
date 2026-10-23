@@ -20,7 +20,8 @@ interface Props {
   onDismiss: () => void;
 }
 
-const COUNTDOWN_SECONDS = 30;
+// A1 (correction 13) : 60 secondes pour repondre (decision du porteur, 23/10/2026)
+const COUNTDOWN_SECONDS = 60;
 
 export default function NewMissionModal({ mission, driverId, onOfferCreated, onDismiss }: Props) {
   const [timeLeft, setTimeLeft] = useState(COUNTDOWN_SECONDS);
@@ -42,7 +43,6 @@ export default function NewMissionModal({ mission, driverId, onOfferCreated, onD
       setTimeLeft((prev) => {
         if (prev <= 1) {
           clearInterval(interval);
-          onDismiss();
           return 0;
         }
         return prev - 1;
@@ -51,6 +51,14 @@ export default function NewMissionModal({ mission, driverId, onOfferCreated, onD
 
     return () => clearInterval(interval);
   }, []);
+
+  // A1 (correction 13) : la fermeture a la fin du compte a rebours se fait ici,
+  // apres l'affichage, et non pendant le calcul du compteur (avertissement React
+  // « Cannot update a component while rendering a different component »).
+  // Pas de fermeture pendant l'envoi d'une offre.
+  useEffect(() => {
+    if (timeLeft === 0 && !isSubmitting) onDismiss();
+  }, [timeLeft, isSubmitting]);
 
   const handleCreateOffer = async () => {
     setErrorMessage(null);

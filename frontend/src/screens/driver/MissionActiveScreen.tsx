@@ -83,6 +83,54 @@ export default function MissionActiveScreen({ route, navigation }: Props) {
     Linking.openURL(url);
   };
 
+  // A1 (correction 18) : les boutons « Ouvrir dans Maps » n'affichaient qu'un
+  // message. Le point de chargement est ouvert par ses coordonnees (lues dans
+  // la colonne geographique de la mission) ; la destination par son adresse
+  // ecrite, plus fiable tant que ses coordonnees ne sont pas calculees (R1).
+  const pointFromGeography = (value: unknown): { lat: number; lng: number } | null => {
+    try {
+      if (typeof value === 'string') {
+        const wkt = value.match(/POINT\s*\(\s*(-?[\d.]+)\s+(-?[\d.]+)\s*\)/i);
+        if (wkt) return { lng: Number(wkt[1]), lat: Number(wkt[2]) };
+        if (/^[0-9a-f]+$/i.test(value) && value.length >= 42) {
+          // Format EWKB hexadecimal renvoye par PostGIS (point avec SRID 4326)
+          const bytes = new Uint8Array(value.length / 2);
+          for (let i = 0; i < bytes.length; i++) bytes[i] = parseInt(value.substr(i * 2, 2), 16);
+          const view = new DataView(bytes.buffer);
+          const little = bytes[0] === 1;
+          const type = view.getUint32(1, little);
+          const offset = type & 0x20000000 ? 9 : 5;
+          const lng = view.getFloat64(offset, little);
+          const lat = view.getFloat64(offset + 8, little);
+          if (Number.isFinite(lat) && Number.isFinite(lng)) return { lat, lng };
+        }
+      } else if (value && typeof value === 'object') {
+        const coords = (value as { coordinates?: number[] }).coordinates;
+        if (coords && coords.length >= 2) return { lng: coords[0], lat: coords[1] };
+      }
+    } catch (err: unknown) {
+      console.log('[FTM-DEBUG] Maps - Geography decode error', { err: String(err) });
+    }
+    return null;
+  };
+
+  const openMapsAddress = (address: string, city: string) => {
+    const query = encodeURIComponent([address, city, 'Maroc'].filter(Boolean).join(', '));
+    Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${query}`);
+  };
+
+  const openPickupInMaps = () => {
+    const raw = mission as unknown as Record<string, unknown>;
+    const point = pointFromGeography(raw.pickup_location);
+    if (point) openMaps(point.lat, point.lng);
+    else openMapsAddress(String(raw.pickup_address ?? ''), String(raw.pickup_city ?? ''));
+  };
+
+  const openDropoffInMaps = () => {
+    const raw = mission as unknown as Record<string, unknown>;
+    openMapsAddress(String(raw.dropoff_address ?? ''), String(raw.dropoff_city ?? ''));
+  };
+
   const handleStart = async () => {
     const result = await startMission(mission.id, mission.driver_id ?? '');
     if (result.error) {
@@ -99,7 +147,9 @@ export default function MissionActiveScreen({ route, navigation }: Props) {
     if (result.error) {
       showMessage('Erreur', result.error);
     } else {
-      navigation.replace('DriverHome', {
+      // A1 (correction 21) : revenir a l'accueil existant au lieu d'en creer un 2e
+      // (deux accueils = deux abonnements temps reel identiques = plantage).
+      navigation.navigate('DriverHome', {
         driverId: mission.driver_id ?? '',
         vehicleCategory: mission.vehicle_category,
       });
@@ -119,10 +169,7 @@ export default function MissionActiveScreen({ route, navigation }: Props) {
 
         <TouchableOpacity
           style={styles.mapsButton}
-          onPress={() => {
-            /* pickup_location is a PostGIS geography — coordinates not directly available here */
-            showMessage('Navigation', 'Ouvrez Google Maps avec les coordonnées du point de départ.');
-          }}
+          onPress={openPickupInMaps}
         >
           <Text style={styles.mapsButtonText}>🗺 Ouvrir dans Maps</Text>
         </TouchableOpacity>
@@ -156,9 +203,7 @@ export default function MissionActiveScreen({ route, navigation }: Props) {
 
         <TouchableOpacity
           style={styles.mapsButton}
-          onPress={() => {
-            showMessage('Navigation', 'Ouvrez Google Maps avec les coordonnées de destination.');
-          }}
+          onPress={openDropoffInMaps}
         >
           <Text style={styles.mapsButtonText}>🗺 Ouvrir dans Maps</Text>
         </TouchableOpacity>

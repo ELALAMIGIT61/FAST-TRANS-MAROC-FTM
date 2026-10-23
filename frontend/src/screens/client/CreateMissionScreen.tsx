@@ -19,6 +19,11 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import NotificationBell from '../../components/NotificationBell';
 import { signOutAndUnregisterDevice as handleSignOut } from '../../services/pushSetup';
 import DateTimeField from '../../components/DateTimeField';
+import { useFocusEffect } from '@react-navigation/native';
+import { supabase } from '../../lib/supabaseClient';
+import CityPicker from '../../components/CityPicker';
+import { findCity } from '../../constants/moroccoCities';
+import { ensureGeocodingPermission, geocodeInCity, GeoPoint } from '../../services/geocodingService';
 
 type RootStackParamList = {
   CreateMission: { clientProfileId: string };
@@ -36,12 +41,45 @@ const VEHICLE_OPTIONS: { key: VehicleCategory; label: string; commission: number
 export default function CreateMissionScreen({ route, navigation }: Props) {
   const { clientProfileId } = route.params;
 
+  // A1 (correction 20) : missions du client encore ouvertes (en attente, conclues
+  // ou en cours), pour pouvoir y revenir apres une fermeture de l'application.
+  const [openMissions, setOpenMissions] = useState<Record<string, unknown>[]>([]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!clientProfileId) return;
+      let cancelled = false;
+      supabase
+        .from('missions')
+        .select('*')
+        .eq('client_id', clientProfileId)
+        .in('status', ['pending', 'accepted', 'in_progress'])
+        .order('created_at', { ascending: false })
+        .limit(5)
+        .then(({ data, error }) => {
+          if (cancelled) return;
+          if (error) {
+            console.log('[FTM-DEBUG] Client - Open missions read failed', { error: error.message });
+            return;
+          }
+          setOpenMissions((data as Record<string, unknown>[]) ?? []);
+        });
+      return () => {
+        cancelled = true;
+      };
+    }, [clientProfileId])
+  );
+
+  const missionStatusLabel = (status: unknown) =>
+    status === 'in_progress' ? '🚚 En cours' : status === 'accepted' ? '✅ Chauffeur trouvé' : '⏳ Recherche de chauffeur';
+
+  // A1 (correction 15) : pickupCoords n'est rempli que par « Ma position actuelle ».
+  // Toute adresse tapee est situee a l'envoi a partir du texte (adresse + ville).
   const [pickupCoords, setPickupCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [pickupAddress, setPickupAddress] = useState('');
   const [pickupCity, setPickupCity] = useState('');
   const [dropoffAddress, setDropoffAddress] = useState('');
   const [dropoffCity, setDropoffCity] = useState('');
-  const [dropoffCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [scheduledPickupTime, setScheduledPickupTime] = useState<Date | null>(null);
   const [vehicleCategory, setVehicleCategory] = useState<VehicleCategory | null>(null);
   const [needsLoading, setNeedsLoading] = useState(false);
@@ -57,7 +95,8 @@ export default function CreateMissionScreen({ route, navigation }: Props) {
       setPickupCoords({ lat: result.latitude, lng: result.longitude });
       const geo = await reverseGeocode(result.latitude, result.longitude);
       setPickupAddress(geo.address);
-      setPickupCity(geo.city);
+      const known = findCity(geo.city);
+      setPickupCity(known ? known.name : geo.city);
     } else {
       showMessage('Localisation', result.error ?? 'Erreur inconnue');
     }
@@ -68,34 +107,71 @@ export default function CreateMissionScreen({ route, navigation }: Props) {
   // Le client la demande lui-meme avec le bouton « Ma position actuelle ».
 
   const selectedVehicle = VEHICLE_OPTIONS.find((v) => v.key === vehicleCategory);
-  const canSubmit = !!pickupCoords && !!dropoffAddress && !!vehicleCategory && !!scheduledPickupTime && !isLoading;
+  // A1 (correction 15) : le GPS n'est plus obligatoire ; il faut une adresse et une ville.
+  const canSubmit =
+    !!pickupAddress.trim() && !!pickupCity && !!dropoffAddress.trim() && !!dropoffCity &&
+    !!vehicleCategory && !!scheduledPickupTime && !isLoading;
+
+  // Situe une adresse tapee. Si elle est introuvable, le client choisit :
+  // corriger l'adresse, ou continuer avec le centre de la ville choisie.
+  const resolvePoint = async (
+    address: string,
+    city: string,
+    label: string,
+    permission: boolean
+  ): Promise<GeoPoint | null> => {
+    const precise = permission ? await geocodeInCity(address, city) : null;
+    if (precise) return precise;
+    const center = findCity(city);
+    if (!center) {
+      showMessage(label, `Choisissez la ville dans la liste pour situer l'adresse « ${address} ».`);
+      return null;
+    }
+    const reason = permission
+      ? `L'adresse « ${address} » n'a pas pu être située précisément.`
+      : `Sans l'accès à la position, l'adresse « ${address} » ne peut pas être située précisément.`;
+    const goOn = await confirmAction(
+      label,
+      `${reason} La mission sera placée au centre de ${center.name}. Le chauffeur verra votre adresse complète.`,
+      { confirmLabel: 'Continuer', cancelLabel: "Corriger l'adresse" }
+    );
+    return goOn ? { lat: center.lat, lng: center.lng } : null;
+  };
 
   const handleSubmit = async () => {
-    if (!canSubmit || !pickupCoords) return;
+    if (!canSubmit) return;
     setIsLoading(true);
+    try {
+      const permission = await ensureGeocodingPermission();
+      const pickup =
+        pickupCoords ?? (await resolvePoint(pickupAddress.trim(), pickupCity, 'Adresse de départ', permission));
+      if (!pickup) return;
+      const dropoff = await resolvePoint(dropoffAddress.trim(), dropoffCity, "Adresse d'arrivée", permission);
+      if (!dropoff) return;
 
-    const result = await createMission(clientProfileId, {
-      vehicle_category: vehicleCategory!,
-      pickup_lat: pickupCoords.lat,
-      pickup_lng: pickupCoords.lng,
-      pickup_address: pickupAddress,
-      pickup_city: pickupCity,
-      dropoff_lat: dropoffCoords?.lat ?? pickupCoords.lat,
-      dropoff_lng: dropoffCoords?.lng ?? pickupCoords.lng,
-      dropoff_address: dropoffAddress,
-      dropoff_city: dropoffCity,
-      description: description || undefined,
-      needs_loading_help: needsLoading,
-      negotiated_price: negotiatedPrice ? parseFloat(negotiatedPrice) : undefined,
-      scheduled_pickup_time: scheduledPickupTime!.toISOString(),
-    });
+      const result = await createMission(clientProfileId, {
+        vehicle_category: vehicleCategory!,
+        pickup_lat: pickup.lat,
+        pickup_lng: pickup.lng,
+        pickup_address: pickupAddress.trim(),
+        pickup_city: pickupCity,
+        dropoff_lat: dropoff.lat,
+        dropoff_lng: dropoff.lng,
+        dropoff_address: dropoffAddress.trim(),
+        dropoff_city: dropoffCity,
+        description: description || undefined,
+        needs_loading_help: needsLoading,
+        negotiated_price: negotiatedPrice ? parseFloat(negotiatedPrice) : undefined,
+        scheduled_pickup_time: scheduledPickupTime!.toISOString(),
+      });
 
-    setIsLoading(false);
-
-    if (result.error) {
-      showMessage('Erreur', result.error);
-    } else if (result.mission) {
-      navigation.replace('MissionTracking', { mission: result.mission as unknown as Record<string, unknown> });
+      if (result.error) {
+        showMessage('Erreur', result.error);
+      } else if (result.mission) {
+        navigation.replace('MissionTracking', { mission: result.mission as unknown as Record<string, unknown> });
+      }
+    } finally {
+      setIsLoading(false);
     }
   };
   const handleLogout = async () => {
@@ -123,6 +199,24 @@ export default function CreateMissionScreen({ route, navigation }: Props) {
           </TouchableOpacity>
         </View>
 
+        {openMissions.length > 0 && (
+          <View style={styles.openMissionsBox}>
+            <Text style={styles.openMissionsTitle}>Mes missions en cours</Text>
+            {openMissions.map((m) => (
+              <TouchableOpacity
+                key={String(m.id)}
+                style={styles.openMissionRow}
+                onPress={() => navigation.navigate('MissionTracking', { mission: m })}
+              >
+                <Text style={styles.openMissionText}>
+                  {missionStatusLabel(m.status)} — N° {String(m.mission_number ?? '')}
+                </Text>
+                <Text style={styles.openMissionLink}>Suivre →</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+
         {/* DÉPART */}
         <Text style={styles.sectionLabel}>📍 DÉPART</Text>
         <TouchableOpacity style={styles.gpsButton} onPress={locateClient} disabled={isLocating}>
@@ -135,15 +229,27 @@ export default function CreateMissionScreen({ route, navigation }: Props) {
         <TextInput
           style={styles.input}
           value={pickupAddress}
-          onChangeText={setPickupAddress}
+          onChangeText={(text) => {
+            // Adresse modifiee a la main : la position GPS n'est plus utilisee.
+            setPickupAddress(text);
+            setPickupCoords(null);
+          }}
           placeholder="Adresse de départ"
           placeholderTextColor={COLORS.textSecondary}
         />
-        {!pickupCoords && (
-          <Text style={styles.pickupHint}>
-            Touchez « 🎯 Ma position actuelle » pour indiquer le point de départ.
-          </Text>
-        )}
+        <CityPicker
+          value={pickupCity}
+          onChange={(city) => {
+            setPickupCity(city);
+            setPickupCoords(null);
+          }}
+          placeholder="Ville de départ"
+        />
+        <Text style={styles.pickupHint}>
+          {pickupCoords
+            ? '📍 Votre position actuelle sera utilisée comme point de départ.'
+            : 'Tapez l\'adresse et choisissez la ville, ou touchez « 🎯 Ma position actuelle ».'}
+        </Text>
 
         {/* ARRIVÉE */}
         <Text style={styles.sectionLabel}>🏁 ARRIVÉE</Text>
@@ -154,13 +260,7 @@ export default function CreateMissionScreen({ route, navigation }: Props) {
           placeholder="Adresse de livraison"
           placeholderTextColor={COLORS.textSecondary}
         />
-        <TextInput
-          style={styles.input}
-          value={dropoffCity}
-          onChangeText={setDropoffCity}
-          placeholder="Ville d'arrivée"
-          placeholderTextColor={COLORS.textSecondary}
-        />
+        <CityPicker value={dropoffCity} onChange={setDropoffCity} placeholder="Ville d'arrivée" />
 
         {/* VÉHICULE */}
         <Text style={styles.sectionLabel}>VÉHICULE</Text>
@@ -259,6 +359,23 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: COLORS.text,
   },
+  openMissionsBox: {
+    backgroundColor: COLORS.surface,
+    borderRadius: BORDER_RADIUS.md,
+    padding: SPACING.md,
+    marginBottom: SPACING.md,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+  },
+  openMissionsTitle: { fontSize: 15, fontWeight: '700', color: COLORS.primary, marginBottom: 6 },
+  openMissionRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  openMissionText: { fontSize: 14, color: COLORS.text, flexShrink: 1 },
+  openMissionLink: { fontSize: 14, color: COLORS.primary, fontWeight: '600', marginLeft: 8 },
   sectionLabel: {
     fontSize: 12,
     fontWeight: '700',

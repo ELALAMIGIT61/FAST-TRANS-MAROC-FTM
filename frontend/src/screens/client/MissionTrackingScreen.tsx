@@ -5,7 +5,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
-  Linking,
 } from 'react-native';
 import { showMessage, confirmAction } from '../../utils/dialogs';
 import type { RealtimeChannel } from '@supabase/supabase-js';
@@ -134,10 +133,6 @@ export default function MissionTrackingScreen({ route, navigation }: Props) {
     if (result.error) showMessage('Erreur', result.error);
   };
 
-  const callDriver = () => {
-    Linking.openURL(`tel:${(mission as unknown as Record<string, unknown>).driver_phone ?? ''}`);
-  };
-
   const renderStatus = () => {
     switch (mission.status) {
       case 'pending':
@@ -152,7 +147,8 @@ export default function MissionTrackingScreen({ route, navigation }: Props) {
               <Text style={styles.addressLabel}>🏁 Arrivée</Text>
               <Text style={styles.addressText}>{mission.dropoff_address}</Text>
             </View>
-            {mission.estimated_distance_km && (
+            {/* A1 (correction 14) : une distance de 0 s'affichait "0" hors d'un <Text> : plantage sur telephone */}
+            {!!mission.estimated_distance_km && (
               <Text style={styles.distanceText}>
                 Distance estimée : ~{mission.estimated_distance_km} km
               </Text>
@@ -172,9 +168,7 @@ export default function MissionTrackingScreen({ route, navigation }: Props) {
               <Text style={styles.driverName}>Chauffeur assigné</Text>
               <Text style={styles.driverInfo}>Mission N° {mission.mission_number}</Text>
             </View>
-            <TouchableOpacity style={styles.callButton} onPress={callDriver}>
-              <Text style={styles.callButtonText}>📞 Appeler le chauffeur</Text>
-            </TouchableOpacity>
+            {/* A1 (correction 17) : pas d'appel telephonique, messages vocaux uniquement */}
             {voiceChannelOpen && (
               <TouchableOpacity
                 style={styles.callButton}
@@ -225,7 +219,7 @@ export default function MissionTrackingScreen({ route, navigation }: Props) {
             <Text style={styles.statusTitle}>Mission annulée par le chauffeur</Text>
             <TouchableOpacity
               style={styles.primaryButton}
-              onPress={() => navigation.replace('ClientHome', { clientProfileId: mission.client_id ?? '' })}
+              onPress={() => navigation.navigate('ClientHome', { clientProfileId: mission.client_id ?? '' })}
             >
               <Text style={styles.primaryButtonText}>Créer une nouvelle mission</Text>
             </TouchableOpacity>
@@ -240,7 +234,7 @@ export default function MissionTrackingScreen({ route, navigation }: Props) {
             <Text style={styles.subText}>Aucun chauffeur n'était disponible avant l'heure prévue.</Text>
             <TouchableOpacity
               style={styles.primaryButton}
-              onPress={() => navigation.replace('ClientHome', { clientProfileId: mission.client_id ?? '' })}
+              onPress={() => navigation.navigate('ClientHome', { clientProfileId: mission.client_id ?? '' })}
             >
               <Text style={styles.primaryButtonText}>Créer une nouvelle mission</Text>
             </TouchableOpacity>

@@ -118,7 +118,8 @@ export default function ParcelMissionDetailScreen(): JSX.Element {
         <Text style={styles.infoRow}>
           {parcel.length_cm} × {parcel.width_cm} × {parcel.height_cm} cm
         </Text>
-        {parcel.volume_m3 && (
+        {/* A1 (correction 14) : meme protection pour un volume de 0 */}
+        {!!parcel.volume_m3 && (
           <Text style={styles.infoRow}>Volume : {formatVolume(parcel.volume_m3)}</Text>
         )}
         <Text style={styles.infoRow}>Poids : {parcel.weight_kg} kg</Text>

@@ -229,7 +229,7 @@ function AdminNavigator() {
   );
 }
 
-async function initializeApp(): Promise<{ route: AppRoute; driverId?: string; vehicleCategory?: string }> {
+async function initializeApp(): Promise<{ route: AppRoute; driverId?: string; vehicleCategory?: string; clientProfileId?: string }> {
   console.log("[FTM-DEBUG] App - Initializing", {
     timestamp: new Date().toISOString(),
   });
@@ -268,7 +268,9 @@ async function initializeApp(): Promise<{ route: AppRoute; driverId?: string; ve
 
   switch (profile.role) {
     case "client":
-      return { route: "ClientHomeStack" };
+      // A1 (correction 11) : le profil du client est transmis a son espace
+      // (auparavant vide pour un client deja inscrit : creation de mission impossible).
+      return { route: "ClientHomeStack", clientProfileId: profile.id };
     case "driver": {
         const { data: driver } = await supabase
           .from("drivers")
@@ -304,7 +306,8 @@ export default function RootNavigator() {
     // d'espace. Sur telephone, chaque changement d'etat affiche aussitot
     // l'ecran : sinon l'accueil chauffeur s'ouvrait avec un identifiant vide
     // (solde indisponible, categorie de vehicule absente).
-    initializeApp().then(({ route, driverId, vehicleCategory }) => {
+    initializeApp().then(({ route, driverId, vehicleCategory, clientProfileId: clientId }) => {
+      if (clientId) setClientProfileId(clientId);
       if (driverId) setDriverProfileId(driverId);
       if (vehicleCategory) setDriverVehicleCategory(vehicleCategory);
       setInitialRoute(route);
@@ -330,7 +333,8 @@ export default function RootNavigator() {
           initialRouteRef.current !== "DriverOnboardingStack" &&
           initialRouteRef.current !== "AdminStack"
         ) {
-          initializeApp().then(({ route, driverId, vehicleCategory }) => {
+          initializeApp().then(({ route, driverId, vehicleCategory, clientProfileId: clientId }) => {
+            if (clientId) setClientProfileId(clientId);
             if (driverId) setDriverProfileId(driverId);
             if (vehicleCategory) setDriverVehicleCategory(vehicleCategory);
             setInitialRoute(route);
@@ -406,7 +410,7 @@ export default function RootNavigator() {
           </AuthStack.Screen>
         </AuthStack.Navigator>
       )}
-      {showClient && <ClientNavigator clientProfileId={clientProfileId} />}
+      {showClient && <ClientNavigator key={clientProfileId} clientProfileId={clientProfileId} />}
       {showDriver && <DriverNavigator key={driverProfileId} driverId={driverProfileId} vehicleCategory={driverVehicleCategory} />}
       {showDriverOnboarding && <DriverOnboardingNavigator />}
       {showDriverPending && <DriverPendingNavigator driverId={driverProfileId} />}

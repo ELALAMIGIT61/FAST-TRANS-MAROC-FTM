@@ -8,6 +8,7 @@ import {
 import * as Haptics from 'expo-haptics';
 import { useNavigation } from '@react-navigation/native';
 import { COLORS } from '../constants/theme';
+import { supabase } from '../lib/supabaseClient';
 import {
   getCurrentProfileId,
   getNotifications,
@@ -41,7 +42,9 @@ export default function NotificationBell() {
     });
 
     return () => {
-      channel.unsubscribe();
+      // A1 (correction 21) : retirer completement le canal (unsubscribe le laissait
+      // enregistre, et un nouvel abonnement du meme nom plantait).
+      supabase.removeChannel(channel);
     };
   }, [profileId, fetchUnread]);
 
