@@ -54,6 +54,15 @@ const TRACKING_CONFIG: Location.LocationOptions = {
 
 let locationSubscription: Location.LocationSubscription | null = null;
 
+// A1 (correction 25) : le serveur n'envoie une mission qu'aux chauffeurs dont la
+// position date de moins de 5 minutes, or le suivi n'envoie la position qu'apres
+// un deplacement de 50 m : un chauffeur disponible mais immobile devenait
+// invisible. Tant que le suivi est actif, la position est renvoyee toutes les
+// 2 minutes, meme sans deplacement.
+const HEARTBEAT_MS = 2 * 60 * 1000;
+let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
+let lastCoords: { latitude: number; longitude: number } | null = null;
+
 export async function startBackgroundTracking(driverId: string): Promise<{ success?: boolean; error?: string }> {
   console.log('[FTM-DEBUG] GPS - Starting background tracking', { driverId });
 
@@ -88,9 +97,27 @@ export async function startBackgroundTracking(driverId: string): Promise<{ succe
           timestamp: new Date(location.timestamp).toISOString(),
         });
 
+        lastCoords = { latitude, longitude };
         await updateDriverLocation(driverId, latitude, longitude);
       }
     );
+
+    heartbeatTimer = setInterval(async () => {
+      let coords = lastCoords;
+      try {
+        const current = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        });
+        coords = { latitude: current.coords.latitude, longitude: current.coords.longitude };
+        lastCoords = coords;
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        console.log('[FTM-DEBUG] GPS - Heartbeat position error, last known used', { err: message });
+      }
+      if (!coords) return;
+      console.log('[FTM-DEBUG] GPS - Heartbeat', { driverId });
+      await updateDriverLocation(driverId, coords.latitude, coords.longitude);
+    }, HEARTBEAT_MS);
 
     console.log('[FTM-DEBUG] GPS - Background tracking started successfully', {
       driverId,
@@ -107,6 +134,11 @@ export async function startBackgroundTracking(driverId: string): Promise<{ succe
 }
 
 export async function stopBackgroundTracking(): Promise<void> {
+  if (heartbeatTimer) {
+    clearInterval(heartbeatTimer);
+    heartbeatTimer = null;
+  }
+  lastCoords = null;
   if (locationSubscription) {
     locationSubscription.remove();
     locationSubscription = null;

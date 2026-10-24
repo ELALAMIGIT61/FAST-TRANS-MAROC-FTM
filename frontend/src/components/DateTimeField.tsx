@@ -8,9 +8,27 @@ interface DateTimeFieldProps {
   value: Date | null;
   onChange: (d: Date) => void;
   error?: string | null;
+  // A1 (correction 23) : 'mission' = heure choisie sur des roues 00-23 (le cadran
+  // a deux cercles faisait prendre 1 h pour 13 h) et date affichee en clair.
+  // Les autres ecrans (colis e-commerce) gardent l'affichage actuel.
+  variant?: 'default' | 'mission';
 }
 
-function DateTimeField({ label, value, onChange, error }: DateTimeFieldProps) {
+const JOURS = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
+const MOIS = [
+  'janvier', 'février', 'mars', 'avril', 'mai', 'juin',
+  'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre',
+];
+
+/** « samedi 24 octobre 2026 à 13h30 » (heure du telephone). */
+export function formatMissionDateTime(d: Date): string {
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mm = String(d.getMinutes()).padStart(2, '0');
+  return `${JOURS[d.getDay()]} ${d.getDate()} ${MOIS[d.getMonth()]} ${d.getFullYear()} à ${hh}h${mm}`;
+}
+
+function DateTimeField({ label, value, onChange, error, variant = 'default' }: DateTimeFieldProps) {
+  const isMission = variant === 'mission';
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [pendingDate, setPendingDate] = useState<Date | null>(null);
@@ -147,7 +165,11 @@ function DateTimeField({ label, value, onChange, error }: DateTimeFieldProps) {
         onPress={openPicker}
       >
         <Text style={{ color: value ? COLORS.text : '#999', fontSize: 15 }}>
-          {value ? value.toLocaleString('fr-FR') : 'Sélectionner une date et une heure'}
+          {value
+            ? isMission
+              ? formatMissionDateTime(value).replace(/^./, (c) => c.toUpperCase())
+              : value.toLocaleString('fr-FR')
+            : 'Sélectionner une date et une heure'}
         </Text>
       </TouchableOpacity>
 
@@ -165,7 +187,8 @@ function DateTimeField({ label, value, onChange, error }: DateTimeFieldProps) {
         <DateTimePicker
           value={pendingDate ?? new Date()}
           mode="time"
-          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          display={Platform.OS === 'ios' || isMission ? 'spinner' : 'default'}
+          is24Hour={isMission ? true : undefined}
           onChange={onTimeSelected}
         />
       )}

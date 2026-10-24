@@ -226,6 +226,22 @@ export default function MissionTrackingScreen({ route, navigation }: Props) {
           </View>
         );
 
+      // A1 (correction 26) : l'annulation par le client n'avait pas d'affichage (ecran blanc).
+      case 'cancelled_client':
+        return (
+          <View style={styles.statusContainer}>
+            <Text style={styles.errorIcon}>❌</Text>
+            <Text style={styles.statusTitle}>Mission annulée</Text>
+            <Text style={styles.subText}>Vous avez annulé cette mission.</Text>
+            <TouchableOpacity
+              style={styles.primaryButton}
+              onPress={() => navigation.navigate('ClientHome', { clientProfileId: mission.client_id ?? '' })}
+            >
+              <Text style={styles.primaryButtonText}>Créer une nouvelle mission</Text>
+            </TouchableOpacity>
+          </View>
+        );
+
       case 'expired':
         return (
           <View style={styles.statusContainer}>

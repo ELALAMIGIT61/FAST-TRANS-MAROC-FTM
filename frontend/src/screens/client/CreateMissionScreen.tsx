@@ -18,7 +18,7 @@ import { createMission, VehicleCategory } from '../../services/missionService';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import NotificationBell from '../../components/NotificationBell';
 import { signOutAndUnregisterDevice as handleSignOut } from '../../services/pushSetup';
-import DateTimeField from '../../components/DateTimeField';
+import DateTimeField, { formatMissionDateTime } from '../../components/DateTimeField';
 import { useFocusEffect } from '@react-navigation/native';
 import { supabase } from '../../lib/supabaseClient';
 import CityPicker from '../../components/CityPicker';
@@ -142,6 +142,13 @@ export default function CreateMissionScreen({ route, navigation }: Props) {
     if (!canSubmit) return;
     setIsLoading(true);
     try {
+      // A1 (correction 23) : confirmation de la date et de l'heure avant l'envoi.
+      const timeOk = await confirmAction(
+        'Date et heure de prise en charge',
+        `Prise en charge le ${formatMissionDateTime(scheduledPickupTime!)}. Confirmer ?`,
+        { confirmLabel: 'Confirmer', cancelLabel: 'Modifier' }
+      );
+      if (!timeOk) return;
       const permission = await ensureGeocodingPermission();
       const pickup =
         pickupCoords ?? (await resolvePoint(pickupAddress.trim(), pickupCity, 'Adresse de départ', permission));
@@ -288,6 +295,7 @@ export default function CreateMissionScreen({ route, navigation }: Props) {
           label="Quand souhaitez-vous être pris en charge ?"
           value={scheduledPickupTime}
           onChange={setScheduledPickupTime}
+          variant="mission"
         />
 
         {/* OPTIONS */}
