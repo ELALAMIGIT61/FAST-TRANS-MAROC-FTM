@@ -95,6 +95,40 @@ export default function DriverHomeScreen({ route, navigation }: Props) {
     }
   }, []);
 
+  // A1 (correction 29) : un chauffeur ne voit une mission que tant qu'elle est
+  // en attente (regle de securite) ; il ne recoit donc pas l'avis de son
+  // annulation ou de son expiration, et la fenetre restait ouverte. Tant
+  // qu'elle est affichee, on verifie toutes les 5 secondes que la mission est
+  // toujours disponible.
+  const pendingMissionId = pendingMission?.id ?? null;
+  useEffect(() => {
+    if (!pendingMissionId) return;
+    let stopped = false;
+    const timer = setInterval(async () => {
+      const { data, error } = await supabase
+        .from('missions')
+        .select('id, status')
+        .eq('id', pendingMissionId)
+        .maybeSingle();
+      if (stopped || error) return;
+      if (!data || data.status !== 'pending') {
+        stopped = true;
+        clearInterval(timer);
+        console.log('[FTM-DEBUG] Driver - Pending mission no longer available', { missionId: pendingMissionId });
+        setPendingMission((current) => (current && current.id === pendingMissionId ? null : current));
+        clearPendingMissionWatch();
+        showMessage(
+          'Mission indisponible',
+          "Cette mission n'est plus disponible (annulée, expirée ou attribuée à un autre chauffeur)."
+        );
+      }
+    }, 5000);
+    return () => {
+      stopped = true;
+      clearInterval(timer);
+    };
+  }, [pendingMissionId, clearPendingMissionWatch]);
+
   // A1 (correction 12) : ecoute des nouvelles missions, isolee pour etre
   // relancee aussi a l'ouverture de l'ecran quand le chauffeur est deja disponible.
   const subscribeMissions = useCallback(() => {
