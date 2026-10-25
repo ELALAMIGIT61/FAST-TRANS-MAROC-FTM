@@ -95,6 +95,13 @@ interface Props {
   onMissionResolved: (mission: Record<string, unknown>) => void;
 }
 
+
+const VEHICLE_LABELS: Record<string, string> = {
+  vul: 'VUL',
+  n2_medium: 'N2 Moyen',
+  n2_large: 'N2 Grand',
+};
+
 export default function MissionOfferScreen({ missionId, role, driverId, onMissionResolved }: Props) {
   const [clientOffers, setClientOffers] = useState<MissionOffer[]>([]);
   const [driversInfo, setDriversInfo] = useState<Record<string, OfferDriverInfo>>({});
@@ -283,7 +290,9 @@ export default function MissionOfferScreen({ missionId, role, driverId, onMissio
               {driversInfo[offer.driver_id] && (
                 <Text style={styles.driverInfoText}>
                   {[
-                    driversInfo[offer.driver_id].vehicle_category,
+                    // A1 : libelle lisible au lieu du code interne (n2_medium)
+                    VEHICLE_LABELS[driversInfo[offer.driver_id].vehicle_category] ??
+                      driversInfo[offer.driver_id].vehicle_category,
                     driversInfo[offer.driver_id].vehicle_capacity_kg != null
                       ? `${driversInfo[offer.driver_id].vehicle_capacity_kg} kg`
                       : null,
@@ -291,7 +300,9 @@ export default function MissionOfferScreen({ missionId, role, driverId, onMissio
                       ? `\u2605 ${driversInfo[offer.driver_id].rating_average}`
                       : null,
                     driversInfo[offer.driver_id].total_missions != null
-                      ? `${driversInfo[offer.driver_id].total_missions} missions`
+                      ? `${driversInfo[offer.driver_id].total_missions} mission${
+                          (driversInfo[offer.driver_id].total_missions ?? 0) > 1 ? 's' : ''
+                        }`
                       : null,
                   ].filter(Boolean).join('  \u00b7  ')}
                 </Text>

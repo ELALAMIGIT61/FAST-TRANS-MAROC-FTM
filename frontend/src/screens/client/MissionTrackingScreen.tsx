@@ -17,9 +17,11 @@ import {
 import { cancelMission, expireMission } from '../../services/missionService';
 import type { Mission } from '../../services/missionService';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { supabase } from '../../lib/supabaseClient';
 
 type RootStackParamList = {
   MissionTracking: { mission: Record<string, unknown> };
+  MissionOffer: { missionId: string };
   Rating: { mission: Record<string, unknown> };
   VoiceChat: { mission: Record<string, unknown> };
   ClientHome: { clientProfileId?: string };
@@ -99,6 +101,29 @@ export default function MissionTrackingScreen({ route, navigation }: Props) {
     return () => clearInterval(interval);
   }, [mission.status, mission.scheduled_pickup_time, mission.id]);
 
+  // A1 (correction 27) : acces aux offres depuis l'ecran de suivi (avant, seulement
+  // en touchant la notification). Nombre d'offres relu toutes les 10 secondes.
+  const [offersCount, setOffersCount] = useState(0);
+
+  useEffect(() => {
+    if (mission.status !== 'pending') return;
+    let cancelled = false;
+    const readCount = async () => {
+      const { count, error } = await supabase
+        .from('mission_offers')
+        .select('id', { count: 'exact', head: true })
+        .eq('mission_id', mission.id)
+        .eq('status', 'pending');
+      if (!cancelled && !error) setOffersCount(count ?? 0);
+    };
+    readCount();
+    const interval = setInterval(readCount, 10000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [mission.status, mission.id]);
+
   const [voiceChannelOpen, setVoiceChannelOpen] = useState(false);
 
   useEffect(() => {
@@ -153,6 +178,14 @@ export default function MissionTrackingScreen({ route, navigation }: Props) {
                 Distance estimée : ~{mission.estimated_distance_km} km
               </Text>
             )}
+            <TouchableOpacity
+              style={styles.callButton}
+              onPress={() => navigation.navigate('MissionOffer', { missionId: mission.id })}
+            >
+              <Text style={styles.callButtonText}>
+                {offersCount > 0 ? `💰 Voir les offres (${offersCount})` : '💰 Voir les offres'}
+              </Text>
+            </TouchableOpacity>
             <TouchableOpacity style={styles.cancelButton} onPress={handleCancel}>
               <Text style={styles.cancelButtonText}>Annuler</Text>
             </TouchableOpacity>
