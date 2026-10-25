@@ -17,7 +17,10 @@ import {
   markNotificationRead,
   markAllNotificationsRead,
   handleNotificationTap,
+  deleteNotification,
+  deleteAllNotifications,
 } from '../../services/pushNotificationService';
+import { confirmAction, showMessage } from '../../utils/dialogs';
 import { NOTIF_ICONS } from '../../services/notificationTemplates';
 
 // ─── Typage minimal notification ──────────────────────────────────────────────
@@ -98,6 +101,38 @@ export default function NotificationCenterScreen() {
     setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
   };
 
+  // A1 (F7) : suppression d'une notification ou de toutes, apres confirmation.
+  const onDelete = async (item: NotifItem) => {
+    if (!profileId) return;
+    const ok = await confirmAction('Supprimer', 'Supprimer cette notification ?', {
+      confirmLabel: 'Supprimer',
+      destructive: true,
+    });
+    if (!ok) return;
+    const result = await deleteNotification(item.id, profileId);
+    if (result.error) {
+      showMessage('Erreur', result.error);
+      return;
+    }
+    setNotifications(prev => prev.filter(n => n.id !== item.id));
+  };
+
+  const onDeleteAll = async () => {
+    if (!profileId || notifications.length === 0) return;
+    const ok = await confirmAction('Tout supprimer', 'Supprimer toutes vos notifications ?', {
+      confirmLabel: 'Tout supprimer',
+      destructive: true,
+    });
+    if (!ok) return;
+    const result = await deleteAllNotifications(profileId);
+    if (result.error) {
+      showMessage('Erreur', result.error);
+      return;
+    }
+    setNotifications([]);
+    setHasMore(false);
+  };
+
   const renderItem = ({ item }: { item: NotifItem }) => (
     <TouchableOpacity
       style={[styles.card, !item.is_read && styles.cardUnread]}
@@ -110,6 +145,13 @@ export default function NotificationCenterScreen() {
         <Text style={styles.body} numberOfLines={2}>{item.body}</Text>
         <Text style={styles.time}>{timeAgo(item.created_at)}</Text>
       </View>
+      <TouchableOpacity
+        onPress={() => onDelete(item)}
+        style={styles.deleteButton}
+        accessibilityLabel="Supprimer la notification"
+      >
+        <Text style={styles.deleteIcon}>🗑</Text>
+      </TouchableOpacity>
     </TouchableOpacity>
   );
 
@@ -136,9 +178,14 @@ export default function NotificationCenterScreen() {
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Notifications</Text>
-        <TouchableOpacity onPress={onMarkAll}>
-          <Text style={styles.markAll}>Tout lire</Text>
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity onPress={onMarkAll}>
+            <Text style={styles.markAll}>Tout lire</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={onDeleteAll}>
+            <Text style={styles.deleteAll}>Tout supprimer</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <FlatList
@@ -176,6 +223,10 @@ const styles = StyleSheet.create({
   },
   headerTitle: { fontSize: 18, fontWeight: '700' },
   markAll:     { fontSize: 14, color: COLORS.primary ?? '#1A73E8', fontWeight: '600' },
+  headerActions: { flexDirection: 'row', gap: 16 },
+  deleteAll:   { fontSize: 14, color: '#DC3545', fontWeight: '600' },
+  deleteButton: { paddingLeft: 8, paddingVertical: 2 },
+  deleteIcon:  { fontSize: 18 },
   card: {
     flexDirection:   'row',
     backgroundColor: '#FFF',

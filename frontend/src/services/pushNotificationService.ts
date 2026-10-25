@@ -192,6 +192,38 @@ export async function markAllNotificationsRead(
   return { success: true };
 }
 
+// A1 (F7) : suppression par l'utilisateur de ses propres notifications
+// (policy notifications_delete_own, migration 061).
+export async function deleteNotification(
+  notificationId: string,
+  profileId: string
+): Promise<{ success?: boolean; error?: string }> {
+  const { error } = await supabase
+    .from('notifications')
+    .delete()
+    .eq('id', notificationId)
+    .eq('profile_id', profileId);
+  if (error) {
+    console.log('[FTM-DEBUG] Push - Delete notification error', { error: error.message });
+    return { error: error.message };
+  }
+  return { success: true };
+}
+
+export async function deleteAllNotifications(
+  profileId: string
+): Promise<{ success?: boolean; error?: string }> {
+  const { error } = await supabase
+    .from('notifications')
+    .delete()
+    .eq('profile_id', profileId);
+  if (error) {
+    console.log('[FTM-DEBUG] Push - Delete all notifications error', { error: error.message });
+    return { error: error.message };
+  }
+  return { success: true };
+}
+
 export async function getNotifications(
   profileId: string,
   page = 0,
