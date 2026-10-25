@@ -5,6 +5,7 @@ export const NOTIF_ICONS: Record<string, string> = {
   mission_accepted:   '✅',
   mission_started:    '🚛',
   mission_completed:  '🏁',
+  commission_charged: '💰',
   mission_cancelled:  '❌',
   wallet_low_balance: '💸',
   document_expiry:    '⚠️',
@@ -82,12 +83,14 @@ export async function notifyMissionCompleted(
     `Mission ${mission.mission_number} livrée à ${mission.dropoff_city}. Évaluez votre chauffeur.`,
     { mission_id: mission.id, screen: 'RatingScreen' }
   );
+  // A1 (correction 22) : la commission est annoncee par le serveur au moment du
+  // prelevement (migration 063) ; ici, simple cloture de la mission.
   return insertNotification(
     driverProfileId,
     'mission_completed',
-    '💰 Commission prélevée',
-    `Mission ${mission.mission_number} clôturée. Commission de ${mission.commission_amount} DH déduite.`,
-    { mission_id: mission.id, screen: 'WalletDashboardScreen' }
+    '✅ Mission clôturée',
+    `Mission ${mission.mission_number} clôturée. Merci !`,
+    { mission_id: mission.id, screen: 'DriverHomeScreen' }
   );
 }
 
