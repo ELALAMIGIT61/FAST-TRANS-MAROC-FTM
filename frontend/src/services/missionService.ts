@@ -29,6 +29,9 @@ export interface CreateMissionData {
   negotiated_price?: number;
   client_notes?: string;
   scheduled_pickup_time: string;
+  // A1 F6 (migration 068) : poids obligatoire pour N2 (transport), facultatif pour VUL
+  cargo_weight_kg?: number;
+  cargo_volume_m3?: number;
 }
 
 export interface Mission {
@@ -61,6 +64,12 @@ export interface Mission {
   created_at: string;
   updated_at: string;
   completed_at: string | null;
+  // A1 F4 (migration 065) : remplis par le serveur au moment de l'annulation
+  cancelled_at?: string | null;
+  refund_forfeited?: boolean;
+  // A1 F6 (migration 068)
+  cargo_weight_kg?: number | null;
+  cargo_volume_m3?: number | null;
 }
 
 export interface NearbyDriver {
@@ -107,6 +116,8 @@ export async function createMission(
       negotiated_price: missionData.negotiated_price ?? null,
       client_notes: missionData.client_notes ?? null,
       scheduled_pickup_time: missionData.scheduled_pickup_time,
+      cargo_weight_kg: missionData.cargo_weight_kg ?? null,
+      cargo_volume_m3: missionData.cargo_volume_m3 ?? null,
       payment_method: 'cash',
       status: 'pending',
     })
@@ -395,21 +406,32 @@ export async function cancelMission(
 
   return { success: true, mission: data as Mission };
 }
+// A1 F5 (migration 067) : notation sur 3 criteres (1 a 5), tous obligatoires.
+// La note globale interne (client_rating) est calculee par le serveur ; un
+// commentaire eventuel n'est visible des autres clients qu'apres moderation.
+export interface CriteriaRating {
+  punctuality: number;
+  care: number;
+  service: number;
+}
+
 export async function submitClientRating(
   missionId: string,
-  rating: number,
+  ratings: CriteriaRating,
   review?: string
 ): Promise<{ success?: boolean; mission?: Mission; error?: string }> {
   console.log('[FTM-DEBUG] Mission - Submitting client rating', {
     missionId,
-    rating,
+    ratings,
     hasReview: !!review,
   });
 
   const { data, error } = await supabase
     .from('missions')
     .update({
-      client_rating: rating,
+      rating_punctuality: ratings.punctuality,
+      rating_care: ratings.care,
+      rating_service: ratings.service,
       client_review: review ?? null,
     })
     .eq('id', missionId)
@@ -424,7 +446,7 @@ export async function submitClientRating(
 
   console.log('[FTM-DEBUG] Mission - Rating submitted', {
     missionId,
-    rating,
+    ratings,
   });
 
   return { success: true, mission: data as Mission };
@@ -831,4 +853,29 @@ export async function getDriverOfferForMission(
     return { error: error.message };
   }
   return { offer: ((data ?? [])[0] as MissionOffer | undefined) ?? null };
+}
+
+// ─── A1 F4 (migration 065) : conditions d'annulation pour le chauffeur ───────
+// Calculees par le serveur (heure du serveur, delai reglable par categorie) :
+// l'application s'en sert pour avertir le chauffeur avant qu'il annule.
+export interface DriverCancelTerms {
+  delay_hours: number;
+  hours_left: number | null;
+  commission_charged: boolean;
+  commission_amount: number | null;
+  refund_lost_if_cancelled: boolean;
+}
+
+export async function getDriverCancelTerms(
+  missionId: string
+): Promise<{ terms?: DriverCancelTerms | null; error?: string }> {
+  const { data, error } = await supabase.rpc('get_driver_cancel_terms', {
+    p_mission_id: missionId,
+  });
+  if (error) {
+    console.log('[FTM-DEBUG] Mission - Cancel terms error', { error: error.message });
+    return { error: error.message };
+  }
+  const row = ((data ?? []) as DriverCancelTerms[])[0] ?? null;
+  return { terms: row };
 }

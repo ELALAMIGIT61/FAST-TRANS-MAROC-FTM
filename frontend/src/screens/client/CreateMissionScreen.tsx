@@ -23,6 +23,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { supabase } from '../../lib/supabaseClient';
 import CityPicker from '../../components/CityPicker';
 import { findCity } from '../../constants/moroccoCities';
+import { MAX_LOAD_KG, formatTonnes, parseQuantity } from '../../utils/cargo';
 import { ensureGeocodingPermission, geocodeInCity, GeoPoint } from '../../services/geocodingService';
 
 type RootStackParamList = {
@@ -32,6 +33,7 @@ type RootStackParamList = {
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CreateMission'>;
 
+// A1 F6 : charge utile maximale indiquee au client sous chaque categorie (MAX_LOAD_KG)
 const VEHICLE_OPTIONS: { key: VehicleCategory; label: string; commission: number; icon: string }[] = [
   { key: 'vul', label: 'VUL', commission: 25, icon: '🚐' },
   { key: 'n2_medium', label: 'N2 Moyen', commission: 40, icon: '🚛' },
@@ -85,6 +87,9 @@ export default function CreateMissionScreen({ route, navigation }: Props) {
   const [needsLoading, setNeedsLoading] = useState(false);
   const [description, setDescription] = useState('');
   const [negotiatedPrice, setNegotiatedPrice] = useState('');
+  // A1 F6 : poids (obligatoire pour N2, facultatif pour VUL) et volume (facultatif)
+  const [cargoWeight, setCargoWeight] = useState('');
+  const [cargoVolume, setCargoVolume] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
 
@@ -107,10 +112,12 @@ export default function CreateMissionScreen({ route, navigation }: Props) {
   // Le client la demande lui-meme avec le bouton « Ma position actuelle ».
 
   const selectedVehicle = VEHICLE_OPTIONS.find((v) => v.key === vehicleCategory);
+  const weightRequired = vehicleCategory === 'n2_medium' || vehicleCategory === 'n2_large';
   // A1 (correction 15) : le GPS n'est plus obligatoire ; il faut une adresse et une ville.
   const canSubmit =
     !!pickupAddress.trim() && !!pickupCity && !!dropoffAddress.trim() && !!dropoffCity &&
-    !!vehicleCategory && !!scheduledPickupTime && !isLoading;
+    !!vehicleCategory && !!scheduledPickupTime && !isLoading &&
+    (!weightRequired || !!cargoWeight.trim());
 
   // Situe une adresse tapee. Si elle est introuvable, le client choisit :
   // corriger l'adresse, ou continuer avec le centre de la ville choisie.
@@ -140,8 +147,30 @@ export default function CreateMissionScreen({ route, navigation }: Props) {
 
   const handleSubmit = async () => {
     if (!canSubmit) return;
+    // A1 F6 : controle du poids et du volume saisis
+    const weight = parseQuantity(cargoWeight);
+    const volume = parseQuantity(cargoVolume);
+    if ((weight !== null && !(weight > 0)) || (volume !== null && !(volume > 0))) {
+      showMessage('Chargement', 'Le poids et le volume doivent être des nombres positifs.');
+      return;
+    }
+    if (weightRequired && weight === null) {
+      showMessage('Chargement', 'Merci d\'indiquer le poids approximatif du chargement.');
+      return;
+    }
     setIsLoading(true);
     try {
+      const maxLoad = vehicleCategory ? MAX_LOAD_KG[vehicleCategory] : undefined;
+      if (weight !== null && maxLoad && weight > maxLoad) {
+        const keep = await confirmAction(
+          'Charge élevée',
+          `⚠️ ${weight.toLocaleString('fr-FR')} kg dépasse la charge utile habituelle d'un ` +
+            `${selectedVehicle?.label ?? 'véhicule de cette catégorie'} (${formatTonnes(maxLoad)}). ` +
+            'Voulez-vous choisir une autre catégorie ?',
+          { confirmLabel: 'Continuer quand même', cancelLabel: 'Changer de catégorie' }
+        );
+        if (!keep) return;
+      }
       // A1 (correction 23) : confirmation de la date et de l'heure avant l'envoi.
       const timeOk = await confirmAction(
         'Date et heure de prise en charge',
@@ -170,6 +199,8 @@ export default function CreateMissionScreen({ route, navigation }: Props) {
         needs_loading_help: needsLoading,
         negotiated_price: negotiatedPrice ? parseFloat(negotiatedPrice) : undefined,
         scheduled_pickup_time: scheduledPickupTime!.toISOString(),
+        cargo_weight_kg: weight ?? undefined,
+        cargo_volume_m3: volume ?? undefined,
       });
 
       if (result.error) {
@@ -285,9 +316,38 @@ export default function CreateMissionScreen({ route, navigation }: Props) {
               <Text style={[styles.vehicleCommission, vehicleCategory === v.key && styles.vehicleCommissionActive]}>
                 {v.commission} DH
               </Text>
+              <Text style={styles.vehicleLoad}>jusqu'à {formatTonnes(MAX_LOAD_KG[v.key])}</Text>
             </TouchableOpacity>
           ))}
         </View>
+
+        {/* A1 F6 : CHARGEMENT */}
+        <Text style={styles.sectionLabel}>CHARGEMENT</Text>
+        <TextInput
+          style={styles.input}
+          value={cargoWeight}
+          onChangeText={setCargoWeight}
+          placeholder={
+            weightRequired
+              ? 'Poids approximatif en kg (obligatoire)'
+              : 'Poids approximatif en kg (optionnel)'
+          }
+          placeholderTextColor={COLORS.textSecondary}
+          keyboardType="decimal-pad"
+          maxLength={7}
+        />
+        <TextInput
+          style={styles.input}
+          value={cargoVolume}
+          onChangeText={setCargoVolume}
+          placeholder="Volume approximatif en m³ (optionnel)"
+          placeholderTextColor={COLORS.textSecondary}
+          keyboardType="decimal-pad"
+          maxLength={6}
+        />
+        <Text style={styles.cargoHelp}>
+          Repères : 1 palette ≈ 1,5 m³ · 1 réfrigérateur ≈ 1 m³ · un studio ≈ 10 m³ · un 3 pièces ≈ 25 m³
+        </Text>
 
         {/* DATE / HEURE DE PRISE EN CHARGE */}
         <Text style={styles.sectionLabel}>DATE ET HEURE DE PRISE EN CHARGE</Text>
@@ -434,6 +494,8 @@ const styles = StyleSheet.create({
   vehicleLabelActive: { color: COLORS.primary },
   vehicleCommission: { fontSize: 13, fontWeight: '700', color: COLORS.text, marginTop: 2 },
   vehicleCommissionActive: { color: COLORS.primary },
+  vehicleLoad: { fontSize: 11, color: COLORS.textSecondary, marginTop: 2 },
+  cargoHelp: { fontSize: 12, color: COLORS.textSecondary, marginTop: -4, marginBottom: 8 },
   toggleRow: {
     flexDirection: 'row',
     alignItems: 'center',

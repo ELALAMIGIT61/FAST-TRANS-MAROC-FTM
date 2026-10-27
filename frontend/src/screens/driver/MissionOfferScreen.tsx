@@ -14,6 +14,13 @@ import {
 } from '../../services/missionService';
 import type { MissionOffer, OfferDriverInfo } from '../../services/missionService';
 import {
+  getOfferDriverReputation,
+  getOfferDriverReviews,
+  formatAverage,
+  formatCancellations,
+} from '../../services/reputationService';
+import type { DriverReputation, DriverReview } from '../../services/reputationService';
+import {
   subscribeToMissionOffers,
   subscribeToDriverOffers,
   unsubscribeChannel,
@@ -105,6 +112,9 @@ const VEHICLE_LABELS: Record<string, string> = {
 export default function MissionOfferScreen({ missionId, role, driverId, onMissionResolved }: Props) {
   const [clientOffers, setClientOffers] = useState<MissionOffer[]>([]);
   const [driversInfo, setDriversInfo] = useState<Record<string, OfferDriverInfo>>({});
+  // A1 F5 : moyennes par critere, annulations et commentaires publies
+  const [reputations, setReputations] = useState<Record<string, DriverReputation>>({});
+  const [reviews, setReviews] = useState<Record<string, DriverReview[]>>({});
   const [driverOffer, setDriverOffer] = useState<MissionOffer | null>(null);
   const [counterPrice, setCounterPrice] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -170,6 +180,12 @@ export default function MissionOfferScreen({ missionId, role, driverId, onMissio
         result.drivers.forEach((d) => { map[d.driver_id] = d; });
         setDriversInfo(map);
       }
+    });
+    getOfferDriverReputation(missionId).then((result) => {
+      if (result.reputations) setReputations(result.reputations);
+    });
+    getOfferDriverReviews(missionId).then((result) => {
+      if (result.reviews) setReviews(result.reviews);
     });
   }, [role, clientOffers, missionId]);
 
@@ -296,16 +312,28 @@ export default function MissionOfferScreen({ missionId, role, driverId, onMissio
                     driversInfo[offer.driver_id].vehicle_capacity_kg != null
                       ? `${driversInfo[offer.driver_id].vehicle_capacity_kg} kg`
                       : null,
-                    driversInfo[offer.driver_id].rating_average != null
-                      ? `\u2605 ${driversInfo[offer.driver_id].rating_average}`
-                      : null,
-                    driversInfo[offer.driver_id].total_missions != null
-                      ? `${driversInfo[offer.driver_id].total_missions} mission${
-                          (driversInfo[offer.driver_id].total_missions ?? 0) > 1 ? 's' : ''
-                        }`
-                      : null,
                   ].filter(Boolean).join('  \u00b7  ')}
                 </Text>
+              )}
+              {reputations[offer.driver_id] && (
+                <View style={styles.reputationBox}>
+                  <Text style={styles.driverInfoText}>
+                    {`Ponctualité \u2605 ${formatAverage(reputations[offer.driver_id].avg_punctuality)}  \u00b7  ` +
+                      `Soin \u2605 ${formatAverage(reputations[offer.driver_id].avg_care)}  \u00b7  ` +
+                      `Services \u2605 ${formatAverage(reputations[offer.driver_id].avg_service)}`}
+                  </Text>
+                  <Text style={styles.driverInfoText}>
+                    {`${reputations[offer.driver_id].completed_missions} mission${
+                      reputations[offer.driver_id].completed_missions > 1 ? 's' : ''
+                    } réalisée${reputations[offer.driver_id].completed_missions > 1 ? 's' : ''}  \u00b7  ` +
+                      formatCancellations(reputations[offer.driver_id])}
+                  </Text>
+                  {(reviews[offer.driver_id] ?? []).map((r, i) => (
+                    <Text key={i} style={styles.reviewText}>
+                      {`« ${r.review} » — ${new Date(r.review_date).toLocaleDateString('fr-FR')}`}
+                    </Text>
+                  ))}
+                </View>
               )}
 
               {state.kind === 'awaiting_response' && (
@@ -455,6 +483,8 @@ const styles = StyleSheet.create({
   },
   offerPrice: { fontSize: 18, fontWeight: '700', color: COLORS.text },
   driverInfoText: { fontSize: 13, color: COLORS.textMuted ?? '#666' },
+  reputationBox: { gap: 2 },
+  reviewText: { fontSize: 12, color: COLORS.text, fontStyle: 'italic' },
   actionRow: { flexDirection: 'row', gap: SPACING.sm },
   // A1 (correction 16) : flex: 1 ecrasait la hauteur du bouton dans une colonne
   // (texte coupe, invisible sur Android) ; flexGrow garde le partage en ligne.

@@ -12,6 +12,7 @@ import * as Haptics from 'expo-haptics';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../constants/theme';
 import { createMissionOffer } from '../../services/missionService';
 import type { Mission } from '../../services/missionService';
+import { formatCargo } from '../../utils/cargo';
 
 interface Props {
   mission: Mission;
@@ -116,6 +117,11 @@ export default function NewMissionModal({ mission, driverId, onOfferCreated, onD
             </View>
           </View>
 
+          {/* A1 F6 : poids et volume du chargement */}
+          <Text style={styles.cargoText}>
+            ⚖️ {formatCargo(mission.cargo_weight_kg, mission.cargo_volume_m3) ?? 'Poids et volume non indiqués'}
+          </Text>
+
           <View style={styles.progressContainer}>
             <Animated.View
               style={[styles.progressBar, { width: progressWidth }]}
@@ -204,6 +210,7 @@ const styles = StyleSheet.create({
   infoItem: { alignItems: 'center', gap: 4 },
   infoIcon: { fontSize: 20 },
   infoValue: { fontSize: 14, fontWeight: '600', color: COLORS.text },
+  cargoText: { fontSize: 14, fontWeight: '600', color: COLORS.text, textAlign: 'center', marginBottom: 8 },
   progressContainer: {
     height: 6,
     backgroundColor: COLORS.border,

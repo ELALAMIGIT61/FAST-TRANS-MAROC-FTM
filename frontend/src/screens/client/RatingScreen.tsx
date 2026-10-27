@@ -4,6 +4,7 @@ import {
   Text,
   TouchableOpacity,
   TextInput,
+  ScrollView,
   StyleSheet,
   ActivityIndicator,
 } from 'react-native';
@@ -20,6 +21,14 @@ type RootStackParamList = {
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Rating'>;
 
+type CriterionKey = 'punctuality' | 'care' | 'service';
+
+const CRITERIA: { key: CriterionKey; label: string; help: string }[] = [
+  { key: 'punctuality', label: 'Ponctualité', help: 'Respect de l’heure prévue' },
+  { key: 'care', label: 'Soin de la marchandise', help: 'État de la marchandise à l’arrivée' },
+  { key: 'service', label: 'Services', help: 'Courtoisie, communication, aide…' },
+];
+
 const STAR_COLORS: Record<number, string> = {
   1: '#E53E3E',
   2: '#E53E3E',
@@ -30,17 +39,23 @@ const STAR_COLORS: Record<number, string> = {
 
 export default function RatingScreen({ route, navigation }: Props) {
   const mission = route.params.mission as unknown as Mission;
-  const [rating, setRating] = useState(0);
+  // A1 F5 : 3 criteres, tous obligatoires
+  const [ratings, setRatings] = useState<Record<CriterionKey, number>>({
+    punctuality: 0,
+    care: 0,
+    service: 0,
+  });
   const [review, setReview] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const allRated = CRITERIA.every((c) => ratings[c.key] > 0);
 
   const handleSubmit = async () => {
-    if (rating === 0) {
-      showMessage('Note requise', 'Veuillez sélectionner une note.');
+    if (!allRated) {
+      showMessage('Notes requises', 'Merci de noter les 3 critères.');
       return;
     }
     setIsLoading(true);
-    const result = await submitClientRating(mission.id, rating, review || undefined);
+    const result = await submitClientRating(mission.id, ratings, review.trim() || undefined);
     setIsLoading(false);
 
     if (result.error) {
@@ -54,21 +69,36 @@ export default function RatingScreen({ route, navigation }: Props) {
     navigation.navigate('ClientHome', { clientProfileId: mission.client_id ?? '' });
   };
 
-  const starColor = rating > 0 ? STAR_COLORS[rating] : COLORS.border;
-
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.scroll} contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
       <Text style={styles.title}>Comment s'est passée{'\n'}votre mission ?</Text>
 
-      <View style={styles.starsRow}>
-        {[1, 2, 3, 4, 5].map((star) => (
-          <TouchableOpacity key={star} onPress={() => setRating(star)}>
-            <Text style={[styles.star, { color: star <= rating ? starColor : COLORS.border }]}>
-              ★
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+      {CRITERIA.map((criterion) => {
+        const value = ratings[criterion.key];
+        const starColor = value > 0 ? STAR_COLORS[value] : COLORS.border;
+        return (
+          <View key={criterion.key} style={styles.criterionBlock}>
+            <Text style={styles.criterionLabel}>{criterion.label}</Text>
+            <Text style={styles.criterionHelp}>{criterion.help}</Text>
+            <View style={styles.starsRow}>
+              {[1, 2, 3, 4, 5].map((star) => (
+                <TouchableOpacity
+                  key={star}
+                  onPress={() => setRatings((r) => ({ ...r, [criterion.key]: star }))}
+                >
+                  <Text style={[styles.star, { color: star <= value ? starColor : COLORS.border }]}>
+                    ★
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        );
+      })}
+
+      <Text style={styles.reviewNote}>
+        Votre commentaire pourra être lu par les autres clients, sans votre nom, après validation.
+      </Text>
 
       <TextInput
         style={styles.reviewInput}
@@ -82,9 +112,9 @@ export default function RatingScreen({ route, navigation }: Props) {
       />
 
       <TouchableOpacity
-        style={[styles.submitButton, rating === 0 && styles.submitButtonDisabled]}
+        style={[styles.submitButton, !allRated && styles.submitButtonDisabled]}
         onPress={handleSubmit}
-        disabled={isLoading || rating === 0}
+        disabled={isLoading || !allRated}
       >
         {isLoading ? (
           <ActivityIndicator color="#fff" />
@@ -96,13 +126,14 @@ export default function RatingScreen({ route, navigation }: Props) {
       <TouchableOpacity onPress={handleSkip} style={styles.skipButton}>
         <Text style={styles.skipText}>Passer</Text>
       </TouchableOpacity>
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
+  scroll: { flex: 1, backgroundColor: COLORS.background },
   container: {
-    flex: 1,
+    flexGrow: 1,
     backgroundColor: COLORS.background,
     padding: SPACING.lg,
     justifyContent: 'center',
@@ -113,15 +144,18 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: COLORS.text,
     textAlign: 'center',
-    marginBottom: SPACING.xl,
+    marginBottom: SPACING.lg,
     lineHeight: 32,
   },
+  criterionBlock: { width: '100%', alignItems: 'center', marginBottom: SPACING.md },
+  criterionLabel: { fontSize: 16, fontWeight: '700', color: COLORS.text },
+  criterionHelp: { fontSize: 12, color: COLORS.textSecondary, marginBottom: 2 },
   starsRow: {
     flexDirection: 'row',
     gap: SPACING.sm,
-    marginBottom: SPACING.xl,
   },
-  star: { fontSize: 48 },
+  star: { fontSize: 38 },
+  reviewNote: { fontSize: 12, color: COLORS.textSecondary, textAlign: 'center', marginBottom: SPACING.xs },
   reviewInput: {
     width: '100%',
     backgroundColor: COLORS.surface,

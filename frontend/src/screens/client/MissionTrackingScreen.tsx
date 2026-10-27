@@ -16,6 +16,7 @@ import {
 } from '../../services/realtimeService';
 import { cancelMission, expireMission } from '../../services/missionService';
 import type { Mission } from '../../services/missionService';
+import { formatCargo } from '../../utils/cargo';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { supabase } from '../../lib/supabaseClient';
 
@@ -178,6 +179,12 @@ export default function MissionTrackingScreen({ route, navigation }: Props) {
                 Distance estimée : ~{mission.estimated_distance_km} km
               </Text>
             )}
+            {/* A1 F6 : poids et volume indiques par le client */}
+            {formatCargo(mission.cargo_weight_kg, mission.cargo_volume_m3) && (
+              <Text style={styles.distanceText}>
+                Chargement : {formatCargo(mission.cargo_weight_kg, mission.cargo_volume_m3)}
+              </Text>
+            )}
             <TouchableOpacity
               style={styles.callButton}
               onPress={() => navigation.navigate('MissionOffer', { missionId: mission.id })}
@@ -200,6 +207,11 @@ export default function MissionTrackingScreen({ route, navigation }: Props) {
             <View style={styles.driverCard}>
               <Text style={styles.driverName}>Chauffeur assigné</Text>
               <Text style={styles.driverInfo}>Mission N° {mission.mission_number}</Text>
+              {formatCargo(mission.cargo_weight_kg, mission.cargo_volume_m3) && (
+                <Text style={styles.driverInfo}>
+                  Chargement : {formatCargo(mission.cargo_weight_kg, mission.cargo_volume_m3)}
+                </Text>
+              )}
             </View>
             {/* A1 (correction 17) : pas d'appel telephonique, messages vocaux uniquement */}
             {voiceChannelOpen && (

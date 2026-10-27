@@ -19,6 +19,12 @@ import {
   getDriverDashboard,
   subscribeToWalletUpdates,
 } from '../../services/walletService';
+import {
+  getMyDriverReputation,
+  formatAverage,
+  formatCancellations,
+} from '../../services/reputationService';
+import type { DriverReputation } from '../../services/reputationService';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -48,6 +54,8 @@ export default function WalletDashboardScreen({ route }: NativeStackScreenProps<
   const { driverId } = route.params;
   const navigation = useNavigation<NavigationProp>();
   const [dashboard, setDashboard] = useState<DriverDashboard | null>(null);
+  // A1 F5 : moyennes par critere et annulations, comme les voient les clients
+  const [reputation, setReputation] = useState<DriverReputation | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [liveBalance, setLiveBalance] = useState<number | null>(null);
@@ -61,6 +69,8 @@ export default function WalletDashboardScreen({ route }: NativeStackScreenProps<
       setLiveBalance(result.dashboard.wallet_balance);
       setLiveBlocked(result.dashboard.is_wallet_blocked);
     }
+    const rep = await getMyDriverReputation();
+    if (rep.reputation) setReputation(rep.reputation);
   }, [driverId]);
 
   useEffect(() => {
@@ -187,11 +197,23 @@ export default function WalletDashboardScreen({ route }: NativeStackScreenProps<
         </View>
       </View>
 
-      <Text style={styles.sectionTitle}>── NOTE MOYENNE ──</Text>
-      <Text style={styles.ratingText}>
-        ⭐ {dashboard.rating_average?.toFixed(1) ?? '—'} / 5{' '}
-        <Text style={styles.ratingSubtext}>({dashboard.total_reviews} avis)</Text>
-      </Text>
+      <Text style={styles.sectionTitle}>── MES NOTES (vues par les clients) ──</Text>
+      {reputation ? (
+        <>
+          <Text style={styles.ratingText}>
+            {`Ponctualité ★ ${formatAverage(reputation.avg_punctuality)}  ·  Soin ★ ${formatAverage(
+              reputation.avg_care
+            )}  ·  Services ★ ${formatAverage(reputation.avg_service)}`}
+          </Text>
+          <Text style={styles.ratingSubtext}>
+            {`${reputation.rated_missions} mission${reputation.rated_missions > 1 ? 's' : ''} notée${
+              reputation.rated_missions > 1 ? 's' : ''
+            }  ·  ${formatCancellations(reputation)}`}
+          </Text>
+        </>
+      ) : (
+        <Text style={styles.ratingSubtext}>Aucune note pour le moment.</Text>
+      )}
 
       <Text style={styles.sectionTitle}>── RECHARGES CE MOIS ──</Text>
       <Text style={styles.rechargeText}>

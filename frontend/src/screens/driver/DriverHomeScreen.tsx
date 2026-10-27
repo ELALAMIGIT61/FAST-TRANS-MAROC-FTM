@@ -20,7 +20,9 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 
 type RootStackParamList = {
-  DriverHome: { driverId: string; vehicleCategory: VehicleCategory };
+  // A1 F1 : openMission = mission a afficher, transmise par la notification
+  // « Nouvelle mission » touchee par le chauffeur.
+  DriverHome: { driverId: string; vehicleCategory: VehicleCategory; openMission?: string };
   MissionActive: { mission: Record<string, unknown> };
   MissionOffer: { missionId: string; driverId: string };
   WalletDashboard: { driverId: string };
@@ -31,6 +33,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'DriverHome'>;
 
 export default function DriverHomeScreen({ route, navigation }: Props) {
   const { driverId, vehicleCategory } = route.params;
+  const openMissionId = route.params.openMission;
   const [isAvailable, setIsAvailable] = useState(false);
   const [walletBalance, setWalletBalance] = useState<number | null>(null);
   const [walletError, setWalletError] = useState(false);
@@ -138,31 +141,24 @@ export default function DriverHomeScreen({ route, navigation }: Props) {
       null,
       async (missionData) => {
         const mission = missionData as unknown as Mission;
-        const rawMission = missionData as Record<string, unknown>;
-        const pickupLocation = rawMission.pickup_location as string | null;
 
-        if (pickupLocation) {
-          const { data: nearbyDrivers, error: nearbyError } = await supabase.rpc('find_nearby_drivers', {
-            client_point: pickupLocation,
-            radius_meters: 60000,
-            p_vehicle_category: vehicleCategory,
+        // A1 F1 (migration 066) : le rayon de diffusion depend de la categorie
+        // (reglable par l'admin : VUL 60 km, N2 sans limite au depart) ; il est
+        // verifie par le serveur. En cas d'echec, la mission est affichee.
+        const { data: inRange, error: rangeError } = await supabase.rpc('driver_mission_in_range', {
+          p_mission_id: mission.id,
+        });
+        if (rangeError) {
+          console.log('[FTM-DEBUG] Driver - Distance check error, showing mission by default', {
+            missionId: mission.id,
+            error: rangeError.message,
           });
-
-          if (nearbyError) {
-            console.log('[FTM-DEBUG] Driver - Distance check error, showing mission by default', {
-              missionId: mission.id,
-              error: nearbyError.message,
-            });
-          } else {
-            const isWithinRadius = (nearbyDrivers as { id: string }[] | null)?.some((d) => d.id === driverId);
-            if (!isWithinRadius) {
-              console.log('[FTM-DEBUG] Driver - Mission outside radius, skipping', {
-                missionId: mission.id,
-                driverId,
-              });
-              return;
-            }
-          }
+        } else if (inRange !== true) {
+          console.log('[FTM-DEBUG] Driver - Mission outside radius, skipping', {
+            missionId: mission.id,
+            driverId,
+          });
+          return;
         }
 
         setPendingMission(mission);
@@ -183,6 +179,34 @@ export default function DriverHomeScreen({ route, navigation }: Props) {
       }
     );
   }, [driverId, vehicleCategory, clearPendingMissionWatch]);
+
+  // A1 F1 : le chauffeur a touche la notification « Nouvelle mission » : on
+  // affiche la mission si elle est encore en attente.
+  useEffect(() => {
+    if (!openMissionId) return;
+    (async () => {
+      const { data, error } = await supabase
+        .from('missions')
+        .select('*')
+        .eq('id', openMissionId)
+        .maybeSingle();
+      // Parametre efface une fois traite : une nouvelle notification
+      // (meme mission) pourra rouvrir la fiche.
+      navigation.setParams({ openMission: undefined });
+      if (error || !data || data.status !== 'pending') {
+        console.log('[FTM-DEBUG] Driver - Notified mission unavailable', {
+          missionId: openMissionId,
+          error: error?.message,
+        });
+        showMessage(
+          'Mission indisponible',
+          "Cette mission n'est plus disponible (annulée, expirée ou attribuée à un autre chauffeur)."
+        );
+        return;
+      }
+      setPendingMission(data as unknown as Mission);
+    })();
+  }, [openMissionId, navigation]);
 
   const handleToggleAvailability = useCallback(async () => {
     const newStatus = !isAvailable;

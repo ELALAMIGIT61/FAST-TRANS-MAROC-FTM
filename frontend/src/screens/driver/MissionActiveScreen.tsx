@@ -9,9 +9,15 @@ import {
 } from 'react-native';
 import { showMessage, confirmAction } from '../../utils/dialogs';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../constants/theme';
-import { startMission, completeMission } from '../../services/missionService';
+import {
+  startMission,
+  completeMission,
+  cancelMission,
+  getDriverCancelTerms,
+} from '../../services/missionService';
 import { requestRefund } from '../../services/walletService';
 import type { Mission } from '../../services/missionService';
+import { formatCargo } from '../../utils/cargo';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 type RootStackParamList = {
@@ -38,6 +44,7 @@ export default function MissionActiveScreen({ route, navigation }: Props) {
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [isRequestingRefund, setIsRequestingRefund] = useState(false);
   const [refundRequested, setRefundRequested] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
@@ -156,6 +163,48 @@ export default function MissionActiveScreen({ route, navigation }: Props) {
     }
   };
 
+  // A1 F4 : annulation par le chauffeur. Les conditions (delai reglable par
+  // categorie, commission deja prelevee) sont calculees par le serveur ; a
+  // moins du delai, le chauffeur est prevenu qu'il perd le remboursement.
+  const handleCancelByDriver = async () => {
+    if (isCancelling) return;
+    setIsCancelling(true);
+    const { terms, error: termsError } = await getDriverCancelTerms(mission.id);
+    if (termsError) {
+      setIsCancelling(false);
+      showMessage('Erreur', termsError);
+      return;
+    }
+    const amount = Number(terms?.commission_amount ?? mission.commission_amount ?? 0);
+    let message = 'Voulez-vous vraiment annuler cette mission ? Le client sera prévenu.';
+    if (terms?.refund_lost_if_cancelled) {
+      message =
+        `⚠️ La mission commence dans moins de ${terms.delay_hours} h. ` +
+        `Si vous annulez maintenant, la commission de ${amount} DH déjà prélevée ne sera pas remboursée.\n\n` +
+        'Voulez-vous vraiment annuler ?';
+    } else if (terms?.commission_charged) {
+      message +=
+        `\n\nLa commission de ${amount} DH déjà prélevée pourra vous être remboursée : ` +
+        'faites la demande après l\'annulation.';
+    }
+    const confirmed = await confirmAction('Annuler la mission', message, {
+      confirmLabel: 'Oui, annuler',
+      cancelLabel: 'Non, garder la mission',
+      destructive: true,
+    });
+    if (!confirmed) {
+      setIsCancelling(false);
+      return;
+    }
+    const result = await cancelMission(mission.id, mission.driver_id ?? '', 'driver');
+    setIsCancelling(false);
+    if (result.error) {
+      showMessage('Erreur', result.error);
+    } else if (result.mission) {
+      setMission(result.mission);
+    }
+  };
+
   if (mission.status === 'accepted') {
     return (
       <View style={styles.container}>
@@ -165,6 +214,10 @@ export default function MissionActiveScreen({ route, navigation }: Props) {
           <Text style={styles.addressLabel}>📍 Point de chargement</Text>
           <Text style={styles.addressText}>{mission.pickup_address}</Text>
           <Text style={styles.cityText}>{mission.pickup_city}</Text>
+          {/* A1 F6 : poids et volume du chargement */}
+          <Text style={styles.cityText}>
+            ⚖️ {formatCargo(mission.cargo_weight_kg, mission.cargo_volume_m3) ?? 'Poids et volume non indiqués'}
+          </Text>
         </View>
 
         <TouchableOpacity
@@ -185,6 +238,15 @@ export default function MissionActiveScreen({ route, navigation }: Props) {
         <TouchableOpacity style={styles.primaryButton} onPress={handleStart}>
           <Text style={styles.primaryButtonText}>J'arrive — Démarrer la mission</Text>
         </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.cancelButton}
+          onPress={handleCancelByDriver}
+          disabled={isCancelling}
+        >
+          <Text style={styles.cancelButtonText}>
+            {isCancelling ? 'Vérification...' : 'Annuler la mission'}
+          </Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -199,6 +261,9 @@ export default function MissionActiveScreen({ route, navigation }: Props) {
           <Text style={styles.addressLabel}>🏁 Destination</Text>
           <Text style={styles.addressText}>{mission.dropoff_address}</Text>
           <Text style={styles.cityText}>{mission.dropoff_city}</Text>
+          <Text style={styles.cityText}>
+            ⚖️ {formatCargo(mission.cargo_weight_kg, mission.cargo_volume_m3) ?? 'Poids et volume non indiqués'}
+          </Text>
         </View>
 
         <TouchableOpacity
@@ -229,7 +294,16 @@ export default function MissionActiveScreen({ route, navigation }: Props) {
   }
 
   const isCancelled = mission.status === 'cancelled_client' || mission.status === 'cancelled_driver';
-  const canRequestRefund = isCancelled && !!mission.commission_charged_at;
+  // A1 F4 : pas de demande de remboursement si le chauffeur a annule a moins
+  // du delai (le serveur la refuse aussi).
+  const canRequestRefund =
+    isCancelled && !!mission.commission_charged_at && !mission.refund_forfeited;
+  const statusLabel =
+    mission.status === 'cancelled_driver'
+      ? '❌ Mission annulée par vous'
+      : mission.status === 'cancelled_client'
+        ? '❌ Mission annulée par le client'
+        : `Statut : ${mission.status}`;
 
   const handleRequestRefund = async () => {
     setIsRequestingRefund(true);
@@ -245,7 +319,13 @@ export default function MissionActiveScreen({ route, navigation }: Props) {
   return (
     <View style={styles.container}>
       <Text style={styles.phaseTitle}>Mission</Text>
-      <Text style={styles.missionNumber}>Statut : {mission.status}</Text>
+      <Text style={styles.missionNumber}>N° {mission.mission_number}</Text>
+      <Text style={styles.missionNumber}>{statusLabel}</Text>
+      {mission.refund_forfeited && (
+        <Text style={styles.missionNumber}>
+          Annulation à moins du délai prévu : la commission prélevée ne sera pas remboursée.
+        </Text>
+      )}
       {canRequestRefund && !refundRequested && (
         <TouchableOpacity
           style={styles.mapsButton}
@@ -319,4 +399,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   successButtonText: { color: '#fff', fontSize: 17, fontWeight: '700' },
+  cancelButton: {
+    borderRadius: BORDER_RADIUS.md,
+    padding: SPACING.md,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.alert,
+  },
+  cancelButtonText: { color: COLORS.alert, fontSize: 15, fontWeight: '600' },
 });
