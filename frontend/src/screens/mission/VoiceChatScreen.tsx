@@ -14,6 +14,7 @@ import {
   stopPlayback,
 } from '../../services/audioService';
 import VoiceMicButton from '../../components/VoiceMicButton';
+import BackButton from '../../components/BackButton';
 
 interface VoiceMsg {
   id: string;
@@ -30,6 +31,8 @@ interface Props {
   missionId: string;
   currentProfileId: string;
   missionNumber: string;
+  // A1 (retouche 34) : interlocuteur affiche dans le texte d'accueil
+  otherParty?: 'client' | 'chauffeur';
 }
 
 function timeAgo(date: Date | null): string {
@@ -45,6 +48,7 @@ export default function VoiceChatScreen({
   missionId,
   currentProfileId,
   missionNumber,
+  otherParty = 'chauffeur',
 }: Props) {
   const [messages, setMessages] = useState<VoiceMsg[]>([]);
   const [loading, setLoading]   = useState(true);
@@ -128,6 +132,8 @@ export default function VoiceChatScreen({
   return (
     <View style={styles.container}>
       {/* Header */}
+      {/* A1 : retour a l'ecran de la mission (aucun en-tete natif) */}
+      <BackButton />
       <View style={styles.header}>
         <Text style={styles.headerTitle}>💬 Chat vocal — Mission FTM...{missionNumber.slice(-3)}</Text>
         <Text style={styles.headerSub}>Messages vocaux en Darija</Text>
@@ -156,7 +162,7 @@ export default function VoiceChatScreen({
               <Text style={styles.emptyIcon}>🎤</Text>
               <Text style={styles.emptyTitle}>Pas encore de messages</Text>
               <Text style={styles.emptyBody}>
-                Maintenez le bouton pour parler{'\n'}en Darija avec votre chauffeur
+                Maintenez le bouton pour parler{'\n'}en Darija avec votre {otherParty}
               </Text>
             </View>
           }

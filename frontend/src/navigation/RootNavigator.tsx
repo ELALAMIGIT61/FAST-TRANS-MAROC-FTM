@@ -45,6 +45,8 @@ import DocumentReviewScreen from "../screens/admin/DocumentReviewScreen";
 import WalletManagementScreen from "../screens/admin/WalletManagementScreen";
 import PendingTransactionsScreen from "../screens/admin/PendingTransactionsScreen";
 import BankReconciliationScreen from "../screens/admin/BankReconciliationScreen";
+import AdminSettingsScreen from "../screens/admin/AdminSettingsScreen";
+import AdminReviewsScreen from "../screens/admin/AdminReviewsScreen";
 import NotificationCenterScreen from "../screens/notifications/NotificationCenterScreen";
 import AccountSuspendedScreen from "../screens/auth/AccountSuspendedScreen";
 
@@ -99,6 +101,8 @@ export type AdminStackParamList = {
   PendingTransactions: undefined;
   BankReconciliation: undefined;
   NotificationCenter: undefined;
+  AdminSettings: undefined;
+  AdminReviews: undefined;
 };
 
 const AuthStack = createNativeStackNavigator<AuthStackParamList>();
@@ -225,6 +229,10 @@ function AdminNavigator() {
         component={AdminUsersScreen as any}
       />
       <AdminStack.Screen name="NotificationCenter" component={NotificationCenterScreen as any} />
+      {/* A1 : reglages des regles de fonctionnement (migrations 064 a 066) */}
+      <AdminStack.Screen name="AdminSettings" component={AdminSettingsScreen as any} />
+      {/* A1 F5 : moderation des commentaires des clients */}
+      <AdminStack.Screen name="AdminReviews" component={AdminReviewsScreen as any} />
     </AdminStack.Navigator>
   );
 }

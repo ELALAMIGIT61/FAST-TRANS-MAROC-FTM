@@ -9,9 +9,10 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { showMessage, confirmAction } from '../../utils/dialogs';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { COLORS } from '../../constants/theme';
 import { getAdminStats } from '../../services/adminService';
+import { getReviewsToModerate } from '../../services/reputationService';
 import NotificationBell from '../../components/NotificationBell';
 import { signOutAndUnregisterDevice as handleSignOut } from '../../services/pushSetup';
 
@@ -33,6 +34,14 @@ export default function AdminDashboardScreen() {
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  // A1 F5 : nombre de commentaires en attente, relu a chaque retour sur l'ecran
+  const [reviewsToModerate, setReviewsToModerate] = useState(0);
+
+  useFocusEffect(
+    useCallback(() => {
+      getReviewsToModerate().then((r) => setReviewsToModerate(r.reviews?.length ?? 0));
+    }, [])
+  );
 
   const loadStats = useCallback(async () => {
     const result = await getAdminStats();
@@ -173,6 +182,29 @@ export default function AdminDashboardScreen() {
         onPress={() => navigation.navigate('WalletManagement')}
       >
         <Text style={styles.navText}>💰 Wallets & Transactions</Text>
+        <Text style={styles.navArrow}>→</Text>
+      </TouchableOpacity>
+
+      {/* A1 F5 : commentaires des clients a publier ou refuser */}
+      <TouchableOpacity
+        style={styles.navItem}
+        onPress={() => navigation.navigate('AdminReviews')}
+      >
+        <Text style={styles.navText}>⭐ Avis à modérer</Text>
+        {reviewsToModerate > 0 && (
+          <View style={styles.badge}>
+            <Text style={styles.badgeText}>{reviewsToModerate}</Text>
+          </View>
+        )}
+        <Text style={styles.navArrow}>→</Text>
+      </TouchableOpacity>
+
+      {/* A1 : regles de fonctionnement modifiables sans migration */}
+      <TouchableOpacity
+        style={styles.navItem}
+        onPress={() => navigation.navigate('AdminSettings')}
+      >
+        <Text style={styles.navText}>⚙️ Réglages</Text>
         <Text style={styles.navArrow}>→</Text>
       </TouchableOpacity>
     </ScrollView>

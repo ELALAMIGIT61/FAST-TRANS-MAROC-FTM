@@ -18,6 +18,7 @@ import { signOutAndUnregisterDevice as handleSignOut } from '../../services/push
 import type { Mission, VehicleCategory } from '../../services/missionService';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
+import { usePendingNavigation } from '../../hooks/usePendingNavigation';
 
 type RootStackParamList = {
   // A1 F1 : openMission = mission a afficher, transmise par la notification
@@ -31,9 +32,20 @@ type RootStackParamList = {
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DriverHome'>;
 
+const VEHICLE_LABELS: Record<string, string> = {
+  vul: 'VUL',
+  n2_medium: 'N2 Moyen',
+  n2_large: 'N2 Grand',
+};
+
 export default function DriverHomeScreen({ route, navigation }: Props) {
   const { driverId, vehicleCategory } = route.params;
   const openMissionId = route.params.openMission;
+  // A1 (correction 31) : ecran demande par une notification (offres, mission…)
+  usePendingNavigation(
+    route.params as unknown as Record<string, unknown>,
+    navigation as unknown as Parameters<typeof usePendingNavigation>[1]
+  );
   const [isAvailable, setIsAvailable] = useState(false);
   const [walletBalance, setWalletBalance] = useState<number | null>(null);
   const [walletError, setWalletError] = useState(false);
@@ -297,7 +309,8 @@ export default function DriverHomeScreen({ route, navigation }: Props) {
       <View style={styles.header}>
         <View>
           <Text style={styles.greeting}>Bonjour, Chauffeur</Text>
-          <Text style={styles.vehicleInfo}>{vehicleCategory.toUpperCase()}</Text>
+          {/* A1 : libelle lisible au lieu du code interne (n2_medium) */}
+          <Text style={styles.vehicleInfo}>{VEHICLE_LABELS[vehicleCategory] ?? vehicleCategory}</Text>
         </View>
         <NotificationBell />
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>

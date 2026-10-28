@@ -34,6 +34,7 @@ export const navigationRef = createNavigationContainerRef<any>();
 // ecran demande deux fois de suite (deux chemins de detection) n'est ouvert
 // qu'une fois.
 let lastNavigation: { key: string; at: number } | null = null;
+const HOME_ROUTES = ['ClientHome', 'DriverHome'];
 
 function navigate(screen: string, params?: Record<string, unknown>): void {
   const key = screen + JSON.stringify(params ?? {});
@@ -41,7 +42,25 @@ function navigate(screen: string, params?: Record<string, unknown>): void {
   if (lastNavigation && lastNavigation.key === key && now - lastNavigation.at < 3000) return;
   lastNavigation = { key, at: now };
 
-  const go = () => navigationRef.dispatch(CommonActions.navigate({ name: screen, params }));
+  // A1 (correction 31) : ouvrir un ecran directement depuis une notification
+  // echouait (retour a l'accueil), alors que la mise a jour de l'accueil
+  // fonctionne (notification « Nouvelle mission »). Pour le client et le
+  // chauffeur, on passe donc par leur accueil, qui ouvre lui-meme l'ecran
+  // demande (parametres pendingScreen / pendingParams).
+  const go = () => {
+    const home = navigationRef.getRootState()?.routeNames?.[0];
+    if (home && HOME_ROUTES.includes(home) && screen !== home) {
+      navigationRef.dispatch(
+        CommonActions.navigate({
+          name: home,
+          params: { pendingScreen: screen, pendingParams: params ?? {}, pendingAt: Date.now() },
+          merge: true,
+        })
+      );
+      return;
+    }
+    navigationRef.dispatch(CommonActions.navigate({ name: screen, params }));
+  };
   if (navigationRef.isReady()) {
     go();
     return;

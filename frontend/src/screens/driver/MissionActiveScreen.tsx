@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   View,
   Text,
@@ -14,7 +15,9 @@ import {
   completeMission,
   cancelMission,
   getDriverCancelTerms,
+  getMissionById,
 } from '../../services/missionService';
+import { subscribeToMissionUpdates, unsubscribeChannel } from '../../services/realtimeService';
 import { requestRefund } from '../../services/walletService';
 import type { Mission } from '../../services/missionService';
 import { formatCargo } from '../../utils/cargo';
@@ -46,6 +49,49 @@ export default function MissionActiveScreen({ route, navigation }: Props) {
   const [refundRequested, setRefundRequested] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // A1 (correction 35) : l'ecran suit la mission en direct. Auparavant il
+  // gardait l'etat de son ouverture : une annulation par le client n'etait
+  // pas visible et le chauffeur restait sur « En route vers le client ».
+  const missionId = initialMission.id;
+  const lastStatusRef = useRef<string>(initialMission.status);
+
+  const applyUpdate = useCallback((updated: Partial<Mission>) => {
+    setMission((prev) => ({ ...prev, ...updated }));
+    const previous = lastStatusRef.current;
+    if (updated.status && updated.status !== previous) {
+      lastStatusRef.current = updated.status;
+      if (
+        updated.status === 'cancelled_client' &&
+        (previous === 'accepted' || previous === 'in_progress')
+      ) {
+        showMessage('Mission annulée', 'Le client a annulé cette mission.');
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    const channel = subscribeToMissionUpdates(missionId, (updated) =>
+      applyUpdate(updated as unknown as Partial<Mission>)
+    );
+    return () => {
+      unsubscribeChannel(channel);
+    };
+  }, [missionId, applyUpdate]);
+
+  // Rechargement a chaque retour sur l'ecran (au cas ou une mise a jour en
+  // direct aurait ete manquee, par exemple telephone en veille)
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      getMissionById(missionId).then((result) => {
+        if (active && result.mission) applyUpdate(result.mission);
+      });
+      return () => {
+        active = false;
+      };
+    }, [missionId, applyUpdate])
+  );
 
   useEffect(() => {
     if (mission.status === 'in_progress' && mission.actual_pickup_time) {
@@ -336,6 +382,13 @@ export default function MissionActiveScreen({ route, navigation }: Props) {
             {isRequestingRefund ? 'Envoi...' : '💸 Demander un remboursement'}
           </Text>
         </TouchableOpacity>
+      )}
+      {/* A1 (retouche 36) : rien n'a ete preleve (commission prelevee 24 h
+          avant le chargement seulement) : on le dit au chauffeur */}
+      {isCancelled && !mission.commission_charged_at && (
+        <Text style={styles.missionNumber}>
+          Aucune commission n’a été prélevée pour cette mission : rien à rembourser.
+        </Text>
       )}
       {refundRequested && (
         <Text style={styles.missionNumber}>Demande de remboursement envoyee.</Text>

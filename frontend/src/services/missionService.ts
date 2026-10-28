@@ -1,6 +1,5 @@
 import { supabase } from '../lib/supabaseClient';
-import { notifyMissionStarted, notifyMissionAccepted, notifyMissionCompleted, notifyMissionCancelled } from './notificationTemplates';
-import { insertNotification } from './pushNotificationService';
+import { notifyMissionAccepted } from './notificationTemplates';
 
 export type VehicleCategory = 'vul' | 'n2_medium' | 'n2_large';
 export type MissionType = 'transport' | 'ecommerce_parcel';
@@ -261,17 +260,8 @@ export async function startMission(
     pickupTime: data.actual_pickup_time,
   });
 
-  if (data.client_id) {
-    try {
-      await notifyMissionStarted(data.client_id, {
-        id: data.id,
-        mission_number: data.mission_number,
-        dropoff_city: data.dropoff_city,
-      });
-    } catch (notifyError) {
-      console.log('[FTM-DEBUG] Mission - Notify started failed (non-blocking)', { notifyError });
-    }
-  }
+  // A1 F8 (migration 069) : la notification de l'autre partie est envoyee par le
+  // serveur au changement de statut (l'envoi depuis l'application etait refuse).
 
   return { success: true, mission: data as Mission };
 }
@@ -309,35 +299,8 @@ export async function completeMission(
     dropoffTime: data.actual_dropoff_time,
   });
 
-  if (data.client_id) {
-    try {
-      const { data: driverProfile } = await supabase
-        .from('drivers')
-        .select('profiles ( id )')
-        .eq('id', driverId)
-        .single();
-      const driverProfileId = (driverProfile?.profiles as { id?: string } | null)?.id;
-      if (driverProfileId) {
-        await notifyMissionCompleted(data.client_id, driverProfileId, {
-          id: data.id,
-          mission_number: data.mission_number,
-          dropoff_city: data.dropoff_city,
-          commission_amount: data.commission_amount ?? 0,
-        });
-      } else {
-        await insertNotification(
-          data.client_id,
-          'mission_completed',
-          '🏁 Mission terminée !',
-          `Mission ${data.mission_number} livrée à ${data.dropoff_city}. Évaluez votre chauffeur.`,
-          { mission_id: data.id, screen: 'RatingScreen' }
-        );
-        console.log('[FTM-DEBUG] Mission - Driver profileId not resolved, client notified alone', { driverId });
-      }
-    } catch (notifyError) {
-      console.log('[FTM-DEBUG] Mission - Notify completed failed (non-blocking)', { notifyError });
-    }
-  }
+  // A1 F8 (migration 069) : la notification de l'autre partie est envoyee par le
+  // serveur au changement de statut (l'envoi depuis l'application etait refuse).
 
   return { success: true, mission: data as Mission };
 }
@@ -370,39 +333,8 @@ export async function cancelMission(
     status: data.status,
   });
 
-  try {
-    if (cancelledBy === 'driver') {
-      if (data.client_id) {
-        await notifyMissionCancelled(
-          data.client_id,
-          { id: data.id, mission_number: data.mission_number },
-          cancelledBy
-        );
-      }
-    } else {
-      if (!data.driver_id) {
-        console.log('[FTM-DEBUG] Mission - Cancelled before driver assignment, no driver to notify', { missionId });
-      } else {
-        const { data: driverProfile } = await supabase
-          .from('drivers')
-          .select('profiles ( id )')
-          .eq('id', data.driver_id)
-          .single();
-        const driverProfileId = (driverProfile?.profiles as { id?: string } | null)?.id;
-        if (driverProfileId) {
-          await notifyMissionCancelled(
-            driverProfileId,
-            { id: data.id, mission_number: data.mission_number },
-            cancelledBy
-          );
-        } else {
-          console.log('[FTM-DEBUG] Mission - Notify cancelled skipped: driver profileId not resolved', { driverId: data.driver_id });
-        }
-      }
-    }
-  } catch (notifyError) {
-    console.log('[FTM-DEBUG] Mission - Notify cancelled failed (non-blocking)', { notifyError });
-  }
+  // A1 F8 (migration 069) : la notification de l'autre partie est envoyee par le
+  // serveur au changement de statut (l'envoi depuis l'application etait refuse).
 
   return { success: true, mission: data as Mission };
 }

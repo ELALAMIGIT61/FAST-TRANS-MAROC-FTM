@@ -309,8 +309,9 @@ export default function MissionOfferScreen({ missionId, role, driverId, onMissio
                     // A1 : libelle lisible au lieu du code interne (n2_medium)
                     VEHICLE_LABELS[driversInfo[offer.driver_id].vehicle_category] ??
                       driversInfo[offer.driver_id].vehicle_category,
+                    // A1 : capacite du camion, a ne pas confondre avec le poids du chargement
                     driversInfo[offer.driver_id].vehicle_capacity_kg != null
-                      ? `${driversInfo[offer.driver_id].vehicle_capacity_kg} kg`
+                      ? `capacité ${Number(driversInfo[offer.driver_id].vehicle_capacity_kg).toLocaleString('fr-FR')} kg`
                       : null,
                   ].filter(Boolean).join('  \u00b7  ')}
                 </Text>

@@ -1,6 +1,16 @@
 import { supabase } from '../lib/supabaseClient';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
+// A1 (correction 30) : un nom de canal unique par abonnement. Deux ecrans
+// ouverts sur la meme mission recevaient le meme canal deja demarre, et
+// l'ajout d'une ecoute provoquait l'ecran d'erreur rouge « cannot add
+// postgres_changes callbacks … after subscribe() ».
+let channelCounter = 0;
+function uniqueName(base: string): string {
+  channelCounter += 1;
+  return `${base}-${Date.now()}-${channelCounter}`;
+}
+
 export function subscribeToMissionUpdates(
   missionId: string,
   onUpdate: (mission: Record<string, unknown>) => void
@@ -8,7 +18,7 @@ export function subscribeToMissionUpdates(
   console.log('[FTM-DEBUG] Realtime - Subscribing to mission updates', { missionId });
 
   const channel = supabase
-    .channel(`mission-${missionId}`)
+    .channel(uniqueName(`mission-${missionId}`))
     .on(
       'postgres_changes',
       {
@@ -42,7 +52,7 @@ export function subscribeToNewMissions(
   console.log('[FTM-DEBUG] Realtime - Subscribing to new missions', { vehicleCategory });
 
   const channel = supabase
-    .channel(`new-missions-${vehicleCategory}`)
+    .channel(uniqueName(`new-missions-${vehicleCategory}`))
     .on(
       'postgres_changes',
       {
@@ -75,7 +85,7 @@ export function subscribeToDriverLocation(
   console.log('[FTM-DEBUG] Realtime - Subscribing to driver location', { driverId });
 
   const channel = supabase
-    .channel(`driver-location-${driverId}`)
+    .channel(uniqueName(`driver-location-${driverId}`))
     .on(
       'postgres_changes',
       {
@@ -111,7 +121,7 @@ export function subscribeToMissionOffers(
   console.log('[FTM-DEBUG] Realtime - Subscribing to mission offers (client side)', { missionId });
 
   const channel = supabase
-    .channel(`mission-offers-${missionId}`)
+    .channel(uniqueName(`mission-offers-${missionId}`))
     .on(
       'postgres_changes',
       {
@@ -165,7 +175,7 @@ export function subscribeToDriverOffers(
   console.log('[FTM-DEBUG] Realtime - Subscribing to driver offers', { driverId });
 
   const channel = supabase
-    .channel(`driver-offers-${driverId}`)
+    .channel(uniqueName(`driver-offers-${driverId}`))
     .on(
       'postgres_changes',
       {

@@ -22,7 +22,13 @@ export default function ClientMissionOfferScreen({ route, navigation }: Props) {
         missionId={missionId}
         role="client"
         onMissionResolved={(mission) => {
-          navigation.replace('MissionTracking', { mission });
+          // A1 (correction 30) : si le suivi de la mission est deja ouvert juste
+          // en dessous, on y revient (il se met a jour tout seul) au lieu d'en
+          // ouvrir un second par-dessus.
+          const routes = navigation.getState().routes;
+          const previous = routes[routes.length - 2];
+          if (previous?.name === 'MissionTracking') navigation.goBack();
+          else navigation.replace('MissionTracking', { mission });
         }}
       />
     </View>

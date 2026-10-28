@@ -72,6 +72,7 @@ export default function DriverVoiceChatScreen({ route, navigation }: Props) {
       missionId={missionId}
       currentProfileId={profileId}
       missionNumber={missionNumber}
+      otherParty="client"
     />
   );
 }

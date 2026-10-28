@@ -24,11 +24,13 @@ import { supabase } from '../../lib/supabaseClient';
 import CityPicker from '../../components/CityPicker';
 import { findCity } from '../../constants/moroccoCities';
 import { MAX_LOAD_KG, formatTonnes, parseQuantity } from '../../utils/cargo';
+import { usePendingNavigation } from '../../hooks/usePendingNavigation';
 import { ensureGeocodingPermission, geocodeInCity, GeoPoint } from '../../services/geocodingService';
 
 type RootStackParamList = {
   CreateMission: { clientProfileId: string };
   MissionTracking: { mission: Record<string, unknown> };
+  Rating: { mission: Record<string, unknown> };
 };
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CreateMission'>;
@@ -42,6 +44,11 @@ const VEHICLE_OPTIONS: { key: VehicleCategory; label: string; commission: number
 
 export default function CreateMissionScreen({ route, navigation }: Props) {
   const { clientProfileId } = route.params;
+  // A1 (correction 31) : ecran demande par une notification (offres, suivi, notation)
+  usePendingNavigation(
+    route.params as unknown as Record<string, unknown>,
+    navigation as unknown as Parameters<typeof usePendingNavigation>[1]
+  );
 
   // A1 (correction 20) : missions du client encore ouvertes (en attente, conclues
   // ou en cours), pour pouvoir y revenir apres une fermeture de l'application.
@@ -55,7 +62,8 @@ export default function CreateMissionScreen({ route, navigation }: Props) {
         .from('missions')
         .select('*')
         .eq('client_id', clientProfileId)
-        .in('status', ['pending', 'accepted', 'in_progress'])
+        // A1 F8 : aussi les missions terminees pas encore notees (bouton « Noter »)
+        .or('status.in.(pending,accepted,in_progress),and(status.eq.completed,client_rating.is.null)')
         .order('created_at', { ascending: false })
         .limit(5)
         .then(({ data, error }) => {
@@ -73,7 +81,13 @@ export default function CreateMissionScreen({ route, navigation }: Props) {
   );
 
   const missionStatusLabel = (status: unknown) =>
-    status === 'in_progress' ? '🚚 En cours' : status === 'accepted' ? '✅ Chauffeur trouvé' : '⏳ Recherche de chauffeur';
+    status === 'completed'
+      ? '🏁 Terminée'
+      : status === 'in_progress'
+        ? '🚚 En cours'
+        : status === 'accepted'
+          ? '✅ Chauffeur trouvé'
+          : '⏳ Recherche de chauffeur';
 
   // A1 (correction 15) : pickupCoords n'est rempli que par « Ma position actuelle ».
   // Toute adresse tapee est situee a l'envoi a partir du texte (adresse + ville).
@@ -244,12 +258,18 @@ export default function CreateMissionScreen({ route, navigation }: Props) {
               <TouchableOpacity
                 key={String(m.id)}
                 style={styles.openMissionRow}
-                onPress={() => navigation.navigate('MissionTracking', { mission: m })}
+                onPress={() =>
+                  m.status === 'completed'
+                    ? navigation.navigate('Rating', { mission: m })
+                    : navigation.navigate('MissionTracking', { mission: m })
+                }
               >
                 <Text style={styles.openMissionText}>
                   {missionStatusLabel(m.status)} — N° {String(m.mission_number ?? '')}
                 </Text>
-                <Text style={styles.openMissionLink}>Suivre →</Text>
+                <Text style={styles.openMissionLink}>
+                  {m.status === 'completed' ? '⭐ Noter' : 'Suivre →'}
+                </Text>
               </TouchableOpacity>
             ))}
           </View>

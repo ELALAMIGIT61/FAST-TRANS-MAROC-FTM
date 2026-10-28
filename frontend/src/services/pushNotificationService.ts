@@ -126,27 +126,24 @@ export async function insertNotification(
 ): Promise<{ success?: boolean; notification?: Record<string, unknown>; error?: unknown }> {
   console.log('[FTM-DEBUG] Push - Inserting notification', { profileId, type, title });
 
-  const { data: notif, error } = await supabase
+  // A1 F8 : pas de relecture apres l'ecriture. Relire la notification d'une
+  // autre personne est interdit par le serveur, ce qui faisait echouer tout
+  // l'envoi (notification perdue).
+  const { error } = await supabase
     .from('notifications')
-    .insert({ profile_id: profileId, type, title, body, data, is_read: false })
-    .select()
-    .single();
+    .insert({ profile_id: profileId, type, title, body, data, is_read: false });
 
   if (error) {
     console.log('[FTM-DEBUG] Push - Insert notification error', { error: error.message, type });
     return { error };
   }
 
-  console.log('[FTM-DEBUG] Push - Notification inserted', {
-    notificationId: notif.id,
-    profileId,
-    type,
-  });
+  console.log('[FTM-DEBUG] Push - Notification inserted', { profileId, type });
 
   // Session 2.26 : la sonnerie est demandee par la base elle-meme (trigger
   // notifications_push_dispatch, migration 057), pour toutes les notifications.
 
-  return { success: true, notification: notif };
+  return { success: true };
 }
 
 // ─── LECTURE / MISE À JOUR ─────────────────────────────────────────────────────
@@ -407,6 +404,9 @@ export async function handleNotificationTap(
     DocumentStatusScreen:  () =>
       navigate('DocumentStatus', { highlight: notification.data?.document_type }),
     RatingScreen: () => openWithMission('Rating'),
+    // A1 F8 : mission annulee par le client -> le chauffeur ouvre la mission
+    // (demande de remboursement de la commission, si elle a ete prelevee)
+    MissionActiveScreen: () => openWithMission('MissionActive'),
     VoiceChat: () => openWithMission('VoiceChat'),
     WalletDashboard: openWallet,
     DriverHomeScreen: () => navigate('DriverHome'),
