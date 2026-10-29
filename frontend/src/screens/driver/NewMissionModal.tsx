@@ -11,20 +11,29 @@ import {
 import * as Haptics from 'expo-haptics';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../constants/theme';
 import { createMissionOffer } from '../../services/missionService';
-import type { Mission } from '../../services/missionService';
+import type { MissionSummary } from '../../services/missionService';
 import { formatCargo } from '../../utils/cargo';
 
 interface Props {
-  mission: Mission;
+  mission: MissionSummary;
   driverId: string;
   onOfferCreated: (offer: { id: string; mission_id: string }) => void;
   onDismiss: () => void;
+  // A1 F2 : false depuis l'ecran « Missions disponibles » (decision 4 du
+  // porteur, 28/10/2026) : meme formulaire, sans compte a rebours.
+  withCountdown?: boolean;
 }
 
 // A1 (correction 13) : 60 secondes pour repondre (decision du porteur, 23/10/2026)
 const COUNTDOWN_SECONDS = 60;
 
-export default function NewMissionModal({ mission, driverId, onOfferCreated, onDismiss }: Props) {
+export default function NewMissionModal({
+  mission,
+  driverId,
+  onOfferCreated,
+  onDismiss,
+  withCountdown = true,
+}: Props) {
   const [timeLeft, setTimeLeft] = useState(COUNTDOWN_SECONDS);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [offeredPrice, setOfferedPrice] = useState('');
@@ -32,6 +41,7 @@ export default function NewMissionModal({ mission, driverId, onOfferCreated, onD
   const progressAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
+    if (!withCountdown) return;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
 
     Animated.timing(progressAnim, {
@@ -58,7 +68,7 @@ export default function NewMissionModal({ mission, driverId, onOfferCreated, onD
   // « Cannot update a component while rendering a different component »).
   // Pas de fermeture pendant l'envoi d'une offre.
   useEffect(() => {
-    if (timeLeft === 0 && !isSubmitting) onDismiss();
+    if (withCountdown && timeLeft === 0 && !isSubmitting) onDismiss();
   }, [timeLeft, isSubmitting]);
 
   const handleCreateOffer = async () => {
@@ -88,7 +98,7 @@ export default function NewMissionModal({ mission, driverId, onOfferCreated, onD
     <Modal transparent animationType="slide" visible>
       <View style={styles.overlay}>
         <View style={styles.card}>
-          <Text style={styles.badge}>🔔 NOUVELLE MISSION</Text>
+          <Text style={styles.badge}>{withCountdown ? '🔔 NOUVELLE MISSION' : '📋 MISSION DISPONIBLE'}</Text>
           <Text style={styles.missionNumber}>N° {mission.mission_number}</Text>
 
           <View style={styles.addressSection}>
@@ -122,12 +132,16 @@ export default function NewMissionModal({ mission, driverId, onOfferCreated, onD
             ⚖️ {formatCargo(mission.cargo_weight_kg, mission.cargo_volume_m3) ?? 'Poids et volume non indiqués'}
           </Text>
 
-          <View style={styles.progressContainer}>
-            <Animated.View
-              style={[styles.progressBar, { width: progressWidth }]}
-            />
-          </View>
-          <Text style={styles.countdown}>{timeLeft}s</Text>
+          {withCountdown && (
+            <>
+              <View style={styles.progressContainer}>
+                <Animated.View
+                  style={[styles.progressBar, { width: progressWidth }]}
+                />
+              </View>
+              <Text style={styles.countdown}>{timeLeft}s</Text>
+            </>
+          )}
 
           {errorMessage && (
             <Text style={styles.errorText}>{errorMessage}</Text>
@@ -149,7 +163,7 @@ export default function NewMissionModal({ mission, driverId, onOfferCreated, onD
               onPress={onDismiss}
               disabled={isSubmitting}
             >
-              <Text style={styles.refuseButtonText}>❌ Refuser</Text>
+              <Text style={styles.refuseButtonText}>{withCountdown ? '❌ Refuser' : '✖️ Fermer'}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.acceptButton, isSubmitting && styles.buttonDisabled]}

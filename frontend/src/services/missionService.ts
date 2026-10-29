@@ -811,3 +811,74 @@ export async function getDriverCancelTerms(
   const row = ((data ?? []) as DriverCancelTerms[])[0] ?? null;
   return { terms: row };
 }
+
+// ─── A1 F2 (migration 070) : écran « Missions disponibles » du chauffeur ─────
+// Les deux listes sont calculées par le serveur pour le chauffeur connecté,
+// avec les mêmes règles que la notification « Nouvelle mission » (catégorie,
+// documents vérifiés, disponible, rayon, écart entre missions). Aucune
+// information sur le client n'est renvoyée.
+
+/** Informations d'une mission affichées au chauffeur avant son offre. */
+export type MissionSummary = Pick<
+  Mission,
+  | 'id'
+  | 'mission_number'
+  | 'pickup_address'
+  | 'dropoff_address'
+  | 'estimated_distance_km'
+  | 'commission_amount'
+  | 'needs_loading_help'
+  | 'cargo_weight_kg'
+  | 'cargo_volume_m3'
+>;
+
+export interface DriverOpenMission extends MissionSummary {
+  mission_type: MissionType;
+  vehicle_category: VehicleCategory;
+  pickup_city: string;
+  dropoff_city: string;
+  scheduled_pickup_time: string;
+  description: string | null;
+  status: MissionStatus;
+  created_at: string;
+}
+
+export interface DriverPendingOffer {
+  offer_id: string;
+  mission_id: string;
+  offered_price: number;
+  round_number: number;
+  client_accepted: boolean;
+  driver_accepted: boolean;
+  offer_updated_at: string;
+  mission_number: string;
+  vehicle_category: VehicleCategory;
+  pickup_address: string;
+  pickup_city: string;
+  dropoff_address: string;
+  dropoff_city: string;
+  scheduled_pickup_time: string;
+  cargo_weight_kg: number | null;
+  cargo_volume_m3: number | null;
+  commission_amount: number | null;
+}
+
+/** Partie 1 : missions sur lesquelles le chauffeur peut encore faire une offre. */
+export async function getDriverOpenMissions(): Promise<{ missions?: DriverOpenMission[]; error?: string }> {
+  const { data, error } = await supabase.rpc('driver_open_missions');
+  if (error) {
+    console.log('[FTM-DEBUG] Driver - Open missions error', { error: error.message });
+    return { error: error.message };
+  }
+  return { missions: (data ?? []) as DriverOpenMission[] };
+}
+
+/** Partie 2 : offres du chauffeur qui attendent encore une réponse. */
+export async function getDriverPendingOffers(): Promise<{ offers?: DriverPendingOffer[]; error?: string }> {
+  const { data, error } = await supabase.rpc('driver_pending_offers');
+  if (error) {
+    console.log('[FTM-DEBUG] Driver - Pending offers error', { error: error.message });
+    return { error: error.message };
+  }
+  return { offers: (data ?? []) as DriverPendingOffer[] };
+}

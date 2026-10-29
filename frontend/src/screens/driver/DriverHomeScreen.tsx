@@ -15,6 +15,7 @@ import { supabase } from '../../lib/supabaseClient';
 import NewMissionModal from './NewMissionModal';
 import NotificationBell from '../../components/NotificationBell';
 import { signOutAndUnregisterDevice as handleSignOut } from '../../services/pushSetup';
+import { getDriverOpenMissions } from '../../services/missionService';
 import type { Mission, VehicleCategory } from '../../services/missionService';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
@@ -28,6 +29,7 @@ type RootStackParamList = {
   MissionOffer: { missionId: string; driverId: string };
   WalletDashboard: { driverId: string };
   DocumentStatus: undefined;
+  DriverOpenMissions: { driverId: string };
 };
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DriverHome'>;
@@ -77,6 +79,25 @@ export default function DriverHomeScreen({ route, navigation }: Props) {
     }, [driverId])
   );
   const [pendingMission, setPendingMission] = useState<Mission | null>(null);
+  // A1 F2 : nombre de missions ouvertes, affiche sur le bouton « Missions
+  // disponibles » (decision 3 du porteur) ; relu a chaque retour sur
+  // l'accueil et a chaque changement de disponibilite.
+  const [openMissionsCount, setOpenMissionsCount] = useState<number | null>(null);
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      if (!isAvailable) {
+        setOpenMissionsCount(null);
+        return;
+      }
+      getDriverOpenMissions().then((result) => {
+        if (!cancelled) setOpenMissionsCount(result.missions ? result.missions.length : null);
+      });
+      return () => {
+        cancelled = true;
+      };
+    }, [isAvailable])
+  );
   const missionChannelRef = useRef<RealtimeChannel | null>(null);
   const pendingMissionUpdateChannelRef = useRef<RealtimeChannel | null>(null);
 
@@ -367,6 +388,14 @@ export default function DriverHomeScreen({ route, navigation }: Props) {
         </View>
       </View>
       <TouchableOpacity
+        style={styles.openMissionsButton}
+        onPress={() => navigation.navigate('DriverOpenMissions', { driverId })}
+      >
+        <Text style={styles.openMissionsButtonText}>
+          📋 Missions disponibles{openMissionsCount !== null ? ` (${openMissionsCount})` : ''}
+        </Text>
+      </TouchableOpacity>
+      <TouchableOpacity
         style={styles.documentsButton}
         onPress={() => navigation.navigate('DocumentStatus')}
       >
@@ -441,6 +470,18 @@ const styles = StyleSheet.create({
   toggleStatus: { fontSize: 17, fontWeight: '700' },
   statusOn: { color: COLORS.success ?? '#38A169' },
   statusOff: { color: COLORS.textSecondary },
+  openMissionsButton: {
+    backgroundColor: COLORS.primary,
+    borderRadius: BORDER_RADIUS.md,
+    padding: SPACING.md,
+    alignItems: 'center',
+    marginBottom: SPACING.md,
+  },
+  openMissionsButtonText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#fff',
+  },
   documentsButton: {
     backgroundColor: COLORS.surface,
     borderRadius: BORDER_RADIUS.md,

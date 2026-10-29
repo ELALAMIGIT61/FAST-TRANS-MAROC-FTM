@@ -26,6 +26,7 @@ import ClientVoiceChatScreen from "../screens/client/ClientVoiceChatScreen";
 // Driver screens
 import DriverHomeScreen from "../screens/driver/DriverHomeScreen";
 import DriverMissionOfferScreen from "../screens/driver/DriverMissionOfferScreen";
+import DriverOpenMissionsScreen from "../screens/driver/DriverOpenMissionsScreen";
 import MissionActiveScreen from "../screens/driver/MissionActiveScreen";
 import DriverVoiceChatScreen from "../screens/driver/DriverVoiceChatScreen";
 import WalletDashboardScreen from "../screens/driver/WalletDashboardScreen";
@@ -77,6 +78,7 @@ export type DriverStackParamList = {
   TransactionHistory: { walletId: string };
   DocumentStatus: undefined;
   NotificationCenter: undefined;
+  DriverOpenMissions: { driverId: string };
 };
 
 export type DriverOnboardingStackParamList = {
@@ -193,6 +195,8 @@ function DriverNavigator({ driverId, vehicleCategory }: { driverId: string; vehi
         component={DocumentStatusScreen as any}
       />
       <DriverStack.Screen name="NotificationCenter" component={NotificationCenterScreen as any} />
+      {/* A1 F2 : ecran « Missions disponibles » */}
+      <DriverStack.Screen name="DriverOpenMissions" component={DriverOpenMissionsScreen as any} />
     </DriverStack.Navigator>
   );
 }
