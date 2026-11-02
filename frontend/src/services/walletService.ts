@@ -887,8 +887,11 @@ export async function requestRefund(
     console.log('[FTM-DEBUG] Wallet - Refund request mission fetch error', { error: missionError.message });
     return { error: missionError.message };
   }
-  if (mission.status !== 'cancelled_client' && mission.status !== 'cancelled_driver') {
-    return { error: 'Cette mission n\'est pas annulee.' };
+  // A1 F9 : aussi pour une mission conclue non realisee (etat expired avec
+  // chauffeur), cloturee par le serveur (migration 071) ; l'admin decide.
+  const isNotPerformed = mission.status === 'expired' && !!mission.driver_id;
+  if (mission.status !== 'cancelled_client' && mission.status !== 'cancelled_driver' && !isNotPerformed) {
+    return { error: 'Cette mission n\'est ni annulee ni clôturee comme non realisee.' };
   }
   if (!mission.commission_charged_at) {
     return { error: 'Aucune commission n\'a ete prelevee pour cette mission.' };
@@ -924,7 +927,7 @@ export async function requestRefund(
       balance_before: 0,
       balance_after: 0,
       status: 'pending',
-      description: `Demande de remboursement -- Mission ${mission.mission_number} annulee`,
+      description: `Demande de remboursement -- Mission ${mission.mission_number} ${isNotPerformed ? 'non realisee' : 'annulee'}`,
       metadata: { requested_by: 'driver' },
       processed_at: null,
     })

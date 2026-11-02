@@ -19,6 +19,7 @@ import type { Mission } from '../../services/missionService';
 import { formatCargo } from '../../utils/cargo';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { supabase } from '../../lib/supabaseClient';
+import BackButton from '../../components/BackButton';
 
 type RootStackParamList = {
   MissionTracking: { mission: Record<string, unknown> };
@@ -291,8 +292,14 @@ export default function MissionTrackingScreen({ route, navigation }: Props) {
         return (
           <View style={styles.statusContainer}>
             <Text style={styles.errorIcon}>⏱️</Text>
-            <Text style={styles.statusTitle}>Mission expirée</Text>
-            <Text style={styles.subText}>Aucun chauffeur n'était disponible avant l'heure prévue.</Text>
+            {/* A1 F9 : une mission conclue (avec chauffeur) non demarree est
+                cloturee par le serveur (migration 071) */}
+            <Text style={styles.statusTitle}>{mission.driver_id ? 'Mission non réalisée' : 'Mission expirée'}</Text>
+            <Text style={styles.subText}>
+              {mission.driver_id
+                ? 'La mission n’a pas démarré à l’heure prévue et a été clôturée.'
+                : "Aucun chauffeur n'était disponible avant l'heure prévue."}
+            </Text>
             <TouchableOpacity
               style={styles.primaryButton}
               onPress={() => navigation.navigate('ClientHome', { clientProfileId: mission.client_id ?? '' })}
@@ -307,10 +314,17 @@ export default function MissionTrackingScreen({ route, navigation }: Props) {
     }
   };
 
-  return <View style={styles.container}>{renderStatus()}</View>;
+  // A1 : bouton « Retour » vers l'accueil du client (constat du 30/10/2026)
+  return (
+    <View style={styles.screen}>
+      <BackButton />
+      <View style={styles.container}>{renderStatus()}</View>
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: COLORS.background },
   container: {
     flex: 1,
     backgroundColor: COLORS.background,

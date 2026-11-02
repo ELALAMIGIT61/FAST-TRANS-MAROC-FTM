@@ -21,6 +21,7 @@ import { subscribeToMissionUpdates, unsubscribeChannel } from '../../services/re
 import { requestRefund } from '../../services/walletService';
 import type { Mission } from '../../services/missionService';
 import { formatCargo } from '../../utils/cargo';
+import BackButton from '../../components/BackButton';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 type RootStackParamList = {
@@ -254,6 +255,8 @@ export default function MissionActiveScreen({ route, navigation }: Props) {
   if (mission.status === 'accepted') {
     return (
       <View style={styles.container}>
+        {/* A1 : bouton « Retour » (constat du 30/10/2026) */}
+        <BackButton style={styles.backButton} />
         <Text style={styles.phaseTitle}>🚗 En route vers le client</Text>
 
         <View style={styles.addressCard}>
@@ -300,6 +303,7 @@ export default function MissionActiveScreen({ route, navigation }: Props) {
   if (mission.status === 'in_progress') {
     return (
       <View style={styles.container}>
+        <BackButton style={styles.backButton} />
         <Text style={styles.phaseTitle}>🚚 Mission en cours</Text>
         <Text style={styles.missionNumber}>N° {mission.mission_number}</Text>
 
@@ -339,7 +343,12 @@ export default function MissionActiveScreen({ route, navigation }: Props) {
     );
   }
 
-  const isCancelled = mission.status === 'cancelled_client' || mission.status === 'cancelled_driver';
+  // A1 F9 (migration 071) : une mission conclue non demarree est cloturee par
+  // le serveur (etat expired) : remboursement possible sur demande, comme une
+  // annulation.
+  const isNotPerformed = mission.status === 'expired';
+  const isCancelled =
+    mission.status === 'cancelled_client' || mission.status === 'cancelled_driver' || isNotPerformed;
   // A1 F4 : pas de demande de remboursement si le chauffeur a annule a moins
   // du delai (le serveur la refuse aussi).
   const canRequestRefund =
@@ -349,7 +358,11 @@ export default function MissionActiveScreen({ route, navigation }: Props) {
       ? '❌ Mission annulée par vous'
       : mission.status === 'cancelled_client'
         ? '❌ Mission annulée par le client'
-        : `Statut : ${mission.status}`;
+        : isNotPerformed
+          ? '⏱️ Mission non réalisée : elle n’a pas démarré et a été clôturée'
+          : mission.status === 'completed'
+            ? '✅ Mission terminée'
+            : `Statut : ${mission.status}`;
 
   const handleRequestRefund = async () => {
     setIsRequestingRefund(true);
@@ -393,6 +406,11 @@ export default function MissionActiveScreen({ route, navigation }: Props) {
       {refundRequested && (
         <Text style={styles.missionNumber}>Demande de remboursement envoyee.</Text>
       )}
+      {/* A1 (retouche 37) : retour a l'accueil depuis une mission terminee,
+          annulee ou non realisee */}
+      <TouchableOpacity style={styles.mapsButton} onPress={() => navigation.popToTop()}>
+        <Text style={styles.mapsButtonText}>🏠 Retour à l’accueil</Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -405,6 +423,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: SPACING.md,
   },
+  backButton: { position: 'absolute', top: SPACING.sm, left: SPACING.sm },
   phaseTitle: { fontSize: 24, fontWeight: '700', color: COLORS.text, textAlign: 'center' },
   missionNumber: { fontSize: 14, color: COLORS.textSecondary, textAlign: 'center' },
   addressCard: {

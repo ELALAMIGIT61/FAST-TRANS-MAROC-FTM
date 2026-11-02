@@ -82,6 +82,9 @@ export default function AdminDashboardScreen() {
   return (
     <ScrollView
       style={styles.container}
+      // A1 : marge sous la derniere ligne (« Reglages ») pour qu'elle ne colle
+      // pas au bas de l'ecran (remarque du porteur du 30/10/2026)
+      contentContainerStyle={styles.scrollContent}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
     >
       <View style={styles.headerRow}>
@@ -217,6 +220,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5F7FA',
     padding: 16,
   },
+  scrollContent: { paddingBottom: 64 },
   centered: {
     flex: 1,
     justifyContent: 'center',

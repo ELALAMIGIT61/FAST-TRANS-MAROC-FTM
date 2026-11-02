@@ -63,6 +63,32 @@ const GROUPS: Group[] = [
     unit: 'mois',
     max: 60,
   },
+  // A1 F9 (migration 071) : missions conclues non demarrees et missions en
+  // cours non cloturees (0 = regle desactivee)
+  {
+    prefix: 'start_reminder_hours_',
+    title: 'Rappel au chauffeur : mission conclue non démarrée',
+    help: 'Heures après l’heure prévue. Un seul rappel. 0 = pas de rappel.',
+    short: 'Rappel « non démarrée »',
+    unit: 'h',
+    max: 168,
+  },
+  {
+    prefix: 'not_started_close_hours_',
+    title: 'Clôture d’une mission conclue non démarrée (« non réalisée »)',
+    help: 'Heures après l’heure prévue. Chauffeur, client et admin sont prévenus. 0 = jamais.',
+    short: 'Clôture « non réalisée »',
+    unit: 'h',
+    max: 168,
+  },
+  {
+    prefix: 'in_progress_close_hours_',
+    title: 'Clôture d’une mission en cours oubliée (« terminée »)',
+    help: 'Heures après le démarrage par le chauffeur. 0 = jamais.',
+    short: 'Clôture « terminée »',
+    unit: 'h',
+    max: 168,
+  },
 ];
 
 const CATEGORY_LABELS: Record<string, string> = {

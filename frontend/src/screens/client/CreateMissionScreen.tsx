@@ -220,7 +220,16 @@ export default function CreateMissionScreen({ route, navigation }: Props) {
       if (result.error) {
         showMessage('Erreur', result.error);
       } else if (result.mission) {
-        navigation.replace('MissionTracking', { mission: result.mission as unknown as Record<string, unknown> });
+        // A1 : l'accueil reste sous le suivi (retour possible par le bouton
+        // « Retour » et par la touche retour du telephone) ; auparavant le
+        // suivi remplacait l'accueil et le client restait bloque.
+        navigation.reset({
+          index: 1,
+          routes: [
+            { name: route.name, params: route.params },
+            { name: 'MissionTracking', params: { mission: result.mission as unknown as Record<string, unknown> } },
+          ],
+        } as never);
       }
     } finally {
       setIsLoading(false);
