@@ -52,6 +52,7 @@ const CHANNEL_BY_TYPE: Record<string, string> = {
   mission_auto_completed: 'ftm_missions',
   wallet_low_balance: 'ftm_wallet',
   commission_insufficient_balance: 'ftm_wallet',
+  commission_rate_changed: 'ftm_wallet',  // A1 (migration 073)
   document_expiry:    'ftm_documents',
   document_rejected:  'ftm_documents',
   document_verified:  'ftm_documents',
