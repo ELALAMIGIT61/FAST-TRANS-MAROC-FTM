@@ -8,6 +8,7 @@ export const NOTIF_ICONS: Record<string, string> = {
   commission_charged: '💰',
   mission_cancelled:  '❌',
   wallet_low_balance: '💸',
+  commission_rate_changed: '💰',
   document_expiry:    '⚠️',
   document_rejected:  '❌',
   document_verified:  '✅',

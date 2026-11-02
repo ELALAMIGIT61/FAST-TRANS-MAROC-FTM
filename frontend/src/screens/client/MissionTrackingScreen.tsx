@@ -14,7 +14,13 @@ import {
   subscribeToDriverLocation,
   unsubscribeChannel,
 } from '../../services/realtimeService';
-import { cancelMission, expireMission } from '../../services/missionService';
+import {
+  cancelMission,
+  expireMission,
+  getMissionExactLocation,
+  getMissionDriverIdentity,
+} from '../../services/missionService';
+import { cleanServerMessage } from '../../services/settingsService';
 import type { Mission } from '../../services/missionService';
 import { formatCargo } from '../../utils/cargo';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -32,7 +38,6 @@ type RootStackParamList = {
 type Props = NativeStackScreenProps<RootStackParamList, 'MissionTracking'>;
 
 const EXPIRATION_CHECK_INTERVAL_MS = 30000;
-const VOICE_CHANNEL_OPEN_BEFORE_MS = 24 * 60 * 60 * 1000;
 
 export default function MissionTrackingScreen({ route, navigation }: Props) {
   const initialMission = route.params.mission as unknown as Mission;
@@ -107,6 +112,43 @@ export default function MissionTrackingScreen({ route, navigation }: Props) {
   // en touchant la notification). Nombre d'offres relu toutes les 10 secondes.
   const [offersCount, setOffersCount] = useState(0);
 
+  // A1 (migration 072) : la fiche de la mission ne contient plus que
+  // « quartier, ville » ; le client relit ses adresses exactes dans la partie
+  // verrouillee. Prenom et plaque du chauffeur : au prelevement de la commission.
+  const [exactPickup, setExactPickup] = useState<string | null>(null);
+  const [exactDropoff, setExactDropoff] = useState<string | null>(null);
+  const [driverIdentity, setDriverIdentity] = useState<{ first_name: string; license_plate: string } | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    getMissionExactLocation(mission.id).then(({ location }) => {
+      if (!active || !location) return;
+      setExactPickup(location.pickup_address);
+      setExactDropoff(location.dropoff_address);
+    });
+    return () => {
+      active = false;
+    };
+  }, [mission.id]);
+
+  useEffect(() => {
+    if (!mission.driver_id || !mission.commission_charged_at) {
+      setDriverIdentity(null);
+      return;
+    }
+    let active = true;
+    getMissionDriverIdentity(mission.id).then(({ identity }) => {
+      if (active) setDriverIdentity(identity);
+    });
+    return () => {
+      active = false;
+    };
+  }, [mission.id, mission.driver_id, mission.commission_charged_at]);
+
+  const driverIdentityText = driverIdentity
+    ? `👤 ${driverIdentity.first_name}  ·  🚚 ${driverIdentity.license_plate}`
+    : null;
+
   useEffect(() => {
     if (mission.status !== 'pending') return;
     let cancelled = false;
@@ -126,38 +168,33 @@ export default function MissionTrackingScreen({ route, navigation }: Props) {
     };
   }, [mission.status, mission.id]);
 
-  const [voiceChannelOpen, setVoiceChannelOpen] = useState(false);
-
-  useEffect(() => {
-    const eligibleStatus = mission.status === 'accepted' || mission.status === 'in_progress';
-    if (!eligibleStatus || !mission.driver_id || !mission.scheduled_pickup_time) {
-      setVoiceChannelOpen(false);
-      return;
-    }
-
-    const checkVoiceChannelWindow = () => {
-      const scheduledTime = new Date(mission.scheduled_pickup_time as string).getTime();
-      const openAt = scheduledTime - VOICE_CHANNEL_OPEN_BEFORE_MS;
-      const isOpen = Date.now() >= openAt;
-      // Session 2.23 : l'annonce de la messagerie est faite par le serveur
-      // (tache planifiee, migration 054).
-      setVoiceChannelOpen(isOpen);
-    };
-
-    checkVoiceChannelWindow();
-    const interval = setInterval(checkVoiceChannelWindow, EXPIRATION_CHECK_INTERVAL_MS);
-    return () => clearInterval(interval);
-  }, [mission.status, mission.driver_id, mission.scheduled_pickup_time]);
+  // A1 (migration 074) : messagerie vocale ouverte au prelevement de la commission
+  const voiceChannelOpen =
+    (mission.status === 'accepted' || mission.status === 'in_progress') &&
+    !!mission.driver_id &&
+    !!mission.commission_charged_at;
 
   const handleCancel = async () => {
-    const confirmed = await confirmAction('Annuler la mission', 'Êtes-vous sûr de vouloir annuler ?', {
+    // A1 (migration 073) : avertissement en cas d'annulation tardive (le
+    // chauffeur ne sera pas rembourse de sa commission)
+    let message = 'Êtes-vous sûr de vouloir annuler ?';
+    if (mission.status === 'accepted') {
+      const { data } = await supabase.rpc('get_client_cancel_terms', { p_mission_id: mission.id });
+      const terms = Array.isArray(data) ? (data[0] as { late?: boolean; hours?: number } | undefined) : undefined;
+      if (terms?.late) {
+        message =
+          `Annulation tardive : à moins de ${Number(terms.hours)} h de l’heure prévue (ou après), ` +
+          'le chauffeur ne sera pas remboursé de sa commission.\n\nVoulez-vous vraiment annuler ?';
+      }
+    }
+    const confirmed = await confirmAction('Annuler la mission', message, {
       confirmLabel: 'Oui, annuler',
       cancelLabel: 'Non',
       destructive: true,
     });
     if (!confirmed) return;
     const result = await cancelMission(mission.id, mission.client_id ?? '', 'client');
-    if (result.error) showMessage('Erreur', result.error);
+    if (result.error) showMessage('Erreur', cleanServerMessage(result.error));
   };
 
   const renderStatus = () => {
@@ -170,9 +207,9 @@ export default function MissionTrackingScreen({ route, navigation }: Props) {
             <Text style={styles.missionNumber}>N° {mission.mission_number}</Text>
             <View style={styles.addressCard}>
               <Text style={styles.addressLabel}>📍 Départ</Text>
-              <Text style={styles.addressText}>{mission.pickup_address}</Text>
+              <Text style={styles.addressText}>{exactPickup ?? mission.pickup_address}</Text>
               <Text style={styles.addressLabel}>🏁 Arrivée</Text>
-              <Text style={styles.addressText}>{mission.dropoff_address}</Text>
+              <Text style={styles.addressText}>{exactDropoff ?? mission.dropoff_address}</Text>
             </View>
             {/* A1 (correction 14) : une distance de 0 s'affichait "0" hors d'un <Text> : plantage sur telephone */}
             {!!mission.estimated_distance_km && (
@@ -207,6 +244,13 @@ export default function MissionTrackingScreen({ route, navigation }: Props) {
             <Text style={styles.statusTitle}>Chauffeur trouvé !</Text>
             <View style={styles.driverCard}>
               <Text style={styles.driverName}>Chauffeur assigné</Text>
+              {driverIdentityText ? (
+                <Text style={styles.driverInfo}>{driverIdentityText}</Text>
+              ) : (
+                <Text style={styles.driverInfo}>
+                  Son prénom et sa plaque s’afficheront 24 h avant le chargement.
+                </Text>
+              )}
               <Text style={styles.driverInfo}>Mission N° {mission.mission_number}</Text>
               {formatCargo(mission.cargo_weight_kg, mission.cargo_volume_m3) && (
                 <Text style={styles.driverInfo}>
@@ -236,8 +280,9 @@ export default function MissionTrackingScreen({ route, navigation }: Props) {
             <Text style={styles.statusTitle}>Mission en cours</Text>
             <View style={styles.addressCard}>
               <Text style={styles.addressLabel}>🏁 Destination</Text>
-              <Text style={styles.addressText}>{mission.dropoff_address}</Text>
+              <Text style={styles.addressText}>{exactDropoff ?? mission.dropoff_address}</Text>
             </View>
+            {driverIdentityText && <Text style={styles.distanceText}>{driverIdentityText}</Text>}
             {voiceChannelOpen && (
               <TouchableOpacity
                 style={styles.callButton}
@@ -298,7 +343,7 @@ export default function MissionTrackingScreen({ route, navigation }: Props) {
             <Text style={styles.subText}>
               {mission.driver_id
                 ? 'La mission n’a pas démarré à l’heure prévue et a été clôturée.'
-                : "Aucun chauffeur n'était disponible avant l'heure prévue."}
+                : "Aucun accord n'a été conclu avec un chauffeur avant l'heure prévue."}
             </Text>
             <TouchableOpacity
               style={styles.primaryButton}

@@ -18,7 +18,7 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import BackButton from '../../components/BackButton';
 import { showMessage, confirmAction } from '../../utils/dialogs';
-import { getAppSettings, updateAppSetting, type AppSetting } from '../../services/settingsService';
+import { getAppSettings, updateAppSetting, cleanServerMessage, type AppSetting } from '../../services/settingsService';
 
 type Group = {
   prefix: string;
@@ -27,9 +27,37 @@ type Group = {
   short: string;
   unit: string;
   max: number;
+  // valeur minimale autorisee (0 par defaut)
+  min?: number;
 };
 
 const GROUPS: Group[] = [
+  // A1 (migrations 073 et 074) : commission et solde minimum
+  {
+    prefix: 'commission_amount_',
+    title: 'Commission prélevée au chauffeur par mission',
+    help: 'S’applique aux missions créées après le changement. Les chauffeurs de la catégorie sont prévenus. Au moins 1 DH, et pas plus que le solde minimum.',
+    short: 'Commission',
+    unit: 'DH',
+    max: 10000,
+    min: 1,
+  },
+  {
+    prefix: 'min_balance_',
+    title: 'Solde disponible minimum pour recevoir des missions',
+    help: 'Solde moins les commissions des missions conclues pas encore prélevées. En dessous, le chauffeur passe « Hors service ». Jamais inférieur à la commission.',
+    short: 'Solde minimum',
+    unit: 'DH',
+    max: 100000,
+  },
+  {
+    prefix: 'client_cancel_no_refund_hours_',
+    title: 'Annulation par le client : délai sans perte du remboursement du chauffeur',
+    help: 'Si le client annule à moins de ce délai avant la mission (ou après), la commission du chauffeur n’est pas remboursée.',
+    short: 'Annulation client',
+    unit: 'h',
+    max: 168,
+  },
   {
     prefix: 'driver_gap_hours_',
     title: 'Écart minimum entre deux missions d’un chauffeur',
@@ -144,8 +172,9 @@ export default function AdminSettingsScreen() {
     const value = Number(raw);
     const unit = group?.unit ?? '';
     const max = group?.max ?? 100000;
-    if (raw === '' || !Number.isFinite(value) || value < 0 || value > max) {
-      showMessage('Valeur invalide', `Saisissez un nombre entre 0 et ${max}${unit ? ' ' + unit : ''}.`);
+    const min = group?.min ?? 0;
+    if (raw === '' || !Number.isFinite(value) || value < min || value > max) {
+      showMessage('Valeur invalide', `Saisissez un nombre entre ${min} et ${max}${unit ? ' ' + unit : ''}.`);
       return;
     }
     if (value === setting.value) return;
@@ -160,7 +189,7 @@ export default function AdminSettingsScreen() {
     const result = await updateAppSetting(setting.key, value);
     setSavingKey(null);
     if (result.error || !result.setting) {
-      showMessage('Erreur', result.error ?? 'Enregistrement impossible.');
+      showMessage('Erreur', result.error ? cleanServerMessage(result.error) : 'Enregistrement impossible.');
       return;
     }
     const updated = result.setting;

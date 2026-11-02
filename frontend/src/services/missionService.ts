@@ -23,6 +23,9 @@ export interface CreateMissionData {
   dropoff_lng: number;
   dropoff_address: string;
   dropoff_city: string;
+  // A1 (migration 072) : quartier deduit de la position, sans saisie du client
+  pickup_district?: string | null;
+  dropoff_district?: string | null;
   description?: string;
   needs_loading_help?: boolean;
   negotiated_price?: number;
@@ -110,6 +113,8 @@ export async function createMission(
       dropoff_location: `POINT(${missionData.dropoff_lng} ${missionData.dropoff_lat})`,
       dropoff_address: missionData.dropoff_address,
       dropoff_city: missionData.dropoff_city,
+      pickup_district: missionData.pickup_district ?? null,
+      dropoff_district: missionData.dropoff_district ?? null,
       description: missionData.description ?? null,
       needs_loading_help: missionData.needs_loading_help ?? false,
       negotiated_price: missionData.negotiated_price ?? null,
@@ -703,6 +708,58 @@ export async function getMissionById(
   return { success: true, mission: data as Mission };
 }
 
+// ─── A1 (migration 072) : masquage de l'adresse exacte ────────────────────────
+// La fiche de la mission ne contient que « quartier, ville » et un point
+// approche. L'adresse et le point exacts sont dans une partie verrouillee :
+// lisibles par le client, l'admin, et le chauffeur retenu une fois la
+// commission prelevee. Renvoie null tant que l'adresse n'est pas visible.
+
+export interface MissionExactLocation {
+  pickup_address: string | null;
+  pickup_lat: number | null;
+  pickup_lng: number | null;
+  dropoff_address: string | null;
+  dropoff_lat: number | null;
+  dropoff_lng: number | null;
+}
+
+export async function getMissionExactLocation(
+  missionId: string
+): Promise<{ location: MissionExactLocation | null; error?: string }> {
+  const { data, error } = await supabase
+    .from('mission_exact_locations')
+    .select('pickup_address, pickup_lat, pickup_lng, dropoff_address, dropoff_lat, dropoff_lng')
+    .eq('mission_id', missionId)
+    .maybeSingle();
+  if (error) {
+    console.log('[FTM-DEBUG] Mission - Exact location error', { missionId, error: error.message });
+    return { location: null, error: error.message };
+  }
+  return { location: (data as MissionExactLocation | null) ?? null };
+}
+
+// Prenom et plaque du chauffeur, pour le client, au prelevement de la commission
+export async function getMissionDriverIdentity(
+  missionId: string
+): Promise<{ identity: { first_name: string; license_plate: string } | null; error?: string }> {
+  const { data, error } = await supabase.rpc('get_mission_driver_identity', { p_mission_id: missionId });
+  if (error) {
+    console.log('[FTM-DEBUG] Mission - Driver identity error', { missionId, error: error.message });
+    return { identity: null, error: error.message };
+  }
+  const row = Array.isArray(data) ? data[0] : null;
+  return { identity: row ? { first_name: row.first_name, license_plate: row.license_plate } : null };
+}
+
+// Texte affiche au chauffeur tant que l'adresse exacte n'est pas visible
+export function exactAddressHint(scheduledPickupTime: string | null | undefined): string {
+  const t = scheduledPickupTime ? new Date(scheduledPickupTime).getTime() : NaN;
+  if (Number.isFinite(t) && t - Date.now() > 24 * 60 * 60 * 1000) {
+    return '🔒 L’adresse exacte sera visible 24 h avant le chargement.';
+  }
+  return '🔒 L’adresse exacte sera visible dès le prélèvement de la commission.';
+}
+
 export async function getDriverProfileId(
   driverId: string
 ): Promise<{ success?: boolean; profileId?: string; error?: string }> {
@@ -830,7 +887,7 @@ export type MissionSummary = Pick<
   | 'needs_loading_help'
   | 'cargo_weight_kg'
   | 'cargo_volume_m3'
->;
+> & { scheduled_pickup_time?: string | null };
 
 export interface DriverOpenMission extends MissionSummary {
   mission_type: MissionType;

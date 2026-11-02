@@ -12,6 +12,7 @@ import {
   getMissionOffersForClient,
   getDriverOfferForMission,
 } from '../../services/missionService';
+import { cleanServerMessage } from '../../services/settingsService';
 import type { MissionOffer, OfferDriverInfo } from '../../services/missionService';
 import {
   getOfferDriverReputation,
@@ -211,7 +212,7 @@ export default function MissionOfferScreen({ missionId, role, driverId, onMissio
     setIsSubmitting(true);
     setErrorMessage(null);
     const result = await acceptMissionOffer(offerId, 'client');
-    if (result.error) setErrorMessage(result.error);
+    if (result.error) setErrorMessage(cleanServerMessage(result.error));
     setIsSubmitting(false);
   }, []);
 
@@ -224,7 +225,7 @@ export default function MissionOfferScreen({ missionId, role, driverId, onMissio
     }
     setIsSubmitting(true);
     const result = await submitClientCounterOffer(missionId, price);
-    if (result.error) setErrorMessage(result.error);
+    if (result.error) setErrorMessage(cleanServerMessage(result.error));
     setCounterPrice('');
     setIsSubmitting(false);
   }, [missionId, counterPrice]);
@@ -233,7 +234,7 @@ export default function MissionOfferScreen({ missionId, role, driverId, onMissio
     setIsSubmitting(true);
     setErrorMessage(null);
     const result = await acceptMissionOffer(offerId, 'client');
-    if (result.error) setErrorMessage(result.error);
+    if (result.error) setErrorMessage(cleanServerMessage(result.error));
     setIsSubmitting(false);
   }, []);
 
@@ -241,7 +242,7 @@ export default function MissionOfferScreen({ missionId, role, driverId, onMissio
     setIsSubmitting(true);
     setErrorMessage(null);
     const result = await rejectOfferAcceptance(offerId, 'client');
-    if (result.error) setErrorMessage(result.error);
+    if (result.error) setErrorMessage(cleanServerMessage(result.error));
     setIsSubmitting(false);
   }, []);
 
@@ -249,7 +250,7 @@ export default function MissionOfferScreen({ missionId, role, driverId, onMissio
     setIsSubmitting(true);
     setErrorMessage(null);
     const result = await acceptMissionOffer(offerId, 'driver');
-    if (result.error) setErrorMessage(result.error);
+    if (result.error) setErrorMessage(cleanServerMessage(result.error));
     setIsSubmitting(false);
   }, []);
 
@@ -262,7 +263,7 @@ export default function MissionOfferScreen({ missionId, role, driverId, onMissio
     }
     setIsSubmitting(true);
     const result = await counterMissionOffer(offerId, price, 'driver');
-    if (result.error) setErrorMessage(result.error);
+    if (result.error) setErrorMessage(cleanServerMessage(result.error));
     setCounterPrice('');
     setIsSubmitting(false);
   }, [counterPrice]);
@@ -271,7 +272,7 @@ export default function MissionOfferScreen({ missionId, role, driverId, onMissio
     setIsSubmitting(true);
     setErrorMessage(null);
     const result = await acceptMissionOffer(offerId, 'driver');
-    if (result.error) setErrorMessage(result.error);
+    if (result.error) setErrorMessage(cleanServerMessage(result.error));
     setIsSubmitting(false);
   }, []);
 
@@ -279,7 +280,7 @@ export default function MissionOfferScreen({ missionId, role, driverId, onMissio
     setIsSubmitting(true);
     setErrorMessage(null);
     const result = await rejectOfferAcceptance(offerId, 'driver');
-    if (result.error) setErrorMessage(result.error);
+    if (result.error) setErrorMessage(cleanServerMessage(result.error));
     setIsSubmitting(false);
   }, []);
 
@@ -320,7 +321,7 @@ export default function MissionOfferScreen({ missionId, role, driverId, onMissio
                 <View style={styles.reputationBox}>
                   <Text style={styles.driverInfoText}>
                     {`Ponctualité \u2605 ${formatAverage(reputations[offer.driver_id].avg_punctuality)}  \u00b7  ` +
-                      `Soin \u2605 ${formatAverage(reputations[offer.driver_id].avg_care)}  \u00b7  ` +
+                      `Soin de la marchandise \u2605 ${formatAverage(reputations[offer.driver_id].avg_care)}  \u00b7  ` +
                       `Services \u2605 ${formatAverage(reputations[offer.driver_id].avg_service)}`}
                   </Text>
                   <Text style={styles.driverInfoText}>
@@ -402,7 +403,11 @@ export default function MissionOfferScreen({ missionId, role, driverId, onMissio
           <Text style={styles.title}>Votre offre</Text>
 
           {driverState.kind === 'awaiting_response' && (
-            <Text style={styles.waitingText}>En attente de réponse du client…</Text>
+            <View>
+              {/* A1 : prix rappele pendant l'attente (constat du 02/11/2026) */}
+              {driverOffer && <Text style={styles.offerPrice}>Votre prix : {driverOffer.offered_price} DH</Text>}
+              <Text style={styles.waitingText}>En attente de réponse du client…</Text>
+            </View>
           )}
 
           {driverState.kind === 'can_respond_round2' && (
@@ -459,7 +464,10 @@ export default function MissionOfferScreen({ missionId, role, driverId, onMissio
           )}
 
           {driverState.kind === 'waiting_other_confirmation' && (
-            <Text style={styles.waitingText}>En attente de confirmation du client…</Text>
+            <View>
+              {driverOffer && <Text style={styles.offerPrice}>Prix accepté : {driverOffer.offered_price} DH</Text>}
+              <Text style={styles.waitingText}>En attente de confirmation du client…</Text>
+            </View>
           )}
 
           {driverState.kind === 'not_selected' && (

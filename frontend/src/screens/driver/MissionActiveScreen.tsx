@@ -16,7 +16,11 @@ import {
   cancelMission,
   getDriverCancelTerms,
   getMissionById,
+  getMissionExactLocation,
+  exactAddressHint,
 } from '../../services/missionService';
+import type { MissionExactLocation } from '../../services/missionService';
+import { cleanServerMessage } from '../../services/settingsService';
 import { subscribeToMissionUpdates, unsubscribeChannel } from '../../services/realtimeService';
 import { requestRefund } from '../../services/walletService';
 import type { Mission } from '../../services/missionService';
@@ -39,8 +43,6 @@ function formatDuration(seconds: number): string {
   return [h, m, s].map((v) => String(v).padStart(2, '0')).join(':');
 }
 
-const VOICE_CHANNEL_CHECK_INTERVAL_MS = 30000;
-const VOICE_CHANNEL_OPEN_BEFORE_MS = 24 * 60 * 60 * 1000;
 
 export default function MissionActiveScreen({ route, navigation }: Props) {
   const initialMission = route.params.mission as unknown as Mission;
@@ -49,6 +51,9 @@ export default function MissionActiveScreen({ route, navigation }: Props) {
   const [isRequestingRefund, setIsRequestingRefund] = useState(false);
   const [refundRequested, setRefundRequested] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
+  // A1 (migration 072) : adresse et point exacts, lisibles seulement apres le
+  // prelevement de la commission (null avant : quartier et ville seulement)
+  const [exact, setExact] = useState<MissionExactLocation | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // A1 (correction 35) : l'ecran suit la mission en direct. Auparavant il
@@ -94,6 +99,20 @@ export default function MissionActiveScreen({ route, navigation }: Props) {
     }, [missionId, applyUpdate])
   );
 
+  // Relue a l'ouverture, au retour sur l'ecran et des que la commission est
+  // prelevee (mise a jour en direct de la mission)
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      getMissionExactLocation(missionId).then((result) => {
+        if (active) setExact(result.location);
+      });
+      return () => {
+        active = false;
+      };
+    }, [missionId, mission.commission_charged_at])
+  );
+
   useEffect(() => {
     if (mission.status === 'in_progress' && mission.actual_pickup_time) {
       const start = new Date(mission.actual_pickup_time).getTime();
@@ -106,28 +125,11 @@ export default function MissionActiveScreen({ route, navigation }: Props) {
     };
   }, [mission.status, mission.actual_pickup_time]);
 
-  const [voiceChannelOpen, setVoiceChannelOpen] = useState(false);
-
-  useEffect(() => {
-    const eligibleStatus = mission.status === 'accepted' || mission.status === 'in_progress';
-    if (!eligibleStatus || !mission.scheduled_pickup_time) {
-      setVoiceChannelOpen(false);
-      return;
-    }
-
-    const checkVoiceChannelWindow = () => {
-      const scheduledTime = new Date(mission.scheduled_pickup_time as string).getTime();
-      const openAt = scheduledTime - VOICE_CHANNEL_OPEN_BEFORE_MS;
-      const isOpen = Date.now() >= openAt;
-      // Session 2.23 : le prelevement de la commission et l'annonce de la
-      // messagerie sont faits par le serveur (tache planifiee, migration 054).
-      setVoiceChannelOpen(isOpen);
-    };
-
-    checkVoiceChannelWindow();
-    const interval = setInterval(checkVoiceChannelWindow, VOICE_CHANNEL_CHECK_INTERVAL_MS);
-    return () => clearInterval(interval);
-  }, [mission.status, mission.scheduled_pickup_time]);
+  // A1 (migration 074) : la messagerie vocale s'ouvre au prelevement de la
+  // commission, en meme temps que l'adresse exacte (auparavant 24 h avant,
+  // sur la seule base de l'heure : elle pouvait servir a obtenir l'adresse).
+  const voiceChannelOpen =
+    (mission.status === 'accepted' || mission.status === 'in_progress') && !!mission.commission_charged_at;
 
   const openMaps = (lat: number, lng: number) => {
     const url =
@@ -138,57 +140,36 @@ export default function MissionActiveScreen({ route, navigation }: Props) {
   };
 
   // A1 (correction 18) : les boutons « Ouvrir dans Maps » n'affichaient qu'un
-  // message. Le point de chargement est ouvert par ses coordonnees (lues dans
-  // la colonne geographique de la mission) ; la destination par son adresse
-  // ecrite, plus fiable tant que ses coordonnees ne sont pas calculees (R1).
-  const pointFromGeography = (value: unknown): { lat: number; lng: number } | null => {
-    try {
-      if (typeof value === 'string') {
-        const wkt = value.match(/POINT\s*\(\s*(-?[\d.]+)\s+(-?[\d.]+)\s*\)/i);
-        if (wkt) return { lng: Number(wkt[1]), lat: Number(wkt[2]) };
-        if (/^[0-9a-f]+$/i.test(value) && value.length >= 42) {
-          // Format EWKB hexadecimal renvoye par PostGIS (point avec SRID 4326)
-          const bytes = new Uint8Array(value.length / 2);
-          for (let i = 0; i < bytes.length; i++) bytes[i] = parseInt(value.substr(i * 2, 2), 16);
-          const view = new DataView(bytes.buffer);
-          const little = bytes[0] === 1;
-          const type = view.getUint32(1, little);
-          const offset = type & 0x20000000 ? 9 : 5;
-          const lng = view.getFloat64(offset, little);
-          const lat = view.getFloat64(offset + 8, little);
-          if (Number.isFinite(lat) && Number.isFinite(lng)) return { lat, lng };
-        }
-      } else if (value && typeof value === 'object') {
-        const coords = (value as { coordinates?: number[] }).coordinates;
-        if (coords && coords.length >= 2) return { lng: coords[0], lat: coords[1] };
-      }
-    } catch (err: unknown) {
-      console.log('[FTM-DEBUG] Maps - Geography decode error', { err: String(err) });
-    }
-    return null;
-  };
-
+  // message. Ils ouvrent un point (coordonnees) ou une adresse ecrite.
   const openMapsAddress = (address: string, city: string) => {
     const query = encodeURIComponent([address, city, 'Maroc'].filter(Boolean).join(', '));
     Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${query}`);
   };
 
+  // A1 (migration 072) : avant la commission, Maps ouvre seulement le
+  // quartier ou la ville (la fiche ne contient que « quartier, ville ») ;
+  // apres, le point exact.
   const openPickupInMaps = () => {
-    const raw = mission as unknown as Record<string, unknown>;
-    const point = pointFromGeography(raw.pickup_location);
-    if (point) openMaps(point.lat, point.lng);
-    else openMapsAddress(String(raw.pickup_address ?? ''), String(raw.pickup_city ?? ''));
+    if (exact?.pickup_lat != null && exact?.pickup_lng != null) openMaps(exact.pickup_lat, exact.pickup_lng);
+    else if (exact?.pickup_address) openMapsAddress(exact.pickup_address, mission.pickup_city);
+    else openMapsAddress(mission.pickup_address, '');
   };
 
+  // Destination : adresse ecrite exacte (comme avant, plus fiable quand
+  // l'adresse a ete placee au centre de la ville faute d'etre trouvee).
   const openDropoffInMaps = () => {
-    const raw = mission as unknown as Record<string, unknown>;
-    openMapsAddress(String(raw.dropoff_address ?? ''), String(raw.dropoff_city ?? ''));
+    if (exact?.dropoff_address) openMapsAddress(exact.dropoff_address, mission.dropoff_city);
+    else openMapsAddress(mission.dropoff_address, '');
   };
 
   const handleStart = async () => {
     const result = await startMission(mission.id, mission.driver_id ?? '');
     if (result.error) {
-      showMessage('Erreur', result.error);
+      // A1 (migration 074) : demarrage refuse tant que la commission n'est pas prelevee
+      showMessage(
+        result.error.includes('demarrage_impossible') ? 'Démarrage impossible' : 'Erreur',
+        cleanServerMessage(result.error)
+      );
     } else if (result.mission) {
       setMission(result.mission);
     }
@@ -261,8 +242,17 @@ export default function MissionActiveScreen({ route, navigation }: Props) {
 
         <View style={styles.addressCard}>
           <Text style={styles.addressLabel}>📍 Point de chargement</Text>
-          <Text style={styles.addressText}>{mission.pickup_address}</Text>
-          <Text style={styles.cityText}>{mission.pickup_city}</Text>
+          {exact?.pickup_address ? (
+            <>
+              <Text style={styles.addressText}>{exact.pickup_address}</Text>
+              <Text style={styles.cityText}>{mission.pickup_city}</Text>
+            </>
+          ) : (
+            <>
+              <Text style={styles.addressText}>{mission.pickup_address}</Text>
+              <Text style={styles.hintText}>{exactAddressHint(mission.scheduled_pickup_time)}</Text>
+            </>
+          )}
           {/* A1 F6 : poids et volume du chargement */}
           <Text style={styles.cityText}>
             ⚖️ {formatCargo(mission.cargo_weight_kg, mission.cargo_volume_m3) ?? 'Poids et volume non indiqués'}
@@ -309,8 +299,14 @@ export default function MissionActiveScreen({ route, navigation }: Props) {
 
         <View style={styles.addressCard}>
           <Text style={styles.addressLabel}>🏁 Destination</Text>
-          <Text style={styles.addressText}>{mission.dropoff_address}</Text>
-          <Text style={styles.cityText}>{mission.dropoff_city}</Text>
+          {exact?.dropoff_address ? (
+            <>
+              <Text style={styles.addressText}>{exact.dropoff_address}</Text>
+              <Text style={styles.cityText}>{mission.dropoff_city}</Text>
+            </>
+          ) : (
+            <Text style={styles.addressText}>{mission.dropoff_address}</Text>
+          )}
           <Text style={styles.cityText}>
             ⚖️ {formatCargo(mission.cargo_weight_kg, mission.cargo_volume_m3) ?? 'Poids et volume non indiqués'}
           </Text>
@@ -435,6 +431,7 @@ const styles = StyleSheet.create({
   addressLabel: { fontSize: 11, fontWeight: '700', color: COLORS.textSecondary, letterSpacing: 1 },
   addressText: { fontSize: 16, color: COLORS.text, fontWeight: '500' },
   cityText: { fontSize: 14, color: COLORS.textSecondary },
+  hintText: { fontSize: 13, color: COLORS.textSecondary, fontStyle: 'italic', marginTop: 4 },
   mapsButton: {
     backgroundColor: COLORS.surface,
     borderRadius: BORDER_RADIUS.md,

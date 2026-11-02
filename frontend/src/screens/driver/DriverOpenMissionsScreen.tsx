@@ -15,6 +15,8 @@
 // bouton « Actualiser », relecture automatique toutes les 30 secondes, geste
 // « tirer vers le bas » actif même quand la liste est vide, message « Hors
 // service » dans un encadré, mention « Toucher pour… » en étiquette colorée.
+// 02/11/2026 : bouton « Actualiser » sur sa propre ligne, sous le titre.
+// Migration 072 : la fiche ne contient que « quartier, ville » avant la commission.
 import React, { useCallback, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, RefreshControl } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
@@ -27,6 +29,7 @@ import type { DriverOpenMission, DriverPendingOffer } from '../../services/missi
 import { formatCargo } from '../../utils/cargo';
 import { formatMissionDateTime } from '../../components/DateTimeField';
 import NewMissionModal from './NewMissionModal';
+import { getMyWalletStatus, type MyWalletStatus } from '../../services/settingsService';
 
 type DriverStackParamList = {
   DriverOpenMissions: { driverId: string };
@@ -62,13 +65,17 @@ export default function DriverOpenMissionsScreen({ route, navigation }: Props) {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedMission, setSelectedMission] = useState<DriverOpenMission | null>(null);
+  // A1 (migration 074) : sous le minimum, le serveur ne renvoie aucune mission
+  const [walletStatus, setWalletStatus] = useState<MyWalletStatus | null>(null);
 
   const load = useCallback(async () => {
-    const [availability, openResult, offersResult] = await Promise.all([
+    const [availability, openResult, offersResult, walletResult] = await Promise.all([
       supabase.from('drivers').select('is_available').eq('id', driverId).single(),
       getDriverOpenMissions(),
       getDriverPendingOffers(),
+      getMyWalletStatus(),
     ]);
+    setWalletStatus(walletResult.status ?? null);
     setIsAvailable(availability.data ? availability.data.is_available === true : null);
     setMissions(openResult.missions ?? []);
     setOffers(offersResult.offers ?? []);
@@ -104,24 +111,32 @@ export default function DriverOpenMissionsScreen({ route, navigation }: Props) {
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />}
       >
-        <View style={styles.titleRow}>
-          <Text style={styles.title}>📋 Missions disponibles</Text>
-          <TouchableOpacity
-            style={[styles.refreshButton, isRefreshing && styles.refreshButtonDisabled]}
-            onPress={onRefresh}
-            disabled={isRefreshing}
-            accessibilityRole="button"
-            accessibilityLabel="Actualiser"
-          >
-            <Text style={styles.refreshButtonText}>{isRefreshing ? '…' : '🔄 Actualiser'}</Text>
-          </TouchableOpacity>
-        </View>
+        {/* A1 : bouton « Actualiser » sur sa propre ligne, plus visible
+            (constat du 02/11/2026) */}
+        <Text style={styles.title}>📋 Missions disponibles</Text>
+        <TouchableOpacity
+          style={[styles.refreshButton, isRefreshing && styles.refreshButtonDisabled]}
+          onPress={onRefresh}
+          disabled={isRefreshing}
+          accessibilityRole="button"
+          accessibilityLabel="Actualiser"
+        >
+          <Text style={styles.refreshButtonText}>{isRefreshing ? 'Actualisation…' : '🔄 Actualiser la liste'}</Text>
+        </TouchableOpacity>
 
         {loadError && <Text style={styles.errorText}>{loadError}</Text>}
 
         <Text style={styles.sectionTitle}>Missions ouvertes</Text>
         {isLoading ? (
           <Text style={styles.emptyText}>Chargement…</Text>
+        ) : walletStatus && !walletStatus.balance_ok ? (
+          <View style={styles.notice}>
+            <Text style={styles.noticeText}>⚠️ Solde disponible insuffisant.</Text>
+            <Text style={styles.noticeText}>
+              {walletStatus.available.toFixed(2)} DH (commissions à venir déduites) pour un minimum de{' '}
+              {walletStatus.minimum} DH : rechargez votre wallet pour voir les missions.
+            </Text>
+          </View>
         ) : isAvailable === false ? (
           <View style={styles.notice}>
             <Text style={styles.noticeText}>⚠️ Vous êtes « Hors service ».</Text>
@@ -137,7 +152,7 @@ export default function DriverOpenMissionsScreen({ route, navigation }: Props) {
               onPress={() => setSelectedMission(mission)}
             >
               <Text style={styles.cardRoute}>
-                {mission.pickup_city} → {mission.dropoff_city}
+                {mission.pickup_address} → {mission.dropoff_address}
               </Text>
               <Text style={styles.cardDate}>{formatPickup(mission.scheduled_pickup_time)}</Text>
               <Text style={styles.cardMeta}>
@@ -164,7 +179,7 @@ export default function DriverOpenMissionsScreen({ route, navigation }: Props) {
               onPress={() => navigation.navigate('MissionOffer', { missionId: offer.mission_id, driverId })}
             >
               <Text style={styles.cardRoute}>
-                {offer.pickup_city} → {offer.dropoff_city}
+                {offer.pickup_address} → {offer.dropoff_address}
               </Text>
               <Text style={styles.cardDate}>{formatPickup(offer.scheduled_pickup_time)}</Text>
               <Text style={styles.cardPrice}>💰 Prix en discussion : {offer.offered_price} DH</Text>
@@ -204,23 +219,16 @@ const styles = StyleSheet.create({
   // flexGrow : la zone occupe tout l'écran, le geste « tirer vers le bas »
   // fonctionne donc aussi quand la liste est vide (constat du 29/10/2026).
   content: { flexGrow: 1, padding: SPACING.lg, paddingTop: SPACING.sm, gap: SPACING.sm },
-  titleRow: {
-    flexDirection: 'row',
+  title: { fontSize: 22, fontWeight: '700', color: COLORS.text },
+  refreshButton: {
+    backgroundColor: COLORS.primary,
+    borderRadius: BORDER_RADIUS.md,
+    paddingVertical: 12,
     alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: SPACING.sm,
     marginBottom: SPACING.sm,
   },
-  title: { fontSize: 22, fontWeight: '700', color: COLORS.text, flexShrink: 1 },
-  refreshButton: {
-    borderWidth: 1.5,
-    borderColor: COLORS.primary,
-    borderRadius: BORDER_RADIUS.md,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-  },
   refreshButtonDisabled: { opacity: 0.5 },
-  refreshButtonText: { fontSize: 14, fontWeight: '700', color: COLORS.primary },
+  refreshButtonText: { fontSize: 16, fontWeight: '700', color: '#fff' },
   notice: {
     backgroundColor: '#FEF5E7',
     borderWidth: 2,

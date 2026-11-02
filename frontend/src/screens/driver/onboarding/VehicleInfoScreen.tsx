@@ -12,6 +12,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { createDriverProfile, VehicleCategory } from '../../../services/driverService';
 import { supabase } from '../../../lib/supabaseClient';
 import { COLORS } from '../../../constants/theme';
+import { getCommissionAmounts, type CommissionAmounts } from '../../../services/settingsService';
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
@@ -45,6 +46,17 @@ const LICENSE_PLATE_REGEX = /^[0-9]{1,6}-[A-Z]-[0-9]+$/;
 
 export default function VehicleInfoScreen({ navigation }: Props) {
   const [vehicleCategory, setVehicleCategory] = useState<VehicleCategory | null>(null);
+  // A1 (migration 073) : commission en vigueur, lue sur le serveur
+  const [commissions, setCommissions] = useState<CommissionAmounts>({});
+  useEffect(() => {
+    let active = true;
+    getCommissionAmounts().then(({ amounts }) => {
+      if (active && amounts) setCommissions(amounts);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
   const [vehicleBrand,    setVehicleBrand]    = useState('');
   const [vehicleModel,    setVehicleModel]    = useState('');
   const [licensePlate,    setLicensePlate]    = useState('');
@@ -165,7 +177,9 @@ export default function VehicleInfoScreen({ navigation }: Props) {
             <Text style={styles.categoryIcon}>{cat.icon}</Text>
             <Text style={styles.categoryLabel}>{cat.label_fr}</Text>
             <Text style={styles.categoryDesc}>{cat.description}</Text>
-            <Text style={styles.categoryCommission}>{cat.commission}</Text>
+            <Text style={styles.categoryCommission}>
+              {commissions[cat.value] !== undefined ? `${commissions[cat.value]} DH` : cat.commission}
+            </Text>
           </TouchableOpacity>
         ))}
       </View>

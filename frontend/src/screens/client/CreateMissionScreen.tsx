@@ -25,7 +25,8 @@ import CityPicker from '../../components/CityPicker';
 import { findCity } from '../../constants/moroccoCities';
 import { MAX_LOAD_KG, formatTonnes, parseQuantity } from '../../utils/cargo';
 import { usePendingNavigation } from '../../hooks/usePendingNavigation';
-import { ensureGeocodingPermission, geocodeInCity, GeoPoint } from '../../services/geocodingService';
+import { ensureGeocodingPermission, geocodeInCity, districtAt, GeoPoint } from '../../services/geocodingService';
+import { getCommissionAmounts, DEFAULT_COMMISSION_AMOUNTS } from '../../services/settingsService';
 
 type RootStackParamList = {
   CreateMission: { clientProfileId: string };
@@ -44,6 +45,18 @@ const VEHICLE_OPTIONS: { key: VehicleCategory; label: string; commission: number
 
 export default function CreateMissionScreen({ route, navigation }: Props) {
   const { clientProfileId } = route.params;
+  // A1 (migration 073) : montants de commission en vigueur, lus sur le serveur
+  // (reglables par l'admin) ; valeurs de depart affichees en attendant.
+  const [commissions, setCommissions] = useState(DEFAULT_COMMISSION_AMOUNTS);
+  useEffect(() => {
+    let active = true;
+    getCommissionAmounts().then(({ amounts }) => {
+      if (active && amounts && Object.keys(amounts).length > 0) setCommissions({ ...DEFAULT_COMMISSION_AMOUNTS, ...amounts });
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
   // A1 (correction 31) : ecran demande par une notification (offres, suivi, notation)
   usePendingNavigation(
     route.params as unknown as Record<string, unknown>,
@@ -140,9 +153,9 @@ export default function CreateMissionScreen({ route, navigation }: Props) {
     city: string,
     label: string,
     permission: boolean
-  ): Promise<GeoPoint | null> => {
+  ): Promise<(GeoPoint & { precise: boolean }) | null> => {
     const precise = permission ? await geocodeInCity(address, city) : null;
-    if (precise) return precise;
+    if (precise) return { ...precise, precise: true };
     const center = findCity(city);
     if (!center) {
       showMessage(label, `Choisissez la ville dans la liste pour situer l'adresse « ${address} ».`);
@@ -156,7 +169,7 @@ export default function CreateMissionScreen({ route, navigation }: Props) {
       `${reason} La mission sera placée au centre de ${center.name}. Le chauffeur verra votre adresse complète.`,
       { confirmLabel: 'Continuer', cancelLabel: "Corriger l'adresse" }
     );
-    return goOn ? { lat: center.lat, lng: center.lng } : null;
+    return goOn ? { lat: center.lat, lng: center.lng, precise: false } : null;
   };
 
   const handleSubmit = async () => {
@@ -193,11 +206,19 @@ export default function CreateMissionScreen({ route, navigation }: Props) {
       );
       if (!timeOk) return;
       const permission = await ensureGeocodingPermission();
-      const pickup =
-        pickupCoords ?? (await resolvePoint(pickupAddress.trim(), pickupCity, 'Adresse de départ', permission));
+      const pickup = pickupCoords
+        ? { ...pickupCoords, precise: true }
+        : await resolvePoint(pickupAddress.trim(), pickupCity, 'Adresse de départ', permission);
       if (!pickup) return;
       const dropoff = await resolvePoint(dropoffAddress.trim(), dropoffCity, "Adresse d'arrivée", permission);
       if (!dropoff) return;
+      // A1 (migration 072) : quartier deduit de la position (pas de saisie du
+      // client). Pas de quartier si l'adresse a ete placee au centre de la
+      // ville : il serait faux ; la ville seule est alors montree.
+      const [pickupDistrict, dropoffDistrict] = await Promise.all([
+        permission && pickup.precise ? districtAt(pickup) : Promise.resolve(null),
+        permission && dropoff.precise ? districtAt(dropoff) : Promise.resolve(null),
+      ]);
 
       const result = await createMission(clientProfileId, {
         vehicle_category: vehicleCategory!,
@@ -209,6 +230,8 @@ export default function CreateMissionScreen({ route, navigation }: Props) {
         dropoff_lng: dropoff.lng,
         dropoff_address: dropoffAddress.trim(),
         dropoff_city: dropoffCity,
+        pickup_district: pickupDistrict,
+        dropoff_district: dropoffDistrict,
         description: description || undefined,
         needs_loading_help: needsLoading,
         negotiated_price: negotiatedPrice ? parseFloat(negotiatedPrice) : undefined,
@@ -343,7 +366,7 @@ export default function CreateMissionScreen({ route, navigation }: Props) {
                 {v.label}
               </Text>
               <Text style={[styles.vehicleCommission, vehicleCategory === v.key && styles.vehicleCommissionActive]}>
-                {v.commission} DH
+                {commissions[v.key] ?? v.commission} DH
               </Text>
               <Text style={styles.vehicleLoad}>jusqu'à {formatTonnes(MAX_LOAD_KG[v.key])}</Text>
             </TouchableOpacity>
@@ -420,7 +443,7 @@ export default function CreateMissionScreen({ route, navigation }: Props) {
         {selectedVehicle && (
           <View style={styles.summaryBox}>
             <Text style={styles.summaryText}>
-              Commission : <Text style={styles.summaryHighlight}>{selectedVehicle.commission} DH</Text>
+              Commission : <Text style={styles.summaryHighlight}>{commissions[selectedVehicle.key] ?? selectedVehicle.commission} DH</Text>
             </Text>
           </View>
         )}

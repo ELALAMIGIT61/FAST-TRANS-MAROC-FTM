@@ -560,12 +560,12 @@ export async function canDriverAcceptMission(
     vehicleCategory,
   });
 
-  const COMMISSION_MAP: Record<VehicleCategory, number> = {
-    vul: 25,
-    n2_medium: 40,
-    n2_large: 50,
-  };
-  const commission = COMMISSION_MAP[vehicleCategory] ?? 25;
+  // A1 (migration 073) : montant en vigueur lu sur le serveur (reglable par
+  // l'admin). Fonction non utilisee par les ecrans a ce jour : les controles
+  // de solde sont faits par le serveur (migration 074).
+  const { getCommissionAmounts, DEFAULT_COMMISSION_AMOUNTS } = await import('./settingsService');
+  const amounts = (await getCommissionAmounts()).amounts ?? DEFAULT_COMMISSION_AMOUNTS;
+  const commission = amounts[vehicleCategory] ?? DEFAULT_COMMISSION_AMOUNTS[vehicleCategory] ?? 25;
 
   const { data: wallet, error } = await supabase
     .from('wallet')
@@ -642,9 +642,8 @@ export function subscribeToWalletUpdates(
           isBlocked,
         });
 
-        if (isBlocked) {
-          await checkAndEnforceWalletBlock(driverId, walletId);
-        }
+        // A1 (migration 074) : la mise « Hors service » sous le minimum est
+        // faite par le serveur (solde disponible), plus par l'application.
 
         onUpdate({ balance: newBalance, minimum, isBlocked });
       }

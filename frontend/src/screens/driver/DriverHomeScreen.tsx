@@ -16,6 +16,7 @@ import NewMissionModal from './NewMissionModal';
 import NotificationBell from '../../components/NotificationBell';
 import { signOutAndUnregisterDevice as handleSignOut } from '../../services/pushSetup';
 import { getDriverOpenMissions } from '../../services/missionService';
+import { getMyWalletStatus, cleanServerMessage, type MyWalletStatus } from '../../services/settingsService';
 import type { Mission, VehicleCategory } from '../../services/missionService';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
@@ -51,6 +52,9 @@ export default function DriverHomeScreen({ route, navigation }: Props) {
   const [isAvailable, setIsAvailable] = useState(false);
   const [walletBalance, setWalletBalance] = useState<number | null>(null);
   const [walletError, setWalletError] = useState(false);
+  // A1 (migration 074) : solde disponible (commissions a venir deduites),
+  // minimum et commission en vigueur, calcules par le serveur
+  const [walletStatus, setWalletStatus] = useState<MyWalletStatus | null>(null);
   // A1 (correction 20) : mission conclue ou en cours, pour pouvoir la reprendre
   // apres une fermeture de l'application (auparavant : impossible d'y revenir).
   const [activeMission, setActiveMission] = useState<Record<string, unknown> | null>(null);
@@ -83,27 +87,30 @@ export default function DriverHomeScreen({ route, navigation }: Props) {
   // disponibles » (decision 3 du porteur) ; relu a chaque retour sur
   // l'accueil et a chaque changement de disponibilite.
   const [openMissionsCount, setOpenMissionsCount] = useState<number | null>(null);
-  useFocusEffect(
-    useCallback(() => {
-      let cancelled = false;
-      if (!isAvailable) {
-        setOpenMissionsCount(null);
-        return;
-      }
-      getDriverOpenMissions().then((result) => {
-        if (!cancelled) setOpenMissionsCount(result.missions ? result.missions.length : null);
-      });
-      return () => {
-        cancelled = true;
-      };
-    }, [isAvailable])
-  );
+  // A1 (constat du 02/11/2026) : le nombre est aussi relu a la fermeture de la
+  // fenetre « Nouvelle mission » et toutes les 30 secondes (auparavant
+  // seulement au retour sur l'accueil : il restait a 0).
+  const refreshOpenMissionsCount = useCallback(async () => {
+    if (!isAvailable) {
+      setOpenMissionsCount(null);
+      return;
+    }
+    const result = await getDriverOpenMissions();
+    setOpenMissionsCount(result.missions ? result.missions.length : null);
+  }, [isAvailable]);
   const missionChannelRef = useRef<RealtimeChannel | null>(null);
   const pendingMissionUpdateChannelRef = useRef<RealtimeChannel | null>(null);
 
   // Session 3.4 : solde relu a chaque retour sur l'accueil ; en cas d'echec,
   // la carte reste visible et propose de reessayer (au lieu de disparaitre).
   const fetchWallet = useCallback(async () => {
+    const statusResult = await getMyWalletStatus();
+    if (statusResult.status) {
+      setWalletStatus(statusResult.status);
+      setWalletBalance(statusResult.status.balance);
+      setWalletError(false);
+      return;
+    }
     const { data, error } = await supabase
       .from('wallet')
       .select('balance')
@@ -118,10 +125,22 @@ export default function DriverHomeScreen({ route, navigation }: Props) {
     }
   }, [driverId]);
 
+  // A1 (migration 074) : le serveur peut passer le chauffeur « Hors service »
+  // (solde disponible sous le minimum) ; l'accueil le constate a chaque relecture.
+  const syncAvailabilityFromServer = useRef<() => Promise<void>>(async () => {});
+
+  const refreshHome = useCallback(() => {
+    fetchWallet();
+    refreshOpenMissionsCount();
+    syncAvailabilityFromServer.current();
+  }, [fetchWallet, refreshOpenMissionsCount]);
+
   useFocusEffect(
     useCallback(() => {
-      fetchWallet();
-    }, [fetchWallet])
+      refreshHome();
+      const timer = setInterval(refreshHome, 30000);
+      return () => clearInterval(timer);
+    }, [refreshHome])
   );
 
   const clearPendingMissionWatch = useCallback(async () => {
@@ -263,7 +282,10 @@ export default function DriverHomeScreen({ route, navigation }: Props) {
       .update({ is_available: newStatus })
       .eq('id', driverId);
     if (error) {
-      showMessage('Erreur', error.message);
+      showMessage(
+        error.message.startsWith('indisponibilite_solde') ? 'Solde insuffisant' : 'Erreur',
+        cleanServerMessage(error.message)
+      );
       if (newStatus) await stopBackgroundTracking();
       return;
     }
@@ -271,6 +293,21 @@ export default function DriverHomeScreen({ route, navigation }: Props) {
     setIsAvailable(newStatus);
     if (newStatus) subscribeMissions();
   }, [isAvailable, driverId, clearPendingMissionWatch, subscribeMissions]);
+
+  syncAvailabilityFromServer.current = async () => {
+    if (!isAvailable) return;
+    const { data } = await supabase.from('drivers').select('is_available').eq('id', driverId).single();
+    if (!data || data.is_available !== false) return;
+    console.log('[FTM-DEBUG] Driver - Set unavailable by the server', { driverId });
+    await stopBackgroundTracking();
+    if (missionChannelRef.current) {
+      await unsubscribeChannel(missionChannelRef.current);
+      missionChannelRef.current = null;
+    }
+    await clearPendingMissionWatch();
+    setPendingMission(null);
+    setIsAvailable(false);
+  };
 
   // A1 (correction 12) : a l'ouverture, l'ecran affiche l'etat reel enregistre
   // dans la base (choix du porteur : le chauffeur reste disponible quand il quitte
@@ -320,10 +357,10 @@ export default function DriverHomeScreen({ route, navigation }: Props) {
     };
   }, []);
 
-  const walletColor =
-    walletBalance !== null && walletBalance < 100
-      ? (COLORS.alert ?? '#E53E3E')
-      : (COLORS.success ?? '#38A169');
+  const walletLow = walletStatus
+    ? !walletStatus.balance_ok
+    : walletBalance !== null && walletBalance < 100;
+  const walletColor = walletLow ? (COLORS.alert ?? '#E53E3E') : (COLORS.success ?? '#38A169');
 
   return (
     <View style={styles.container}>
@@ -356,10 +393,32 @@ export default function DriverHomeScreen({ route, navigation }: Props) {
           style={[styles.walletCard, { borderColor: walletColor }]}
           onPress={() => navigation.navigate('WalletDashboard', { driverId })}
         >
-          <Text style={styles.walletLabel}>💰 Wallet</Text>
-          <Text style={[styles.walletAmount, { color: walletColor }]}>
-            {walletBalance.toFixed(2)} DH
-          </Text>
+          <View style={styles.walletRow}>
+            <Text style={styles.walletLabel}>💰 Wallet</Text>
+            <Text style={[styles.walletAmount, { color: walletColor }]}>
+              {walletBalance.toFixed(2)} DH
+            </Text>
+          </View>
+          {walletStatus && (
+            <>
+              {/* A1 (migration 074) : solde disponible, commissions a venir deduites */}
+              <Text style={styles.walletDetail}>
+                {walletStatus.engaged > 0
+                  ? `Engagé : ${walletStatus.engaged.toFixed(2)} DH  ·  Disponible : ${walletStatus.available.toFixed(2)} DH`
+                  : `Disponible : ${walletStatus.available.toFixed(2)} DH`}
+              </Text>
+              {!walletStatus.balance_ok && (
+                <Text style={[styles.walletDetail, { color: walletColor, fontWeight: '700' }]}>
+                  Sous le minimum de {walletStatus.minimum} DH : rechargez pour recevoir des missions
+                </Text>
+              )}
+              {/* A1 (migration 073) : commission en vigueur pour la categorie */}
+              <Text style={styles.walletDetail}>
+                Commission en vigueur : {walletStatus.commission} DH par mission (
+                {VEHICLE_LABELS[walletStatus.vehicle_category] ?? walletStatus.vehicle_category})
+              </Text>
+            </>
+          )}
         </TouchableOpacity>
       ) : (
         <TouchableOpacity
@@ -414,6 +473,7 @@ export default function DriverHomeScreen({ route, navigation }: Props) {
           onDismiss={() => {
             setPendingMission(null);
             clearPendingMissionWatch();
+            refreshOpenMissionsCount();
           }}
         />
       )}
@@ -443,12 +503,12 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.surface,
     borderRadius: BORDER_RADIUS.md,
     padding: SPACING.md,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
     borderWidth: 1.5,
     marginBottom: SPACING.md,
+    gap: 4,
   },
+  walletRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  walletDetail: { fontSize: 13, color: COLORS.textSecondary },
   walletLabel: { fontSize: 16, color: COLORS.text, fontWeight: '600' },
   walletAmount: { fontSize: 22, fontWeight: '700' },
   walletPending: { fontSize: 13, color: COLORS.textSecondary, flexShrink: 1, marginLeft: 8, textAlign: 'right' },

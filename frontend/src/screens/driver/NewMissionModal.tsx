@@ -10,8 +10,9 @@ import {
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../constants/theme';
-import { createMissionOffer } from '../../services/missionService';
+import { createMissionOffer, exactAddressHint } from '../../services/missionService';
 import type { MissionSummary } from '../../services/missionService';
+import { cleanServerMessage } from '../../services/settingsService';
 import { formatCargo } from '../../utils/cargo';
 
 interface Props {
@@ -83,7 +84,7 @@ export default function NewMissionModal({
     setIsSubmitting(false);
 
     if (result.error) {
-      setErrorMessage(result.error);
+      setErrorMessage(cleanServerMessage(result.error));
     } else if (result.offer) {
       onOfferCreated(result.offer);
     }
@@ -106,23 +107,29 @@ export default function NewMissionModal({
             <Text style={styles.addressText}>{mission.pickup_address}</Text>
             <Text style={styles.addressLabel}>🏁 Arrivée</Text>
             <Text style={styles.addressText}>{mission.dropoff_address}</Text>
+            {/* A1 (migration 072) : quartier et ville seulement avant la commission */}
+            <Text style={styles.hintText}>{exactAddressHint(mission.scheduled_pickup_time)}</Text>
           </View>
 
           <View style={styles.infoRow}>
             <View style={styles.infoItem}>
               <Text style={styles.infoIcon}>📏</Text>
+              <Text style={styles.infoLabel}>Distance</Text>
               <Text style={styles.infoValue}>
                 {mission.estimated_distance_km ? `~${mission.estimated_distance_km} km` : 'N/A'}
               </Text>
             </View>
             <View style={styles.infoItem}>
               <Text style={styles.infoIcon}>💰</Text>
+              {/* A1 (migration 073) : libelle explicite, ce n'est pas un prix */}
+              <Text style={styles.infoLabel}>Commission</Text>
               <Text style={styles.infoValue}>
-                {mission.commission_amount ? `${mission.commission_amount} DH` : 'N/A'}
+                {mission.commission_amount ? `${Number(mission.commission_amount)} DH` : 'N/A'}
               </Text>
             </View>
             <View style={styles.infoItem}>
               <Text style={styles.infoIcon}>💪</Text>
+              <Text style={styles.infoLabel}>Aide chargement</Text>
               <Text style={styles.infoValue}>{mission.needs_loading_help ? 'Oui' : 'Non'}</Text>
             </View>
           </View>
@@ -217,6 +224,7 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   addressText: { fontSize: 15, color: COLORS.text, marginBottom: SPACING.xs },
+  hintText: { fontSize: 12, color: COLORS.textSecondary, fontStyle: 'italic' },
   infoRow: {
     flexDirection: 'row',
     justifyContent: 'space-around',
@@ -224,6 +232,7 @@ const styles = StyleSheet.create({
   infoItem: { alignItems: 'center', gap: 4 },
   infoIcon: { fontSize: 20 },
   infoValue: { fontSize: 14, fontWeight: '600', color: COLORS.text },
+  infoLabel: { fontSize: 11, color: COLORS.textSecondary },
   cargoText: { fontSize: 14, fontWeight: '600', color: COLORS.text, textAlign: 'center', marginBottom: 8 },
   progressContainer: {
     height: 6,

@@ -70,3 +70,27 @@ export async function geocodeInCity(address: string, city: string): Promise<GeoP
   }
   return null;
 }
+
+/**
+ * A1 (migration 072) : quartier d'un point, deduit par le service d'adresses
+ * du telephone (gratuit). Renvoie null si le quartier n'est pas connu : la
+ * ville seule sera alors montree aux chauffeurs. Ne bloque jamais l'envoi
+ * de la mission (5 secondes au plus).
+ */
+export async function districtAt(point: GeoPoint): Promise<string | null> {
+  const lookup = (async () => {
+    try {
+      const results = await Location.reverseGeocodeAsync({ latitude: point.lat, longitude: point.lng });
+      const district = results?.[0]?.district?.trim();
+      return district ? district : null;
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.log('[FTM-DEBUG] Geocoding - District error', { err: message });
+      return null;
+    }
+  })();
+  const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), 5000));
+  const district = await Promise.race([lookup, timeout]);
+  console.log('[FTM-DEBUG] Geocoding - District', { ...point, district });
+  return district;
+}
