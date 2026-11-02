@@ -46,6 +46,10 @@ const CHANNEL_BY_TYPE: Record<string, string> = {
   offer_update:       'ftm_missions',
   parcel_status:      'ftm_missions',
   voice_channel_opened: 'ftm_missions',
+  // A1 F9 (migration 071) : rappel et clotures automatiques, priorite haute
+  mission_start_reminder: 'ftm_missions',
+  mission_not_started:    'ftm_missions',
+  mission_auto_completed: 'ftm_missions',
   wallet_low_balance: 'ftm_wallet',
   commission_insufficient_balance: 'ftm_wallet',
   document_expiry:    'ftm_documents',
