@@ -58,6 +58,13 @@ const CHANNEL_BY_TYPE: Record<string, string> = {
   document_verified:  'ftm_documents',
 };
 
+// A1 (02/11/2026) : notifications importantes pour le chauffeur envoyees en
+// priorite haute meme hors du canal des missions (delai constate en test)
+const HIGH_PRIORITY_TYPES = new Set<string>([
+  'commission_rate_changed',
+  'wallet_low_balance',
+]);
+
 const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
 // Session 2.26 (correctif) : role inscrit dans un jeton JWT. La passerelle de
@@ -181,7 +188,7 @@ serve(async (req) => {
       data:      { ...(notif.data ?? {}), type, notification_id: notif.id, channel_id: channelId },
       sound:     'default',
       channelId: channelId,
-      priority:  channelId === 'ftm_missions' ? 'high' : 'normal',
+      priority:  channelId === 'ftm_missions' || HIGH_PRIORITY_TYPES.has(type) ? 'high' : 'normal',
     }));
 
     const expoPushResp = await fetch('https://exp.host/--/api/v2/push/send', {
