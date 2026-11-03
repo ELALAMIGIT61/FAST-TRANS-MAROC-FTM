@@ -16,12 +16,14 @@ import {
 } from '../../services/realtimeService';
 import {
   cancelMission,
+  cancelMissionByClient,
   expireMission,
   getMissionExactLocation,
   getMissionDriverIdentity,
 } from '../../services/missionService';
 import { cleanServerMessage } from '../../services/settingsService';
-import type { Mission } from '../../services/missionService';
+import type { Mission, ClientCancelReason } from '../../services/missionService';
+import CancelReasonModal from '../../components/CancelReasonModal';
 import { formatCargo } from '../../utils/cargo';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { supabase } from '../../lib/supabaseClient';
@@ -174,20 +176,19 @@ export default function MissionTrackingScreen({ route, navigation }: Props) {
     !!mission.driver_id &&
     !!mission.commission_charged_at;
 
+  // A1 (migration 076) : mission conclue : fenetre avec la raison de
+  // l'annulation (obligatoire) et le rappel de l'annulation tardive (073).
+  // Mission en attente (pas encore d'accord) : simple confirmation.
+  const [cancelModal, setCancelModal] = useState<{ lateHours: number | null } | null>(null);
+
   const handleCancel = async () => {
-    // A1 (migration 073) : avertissement en cas d'annulation tardive (le
-    // chauffeur ne sera pas rembourse de sa commission)
-    let message = 'Êtes-vous sûr de vouloir annuler ?';
     if (mission.status === 'accepted') {
       const { data } = await supabase.rpc('get_client_cancel_terms', { p_mission_id: mission.id });
       const terms = Array.isArray(data) ? (data[0] as { late?: boolean; hours?: number } | undefined) : undefined;
-      if (terms?.late) {
-        message =
-          `Annulation tardive : à moins de ${Number(terms.hours)} h de l’heure prévue (ou après), ` +
-          'le chauffeur ne sera pas remboursé de sa commission.\n\nVoulez-vous vraiment annuler ?';
-      }
+      setCancelModal({ lateHours: terms?.late ? Number(terms.hours) : null });
+      return;
     }
-    const confirmed = await confirmAction('Annuler la mission', message, {
+    const confirmed = await confirmAction('Annuler la mission', 'Êtes-vous sûr de vouloir annuler ?', {
       confirmLabel: 'Oui, annuler',
       cancelLabel: 'Non',
       destructive: true,
@@ -195,6 +196,14 @@ export default function MissionTrackingScreen({ route, navigation }: Props) {
     if (!confirmed) return;
     const result = await cancelMission(mission.id, mission.client_id ?? '', 'client');
     if (result.error) showMessage('Erreur', cleanServerMessage(result.error));
+  };
+
+  const confirmCancelWithReason = async (reason: ClientCancelReason, text: string): Promise<string | null> => {
+    const result = await cancelMissionByClient(mission.id, reason, text);
+    if (result.error) return cleanServerMessage(result.error);
+    setCancelModal(null);
+    if (result.mission) setMission(result.mission);
+    return null;
   };
 
   const renderStatus = () => {
@@ -364,6 +373,13 @@ export default function MissionTrackingScreen({ route, navigation }: Props) {
     <View style={styles.screen}>
       <BackButton />
       <View style={styles.container}>{renderStatus()}</View>
+      {cancelModal && (
+        <CancelReasonModal
+          lateHours={cancelModal.lateHours}
+          onConfirm={confirmCancelWithReason}
+          onClose={() => setCancelModal(null)}
+        />
+      )}
     </View>
   );
 }

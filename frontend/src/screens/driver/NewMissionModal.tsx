@@ -14,6 +14,7 @@ import { createMissionOffer, exactAddressHint } from '../../services/missionServ
 import type { MissionSummary } from '../../services/missionService';
 import { cleanServerMessage } from '../../services/settingsService';
 import { formatCargo } from '../../utils/cargo';
+import ClientRecordLine from '../../components/ClientRecordLine';
 
 interface Props {
   mission: MissionSummary;
@@ -101,6 +102,8 @@ export default function NewMissionModal({
         <View style={styles.card}>
           <Text style={styles.badge}>{withCountdown ? '🔔 NOUVELLE MISSION' : '📋 MISSION DISPONIBLE'}</Text>
           <Text style={styles.missionNumber}>N° {mission.mission_number}</Text>
+          {/* A1 (migration 076) : historique du client */}
+          <ClientRecordLine missionId={mission.id} style={styles.clientRecord} />
 
           <View style={styles.addressSection}>
             <Text style={styles.addressLabel}>📍 Départ</Text>
@@ -187,6 +190,7 @@ export default function NewMissionModal({
 }
 
 const styles = StyleSheet.create({
+  clientRecord: { textAlign: 'center', marginBottom: SPACING.xs },
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.6)',

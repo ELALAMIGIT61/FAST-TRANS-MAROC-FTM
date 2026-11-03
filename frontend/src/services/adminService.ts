@@ -220,6 +220,7 @@ export async function getAdminMissions(filters: Record<string, string | undefine
       created_at,
       completed_at,
       profiles!client_id ( full_name, phone_number ),
+      mission_cancel_reasons ( reason, reason_text ),
       drivers (
         license_plate,
         vehicle_brand,

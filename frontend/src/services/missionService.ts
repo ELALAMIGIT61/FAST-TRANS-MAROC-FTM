@@ -343,6 +343,69 @@ export async function cancelMission(
 
   return { success: true, mission: data as Mission };
 }
+
+// A1 (migration 076) : annulation d'une mission conclue par le client, avec la
+// raison (visible de l'admin seulement) et quelques mots facultatifs.
+export type ClientCancelReason = 'report' | 'malentendu_chauffeur' | 'autre';
+
+export const CLIENT_CANCEL_REASONS: { value: ClientCancelReason; label: string }[] = [
+  { value: 'report', label: 'Report de la mission' },
+  { value: 'malentendu_chauffeur', label: 'Malentendu avec le chauffeur' },
+  { value: 'autre', label: 'Autre raison' },
+];
+
+export async function cancelMissionByClient(
+  missionId: string,
+  reason: ClientCancelReason,
+  reasonText: string
+): Promise<{ success?: boolean; mission?: Mission; error?: string }> {
+  console.log('[FTM-DEBUG] Mission - Client cancelling concluded mission', { missionId, reason });
+  const { data, error } = await supabase.rpc('cancel_mission_by_client', {
+    p_mission_id: missionId,
+    p_reason: reason,
+    p_reason_text: reasonText.trim() || null,
+  });
+  if (error) {
+    console.log('[FTM-DEBUG] Mission - Client cancel error', { error: error.message });
+    return { error: error.message };
+  }
+  return { success: true, mission: data as Mission };
+}
+
+// A1 (migration 076) : historique du client montre aux chauffeurs (des nombres
+// seulement, jamais les raisons).
+export interface ClientRecord {
+  completed_missions: number;
+  cancelled_missions: number;
+  late_cancelled_missions: number;
+  window_months: number;
+  is_new: boolean;
+}
+
+export async function getMissionClientRecord(missionId: string): Promise<ClientRecord | null> {
+  const { data, error } = await supabase.rpc('get_mission_client_record', { p_mission_id: missionId });
+  if (error) {
+    console.log('[FTM-DEBUG] Mission - Client record error', { error: error.message });
+    return null;
+  }
+  const row = Array.isArray(data) ? data[0] : data;
+  return row ? (row as ClientRecord) : null;
+}
+
+export function formatClientRecord(r: ClientRecord): string {
+  if (r.is_new) return '👤 Nouveau client';
+  const done = Number(r.completed_missions);
+  const cancelled = Number(r.cancelled_missions);
+  const late = Number(r.late_cancelled_missions);
+  const doneText = `${done} mission${done > 1 ? 's' : ''} réalisée${done > 1 ? 's' : ''}`;
+  let cancelText = 'aucune annulation';
+  if (cancelled > 0) {
+    cancelText = `${cancelled} annulation${cancelled > 1 ? 's' : ''}`;
+    cancelText += late > 0 ? `, dont ${late} tardive${late > 1 ? 's' : ''}` : ', aucune tardive';
+  }
+  const m = Number(r.window_months);
+  return `👤 Client : ${doneText} · ${cancelText} (${m} dernier${m > 1 ? 's' : ''} mois)`;
+}
 // A1 F5 (migration 067) : notation sur 3 criteres (1 a 5), tous obligatoires.
 // La note globale interne (client_rating) est calculee par le serveur ; un
 // commentaire eventuel n'est visible des autres clients qu'apres moderation.
@@ -898,6 +961,12 @@ export interface DriverOpenMission extends MissionSummary {
   description: string | null;
   status: MissionStatus;
   created_at: string;
+  // A1 (migration 076) : historique du client
+  client_completed_missions: number;
+  client_cancelled_missions: number;
+  client_late_cancelled_missions: number;
+  client_window_months: number;
+  client_is_new: boolean;
 }
 
 export interface DriverPendingOffer {

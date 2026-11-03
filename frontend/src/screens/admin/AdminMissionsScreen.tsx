@@ -11,6 +11,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { COLORS } from '../../constants/theme';
 import { getAdminMissions } from '../../services/adminService';
+import { CLIENT_CANCEL_REASONS } from '../../services/missionService';
 
 interface Mission {
   id: string;
@@ -29,6 +30,15 @@ interface Mission {
     vehicle_brand: string;
     profiles: { full_name: string; phone_number: string } | null;
   } | null;
+  // A1 (migration 076) : raison de l'annulation par le client (admin seulement)
+  mission_cancel_reasons: { reason: string; reason_text: string | null } | null;
+}
+
+function cancelReasonText(item: Mission): string | null {
+  const r = item.mission_cancel_reasons;
+  if (!r) return null;
+  const label = CLIENT_CANCEL_REASONS.find((c) => c.value === r.reason)?.label ?? r.reason;
+  return r.reason_text ? `${label} : « ${r.reason_text} »` : label;
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -99,6 +109,9 @@ export default function AdminMissionsScreen() {
       )}
       {item.drivers && (
         <Text style={styles.cardSub}>🚛 Chauffeur : {item.drivers.profiles?.full_name ?? 'Non assigné'}</Text>
+      )}
+      {cancelReasonText(item) && (
+        <Text style={styles.cardSub}>📝 Raison de l’annulation : {cancelReasonText(item)}</Text>
       )}
       <View style={styles.cardFooter}>
         <Text style={styles.cardPrice}>{item.negotiated_price} DH</Text>

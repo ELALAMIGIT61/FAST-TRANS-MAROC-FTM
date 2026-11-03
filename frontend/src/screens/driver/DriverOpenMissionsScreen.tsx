@@ -28,6 +28,7 @@ import { getDriverOpenMissions, getDriverPendingOffers } from '../../services/mi
 import type { DriverOpenMission, DriverPendingOffer } from '../../services/missionService';
 import { formatCargo } from '../../utils/cargo';
 import { formatMissionDateTime } from '../../components/DateTimeField';
+import ClientRecordLine from '../../components/ClientRecordLine';
 import NewMissionModal from './NewMissionModal';
 import { getMyWalletStatus, type MyWalletStatus } from '../../services/settingsService';
 
@@ -159,6 +160,17 @@ export default function DriverOpenMissionsScreen({ route, navigation }: Props) {
                 ⚖️ {formatCargo(mission.cargo_weight_kg, mission.cargo_volume_m3) ?? 'Poids et volume non indiqués'}
               </Text>
               <Text style={styles.cardMeta}>N° {mission.mission_number}</Text>
+              {/* A1 (migration 076) : historique du client */}
+              <ClientRecordLine
+                record={{
+                  completed_missions: mission.client_completed_missions,
+                  cancelled_missions: mission.client_cancelled_missions,
+                  late_cancelled_missions: mission.client_late_cancelled_missions,
+                  window_months: mission.client_window_months,
+                  is_new: mission.client_is_new,
+                }}
+                style={styles.cardMeta}
+              />
               <View style={styles.actionTag}>
                 <Text style={styles.actionTagText}>👉 Toucher pour faire une offre</Text>
               </View>

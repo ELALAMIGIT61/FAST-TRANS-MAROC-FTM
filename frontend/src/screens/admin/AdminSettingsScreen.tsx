@@ -91,6 +91,16 @@ const GROUPS: Group[] = [
     unit: 'mois',
     max: 60,
   },
+  {
+    // A1 (migration 076) : historique du client montre aux chauffeurs
+    prefix: 'client_cancel_window_',
+    title: 'Historique des clients affiché aux chauffeurs',
+    help: 'Période sur laquelle on compte les missions réalisées et les annulations du client après accord (dont tardives). Au moins 1 mois.',
+    short: 'Période de l’historique client',
+    unit: 'mois',
+    max: 60,
+    min: 1,
+  },
   // A1 F9 (migration 071) : missions conclues non demarrees et missions en
   // cours non cloturees (0 = regle desactivee)
   {

@@ -26,6 +26,7 @@ import {
   subscribeToDriverOffers,
   unsubscribeChannel,
 } from '../../services/realtimeService';
+import ClientRecordLine from '../../components/ClientRecordLine';
 
 // ─── DÉRIVATION D'ÉTAT PURE ─────────────────────────────────────────────────
 
@@ -401,6 +402,8 @@ export default function MissionOfferScreen({ missionId, role, driverId, onMissio
       {role === 'driver' && driverState && (
         <View style={styles.section}>
           <Text style={styles.title}>Votre offre</Text>
+          {/* A1 (migration 076) : historique du client */}
+          <ClientRecordLine missionId={missionId} style={{ marginBottom: 8 }} />
 
           {driverState.kind === 'awaiting_response' && (
             <View>
