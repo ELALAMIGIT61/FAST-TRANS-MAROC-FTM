@@ -50,6 +50,9 @@ const CHANNEL_BY_TYPE: Record<string, string> = {
   mission_start_reminder: 'ftm_missions',
   mission_not_started:    'ftm_missions',
   mission_auto_completed: 'ftm_missions',
+  // A1 (migration 077) : message vocal et rappels de notation
+  voice_message:      'ftm_missions',
+  rating_reminder:    'ftm_missions',
   wallet_low_balance: 'ftm_wallet',
   commission_insufficient_balance: 'ftm_wallet',
   commission_rate_changed: 'ftm_wallet',  // A1 (migration 073)
