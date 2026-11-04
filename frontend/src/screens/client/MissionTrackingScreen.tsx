@@ -5,6 +5,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
+  AppState,
 } from 'react-native';
 import { showMessage, confirmAction } from '../../utils/dialogs';
 import type { RealtimeChannel } from '@supabase/supabase-js';
@@ -18,6 +19,7 @@ import {
   cancelMission,
   cancelMissionByClient,
   expireMission,
+  getMissionById,
   getMissionExactLocation,
   getMissionDriverIdentity,
 } from '../../services/missionService';
@@ -71,6 +73,20 @@ export default function MissionTrackingScreen({ route, navigation }: Props) {
       unsubscribeChannel(missionChannelRef.current);
       unsubscribeChannel(locationChannelRef.current);
     };
+  }, [mission.id, handleMissionUpdate]);
+
+  // A1 (verification A5) : au retour de l'application au premier plan, la
+  // mission est relue (l'ecoute en direct est interrompue en arriere-plan)
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state !== 'active') return;
+      getMissionById(mission.id).then((result) => {
+        if (result.success && result.mission) {
+          handleMissionUpdate(result.mission as unknown as Record<string, unknown>);
+        }
+      });
+    });
+    return () => sub.remove();
   }, [mission.id, handleMissionUpdate]);
 
   useEffect(() => {

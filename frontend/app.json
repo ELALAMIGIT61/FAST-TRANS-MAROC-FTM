@@ -3,9 +3,14 @@
     "name": "BiniBinak",
     "slug": "fast-trans-maroc",
     "version": "1.0.0",
+    "icon": "./assets/icon.png",
     "android": {
       "package": "ma.fasttrans.binibinak",
-      "googleServicesFile": "./google-services.json"
+      "googleServicesFile": "./google-services.json",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0056B3"
+      }
     },
     "ios": {
       "bundleIdentifier": "ma.fasttrans.binibinak"
@@ -15,6 +20,15 @@
         "projectId": "76b918d4-738e-49de-ad82-9ebfd749ed7d"
       }
     },
-    "owner": "elalamifasttransmaroc"
+    "owner": "elalamifasttransmaroc",
+    "plugins": [
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#F39C12"
+        }
+      ]
+    ]
   }
 }

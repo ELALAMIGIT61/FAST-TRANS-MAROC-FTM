@@ -34,6 +34,8 @@ type RecordingState = 'idle' | 'recording' | 'uploading' | 'error';
 
 export default function VoiceMicButton({ missionId, senderProfileId, onMessageSent }: Props) {
   const [recordingState, setRecordingState] = useState<RecordingState>('idle');
+  // A1 (verification A5) : la cause de l'echec est affichee (avant : « Erreur — Réessayez » seul)
+  const [errorText, setErrorText] = useState<string | null>(null);
   const [recordingTime, setRecordingTime]   = useState(0);
   const timerRef  = useRef<ReturnType<typeof setInterval> | null>(null);
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -62,6 +64,16 @@ export default function VoiceMicButton({ missionId, senderProfileId, onMessageSe
     pulseAnim.setValue(1);
   };
 
+  function showError(message: string) {
+    setRecordingState('error');
+    setErrorText(message);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    setTimeout(() => {
+      setRecordingState('idle');
+      setErrorText(null);
+    }, 4000);
+  }
+
   async function onPressIn() {
     console.log('[FTM-DEBUG] Audio - Press in — starting voice recording', {
       missionId, senderProfileId,
@@ -86,9 +98,7 @@ export default function VoiceMicButton({ missionId, senderProfileId, onMessageSe
     if (result.error) {
       if (timerRef.current) clearInterval(timerRef.current);
       stopPulse();
-      setRecordingState('error');
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      setTimeout(() => setRecordingState('idle'), 2000);
+      showError(result.error);
     }
   }
 
@@ -99,9 +109,7 @@ export default function VoiceMicButton({ missionId, senderProfileId, onMessageSe
 
     const stopResult = await stopRecording();
     if (stopResult.error) {
-      setRecordingState('error');
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      setTimeout(() => setRecordingState('idle'), 2000);
+      showError(stopResult.error);
       return;
     }
 
@@ -114,9 +122,7 @@ export default function VoiceMicButton({ missionId, senderProfileId, onMessageSe
     );
 
     if (uploadResult.error) {
-      setRecordingState('error');
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      setTimeout(() => setRecordingState('idle'), 2000);
+      showError(uploadResult.error);
       return;
     }
 
@@ -177,7 +183,7 @@ export default function VoiceMicButton({ missionId, senderProfileId, onMessageSe
         {recordingState === 'idle'      && 'Maintenir pour parler en Darija'}
         {recordingState === 'recording' && 'Relâchez pour envoyer'}
         {recordingState === 'uploading' && 'Envoi...'}
-        {recordingState === 'error'     && 'Erreur — Réessayez'}
+        {recordingState === 'error'     && (errorText ?? 'Erreur — Réessayez')}
       </Text>
     </View>
   );

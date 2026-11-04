@@ -6,7 +6,7 @@ import {
   StyleSheet,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { COLORS } from '../constants/theme';
 import { supabase } from '../lib/supabaseClient';
 import {
@@ -31,6 +31,14 @@ export default function NotificationBell() {
       setUnreadCount(result.unreadCount ?? 0);
     }
   }, [profileId]);
+
+  // A1 (verification A5) : le nombre est relu a chaque retour sur l'ecran
+  // (il ne baissait pas apres une lecture ou une suppression)
+  useFocusEffect(
+    useCallback(() => {
+      fetchUnread();
+    }, [fetchUnread])
+  );
 
   useEffect(() => {
     if (!profileId) return;

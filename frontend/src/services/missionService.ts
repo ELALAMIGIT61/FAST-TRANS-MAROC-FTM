@@ -49,6 +49,8 @@ export interface Mission {
   dropoff_city: string;
   estimated_distance_km: number | null;
   description: string | null;
+  // A1 (migration 077) : la mission a une description (rangee dans la partie verrouillee)
+  has_description?: boolean;
   needs_loading_help: boolean;
   negotiated_price: number | null;
   commission_amount: number | null;
@@ -784,6 +786,8 @@ export interface MissionExactLocation {
   dropoff_address: string | null;
   dropoff_lat: number | null;
   dropoff_lng: number | null;
+  // A1 (R-DESC, migration 077) : description rangee avec l'adresse exacte
+  description: string | null;
 }
 
 export async function getMissionExactLocation(
@@ -791,7 +795,7 @@ export async function getMissionExactLocation(
 ): Promise<{ location: MissionExactLocation | null; error?: string }> {
   const { data, error } = await supabase
     .from('mission_exact_locations')
-    .select('pickup_address, pickup_lat, pickup_lng, dropoff_address, dropoff_lat, dropoff_lng')
+    .select('pickup_address, pickup_lat, pickup_lng, dropoff_address, dropoff_lat, dropoff_lng, description')
     .eq('mission_id', missionId)
     .maybeSingle();
   if (error) {
@@ -821,6 +825,15 @@ export function exactAddressHint(scheduledPickupTime: string | null | undefined)
     return '🔒 L’adresse exacte sera visible 24 h avant le chargement.';
   }
   return '🔒 L’adresse exacte sera visible dès le prélèvement de la commission.';
+}
+
+// A1 (R-DESC, migration 077) : description masquee au chauffeur avant le prelevement
+export function descriptionHint(scheduledPickupTime: string | null | undefined): string {
+  const t = scheduledPickupTime ? new Date(scheduledPickupTime).getTime() : NaN;
+  if (Number.isFinite(t) && t - Date.now() > 24 * 60 * 60 * 1000) {
+    return '🔒 La description sera visible 24 h avant le chargement.';
+  }
+  return '🔒 La description sera visible dès le prélèvement de la commission.';
 }
 
 export async function getDriverProfileId(
@@ -950,7 +963,7 @@ export type MissionSummary = Pick<
   | 'needs_loading_help'
   | 'cargo_weight_kg'
   | 'cargo_volume_m3'
-> & { scheduled_pickup_time?: string | null };
+> & { scheduled_pickup_time?: string | null; has_description?: boolean };
 
 export interface DriverOpenMission extends MissionSummary {
   mission_type: MissionType;

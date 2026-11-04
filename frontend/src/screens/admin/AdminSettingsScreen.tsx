@@ -101,6 +101,24 @@ const GROUPS: Group[] = [
     max: 60,
     min: 1,
   },
+  {
+    // A1 (migration 077) : rappels de notation au client (de 9 h a 21 h)
+    prefix: 'rating_reminder_hours_',
+    title: 'Rappels de notation au client',
+    help: 'Heures après la fin de la mission. Envoyés entre 9 h et 21 h, seulement si le client n’a pas encore noté. 0 = pas de rappel.',
+    short: 'Rappel de notation',
+    unit: 'h',
+    max: 168,
+  },
+  {
+    prefix: 'rating_window_',
+    title: 'Délai pour noter le chauffeur',
+    help: 'Nombre de jours après la fin de la mission pendant lesquels le client peut noter. Au moins 1 jour.',
+    short: 'Délai pour noter',
+    unit: 'jours',
+    max: 90,
+    min: 1,
+  },
   // A1 F9 (migration 071) : missions conclues non demarrees et missions en
   // cours non cloturees (0 = regle desactivee)
   {
@@ -134,8 +152,12 @@ const CATEGORY_LABELS: Record<string, string> = {
   n2_medium: 'N2 Moyen',
   n2_large: 'N2 Grand',
   months: 'Toutes catégories',
+  // A1 (migration 077)
+  first: '1er rappel',
+  second: '2e rappel',
+  days: 'Toutes catégories',
 };
-const CATEGORY_ORDER = ['vul', 'n2_medium', 'n2_large'];
+const CATEGORY_ORDER = ['vul', 'n2_medium', 'n2_large', 'first', 'second'];
 
 function formatDate(iso: string): string {
   const d = new Date(iso);

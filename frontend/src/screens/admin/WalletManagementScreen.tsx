@@ -14,6 +14,11 @@ import {
 import { showMessage } from '../../utils/dialogs';
 import { COLORS } from '../../constants/theme';
 import { getAllDrivers, adminTopupDriverWallet } from '../../services/adminService';
+import { supabase } from '../../lib/supabaseClient';
+
+// A1 (R-WAL, migration 077) : solde disponible = solde - commissions des
+// missions conclues pas encore prelevees ; c'est lui qui est compare au minimum
+interface WalletStatus { balance: number; engaged: number; available: number; minimum: number }
 
 interface DriverWallet {
   id: string;
@@ -36,11 +41,23 @@ export default function WalletManagementScreen() {
   const [topupAmount, setTopupAmount] = useState('');
   const [topupRef, setTopupRef] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [status, setStatus] = useState<Record<string, WalletStatus>>({});
 
   const loadDrivers = useCallback(async () => {
     const result = await getAllDrivers('verified');
     if (result.success && result.drivers) {
       setDrivers(result.drivers as DriverWallet[]);
+    }
+    const { data } = await supabase.rpc('admin_wallet_status');
+    if (Array.isArray(data)) {
+      const map: Record<string, WalletStatus> = {};
+      (data as (WalletStatus & { driver_id: string })[]).forEach((r) => {
+        map[r.driver_id] = {
+          balance: Number(r.balance), engaged: Number(r.engaged),
+          available: Number(r.available), minimum: Number(r.minimum),
+        };
+      });
+      setStatus(map);
     }
     setLoading(false);
     setRefreshing(false);
@@ -59,10 +76,11 @@ export default function WalletManagementScreen() {
       d.profiles?.full_name?.toLowerCase().includes(search.toLowerCase()) ||
       d.profiles?.phone_number?.includes(search);
 
-    const balance = d.wallet?.balance ?? 0;
-    const minBalance = d.wallet?.minimum_balance ?? 100;
+    const st = status[d.id];
+    const available = st ? st.available : d.wallet?.balance ?? 0;
+    const minBalance = st ? st.minimum : d.wallet?.minimum_balance ?? 100;
 
-    if (filter === 'blocked') return matchSearch && balance < minBalance;
+    if (filter === 'blocked') return matchSearch && available < minBalance;
     return matchSearch;
   });
 
@@ -91,10 +109,13 @@ export default function WalletManagementScreen() {
   };
 
   const renderItem = ({ item }: { item: DriverWallet }) => {
-    const balance = item.wallet?.balance ?? 0;
-    const minBalance = item.wallet?.minimum_balance ?? 100;
-    const isBlocked = balance < minBalance;
-    const deficit = isBlocked ? (minBalance - balance).toFixed(2) : null;
+    const st = status[item.id];
+    const balance = st ? st.balance : item.wallet?.balance ?? 0;
+    const engaged = st ? st.engaged : 0;
+    const available = st ? st.available : balance;
+    const minBalance = st ? st.minimum : item.wallet?.minimum_balance ?? 100;
+    const isBlocked = available < minBalance;
+    const deficit = isBlocked ? (minBalance - available).toFixed(2) : null;
 
     return (
       <View style={[styles.card, isBlocked && styles.cardBlocked]}>
@@ -102,7 +123,8 @@ export default function WalletManagementScreen() {
           <Text style={styles.cardName}>👤 {item.profiles?.full_name}</Text>
           {isBlocked && <Text style={styles.blockedTag}>❌ BLOQUÉ</Text>}
         </View>
-        <Text style={styles.cardSub}>Solde : <Text style={isBlocked ? styles.red : styles.green}>{balance.toFixed(2)} DH {isBlocked ? '❌' : '✅'}</Text></Text>
+        <Text style={styles.cardSub}>Solde : {balance.toFixed(2)} DH · Engagé : {engaged.toFixed(2)} DH</Text>
+        <Text style={styles.cardSub}>Disponible : <Text style={isBlocked ? styles.red : styles.green}>{available.toFixed(2)} DH {isBlocked ? '❌' : '✅'}</Text> (minimum {minBalance.toFixed(0)} DH)</Text>
         {deficit && <Text style={styles.cardSub}>Déficit : <Text style={styles.red}>{deficit} DH</Text></Text>}
         <Text style={styles.cardSub}>Commissions : {(item.wallet?.total_commissions ?? 0).toFixed(2)} DH</Text>
         <View style={styles.actionRow}>

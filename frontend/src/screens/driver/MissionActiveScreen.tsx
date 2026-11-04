@@ -18,6 +18,7 @@ import {
   getMissionById,
   getMissionExactLocation,
   exactAddressHint,
+  descriptionHint,
 } from '../../services/missionService';
 import type { MissionExactLocation } from '../../services/missionService';
 import { cleanServerMessage } from '../../services/settingsService';
@@ -257,6 +258,12 @@ export default function MissionActiveScreen({ route, navigation }: Props) {
           <Text style={styles.cityText}>
             ⚖️ {formatCargo(mission.cargo_weight_kg, mission.cargo_volume_m3) ?? 'Poids et volume non indiqués'}
           </Text>
+          {/* A1 (R-DESC, migration 077) : description apres le prelevement de la commission */}
+          {exact?.description ? (
+            <Text style={styles.cityText}>📝 {exact.description}</Text>
+          ) : mission.has_description ? (
+            <Text style={styles.hintText}>{descriptionHint(mission.scheduled_pickup_time)}</Text>
+          ) : null}
         </View>
 
         <TouchableOpacity

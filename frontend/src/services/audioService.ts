@@ -1,4 +1,5 @@
 import { Audio } from 'expo-av';
+import * as FileSystem from 'expo-file-system';
 import { supabase } from '../lib/supabaseClient';
 
 let recordingInstance: Audio.Recording | null = null;
@@ -71,9 +72,18 @@ export async function stopRecording(): Promise<{
   }
 
   try {
+    // A1 (verification A5) : duree lue AVANT l'arret, par precaution (apres
+    // l'arret, certaines versions renvoient 0 : message refuse comme « trop court »)
+    const before = await recordingInstance.getStatusAsync();
     await recordingInstance.stopAndUnloadAsync();
     const uri    = recordingInstance.getURI();
-    const status = await recordingInstance.getStatusAsync();
+    const after  = await recordingInstance.getStatusAsync();
+    const status = {
+      durationMillis: Math.max(
+        'durationMillis' in before ? (before as { durationMillis: number }).durationMillis : 0,
+        'durationMillis' in after ? (after as { durationMillis: number }).durationMillis : 0
+      ),
+    };
     recordingInstance = null;
 
     await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
@@ -106,6 +116,25 @@ export async function stopRecording(): Promise<{
   }
 }
 
+// A1 (verification A5) : decodage base64 -> octets, sans bibliotheque en plus
+const B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+export function base64ToBytes(base64: string): Uint8Array {
+  const clean = base64.replace(/[^A-Za-z0-9+/]/g, '');
+  const out = new Uint8Array(Math.floor((clean.length * 3) / 4));
+  let o = 0;
+  for (let i = 0; i + 1 < clean.length; i += 4) {
+    const a = B64.indexOf(clean[i]);
+    const b = B64.indexOf(clean[i + 1]);
+    const c = i + 2 < clean.length ? B64.indexOf(clean[i + 2]) : -1;
+    const d = i + 3 < clean.length ? B64.indexOf(clean[i + 3]) : -1;
+    out[o++] = (a << 2) | (b >> 4);
+    if (c >= 0) out[o++] = ((b & 15) << 4) | (c >> 2);
+    if (d >= 0) out[o++] = ((c & 3) << 6) | d;
+  }
+  // copie exacte (le tampon envoye ne doit pas contenir d'octets en trop)
+  return out.slice(0, o);
+}
+
 // ─── UPLOAD STORAGE ────────────────────────────────────────────────────────────
 
 export async function uploadVoiceMessage(
@@ -124,18 +153,32 @@ export async function uploadVoiceMessage(
   });
 
   try {
-    const response = await fetch(localUri);
-    const blob     = await response.blob();
+    // A1 (verification A5 du 03/11/2026) : sur telephone, l'envoi d'un « Blob »
+    // obtenu par fetch(fichier local) echouait toujours (aucun fichier recu par
+    // le stockage). Le fichier est lu en base64 puis envoye en octets.
+    const base64 = await FileSystem.readAsStringAsync(localUri, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
+    const bytes = base64ToBytes(base64);
+    if (bytes.length === 0) {
+      return { error: 'Enregistrement vide : réessayez.' };
+    }
 
     const { error: uploadError } = await supabase.storage
       .from('voice-messages')
-      .upload(filePath, blob, { contentType: mimeType, upsert: false });
+      .upload(filePath, bytes.buffer as ArrayBuffer, { contentType: mimeType, upsert: false });
 
     if (uploadError) {
       console.log('[FTM-DEBUG] Audio - Upload error', {
         error: uploadError.message, filePath,
       });
-      return { error: uploadError.message };
+      return { error: "Le message n'a pas pu être envoyé (" + uploadError.message + ').' };
+    }
+
+    // A1 (migration 077) : l'autre partie est prevenue (« Nouveau message vocal »)
+    const { error: notifyError } = await supabase.rpc('notify_voice_message', { p_mission_id: missionId });
+    if (notifyError) {
+      console.log('[FTM-DEBUG] Audio - Notify error', { error: notifyError.message });
     }
 
     const { data: signedData, error: signError } = await supabase.storage
@@ -155,7 +198,7 @@ export async function uploadVoiceMessage(
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     console.log('[FTM-DEBUG] Audio - Upload exception', { err: msg });
-    return { error: 'Erreur réseau lors de l\'envoi du message.' };
+    return { error: "Le message n'a pas pu être envoyé (" + msg + ').' };
   }
 }
 

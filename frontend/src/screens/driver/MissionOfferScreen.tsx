@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, TouchableOpacity, TextInput, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, TextInput, StyleSheet, AppState } from 'react-native';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../constants/theme';
 import {
@@ -172,6 +172,31 @@ export default function MissionOfferScreen({ missionId, role, driverId, onMissio
       });
     }
     return () => { cancelled = true; };
+  }, [role, missionId, driverId]);
+
+  // A1 (verification A5) : application revenue au premier plan (ecoute en
+  // direct interrompue en arriere-plan) : les offres sont relues, pour ne pas
+  // rester sur « en attente de confirmation » alors que l'accord est conclu.
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state !== 'active') return;
+      if (role === 'client') {
+        getMissionOffersForClient(missionId).then((result) => {
+          if (!result.offers) return;
+          const loaded = result.offers;
+          setClientOffers((prev) => {
+            const byId = new Map(prev.map((o) => [o.id, o]));
+            loaded.forEach((o) => byId.set(o.id, o));
+            return Array.from(byId.values());
+          });
+        });
+      } else if (role === 'driver' && driverId) {
+        getDriverOfferForMission(missionId, driverId).then((result) => {
+          if (result.offer) setDriverOffer(result.offer);
+        });
+      }
+    });
+    return () => sub.remove();
   }, [role, missionId, driverId]);
 
   useEffect(() => {

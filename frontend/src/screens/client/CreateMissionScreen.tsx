@@ -71,22 +71,27 @@ export default function CreateMissionScreen({ route, navigation }: Props) {
     useCallback(() => {
       if (!clientProfileId) return;
       let cancelled = false;
-      supabase
-        .from('missions')
-        .select('*')
-        .eq('client_id', clientProfileId)
-        // A1 F8 : aussi les missions terminees pas encore notees (bouton « Noter »)
-        .or('status.in.(pending,accepted,in_progress),and(status.eq.completed,client_rating.is.null)')
-        .order('created_at', { ascending: false })
-        .limit(5)
-        .then(({ data, error }) => {
-          if (cancelled) return;
-          if (error) {
-            console.log('[FTM-DEBUG] Client - Open missions read failed', { error: error.message });
-            return;
-          }
-          setOpenMissions((data as Record<string, unknown>[]) ?? []);
-        });
+      (async () => {
+        // A1 (migration 077) : bouton « Noter » seulement pendant le delai
+        // pour noter (7 jours apres la fin de la mission, reglable)
+        const { data: windowDays } = await supabase.rpc('rating_window_days');
+        const days = Number(windowDays) > 0 ? Number(windowDays) : 7;
+        const cutoff = new Date(Date.now() - days * 24 * 3600 * 1000).toISOString();
+        const { data, error } = await supabase
+          .from('missions')
+          .select('*')
+          .eq('client_id', clientProfileId)
+          // A1 F8 : aussi les missions terminees pas encore notees (bouton « Noter »)
+          .or(`status.in.(pending,accepted,in_progress),and(status.eq.completed,client_rating.is.null,completed_at.gte."${cutoff}")`)
+          .order('created_at', { ascending: false })
+          .limit(5);
+        if (cancelled) return;
+        if (error) {
+          console.log('[FTM-DEBUG] Client - Open missions read failed', { error: error.message });
+          return;
+        }
+        setOpenMissions((data as Record<string, unknown>[]) ?? []);
+      })();
       return () => {
         cancelled = true;
       };
@@ -425,7 +430,8 @@ export default function CreateMissionScreen({ route, navigation }: Props) {
           style={[styles.input, styles.textArea]}
           value={description}
           onChangeText={setDescription}
-          placeholder="Description du chargement (optionnel)"
+          // A1 (R-DESC, decision du porteur du 04/11/2026) : le texte oriente vers la marchandise
+          placeholder="Décrivez la marchandise : nature, quantité, précautions de chargement… (optionnel)"
           placeholderTextColor={COLORS.textSecondary}
           multiline
           numberOfLines={3}

@@ -7,6 +7,7 @@ import {
   StyleSheet,
   ActivityIndicator,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { COLORS } from '../../constants/theme';
 import {
   loadVoiceMessages,
@@ -65,6 +66,28 @@ export default function VoiceChatScreen({
   }, [missionId]);
 
   useEffect(() => { fetchMessages(); }, [fetchMessages]);
+
+  // A1 (verification A5) : la liste n'etait lue qu'a l'ouverture ; elle est
+  // relue en silence toutes les 10 s (sauf pendant une ecoute) et au retour
+  // sur l'ecran, pour voir les messages de l'autre partie.
+  const playingRef = useRef<string | null>(null);
+  playingRef.current = playingId;
+  const refreshSilently = useCallback(async () => {
+    if (playingRef.current) return;
+    const result = await loadVoiceMessages(missionId);
+    if (result.success && result.messages && !playingRef.current) {
+      setMessages(result.messages as VoiceMsg[]);
+    }
+  }, [missionId]);
+  useEffect(() => {
+    const timer = setInterval(refreshSilently, 10000);
+    return () => clearInterval(timer);
+  }, [refreshSilently]);
+  useFocusEffect(
+    useCallback(() => {
+      refreshSilently();
+    }, [refreshSilently])
+  );
 
   const handlePlay = async (msg: VoiceMsg) => {
     if (!msg.url) return;

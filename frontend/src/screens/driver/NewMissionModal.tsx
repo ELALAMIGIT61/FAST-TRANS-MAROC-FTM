@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../constants/theme';
-import { createMissionOffer, exactAddressHint } from '../../services/missionService';
+import { createMissionOffer, exactAddressHint, descriptionHint } from '../../services/missionService';
 import type { MissionSummary } from '../../services/missionService';
 import { cleanServerMessage } from '../../services/settingsService';
 import { formatCargo } from '../../utils/cargo';
@@ -141,6 +141,10 @@ export default function NewMissionModal({
           <Text style={styles.cargoText}>
             ⚖️ {formatCargo(mission.cargo_weight_kg, mission.cargo_volume_m3) ?? 'Poids et volume non indiqués'}
           </Text>
+          {/* A1 (R-DESC, migration 077) : le client a ecrit une description, visible plus tard */}
+          {mission.has_description && (
+            <Text style={styles.hintText}>{descriptionHint(mission.scheduled_pickup_time)}</Text>
+          )}
 
           {withCountdown && (
             <>

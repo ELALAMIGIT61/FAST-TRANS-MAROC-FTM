@@ -100,7 +100,11 @@ export default function AdminMissionsScreen() {
     <View style={styles.card}>
       <View style={styles.cardHeader}>
         <Text style={styles.missionNumber}>#{item.mission_number}</Text>
-        <Text style={styles.statusBadge}>{STATUS_LABELS[item.status] ?? item.status}</Text>
+        {/* A1 (verification A5, accord exceptionnel du porteur du 04/11/2026) :
+            une mission expiree qui avait un chauffeur est une mission « non realisee » (F9) */}
+        <Text style={styles.statusBadge}>
+          {item.status === 'expired' && item.drivers ? '⏱️ Non réalisée' : STATUS_LABELS[item.status] ?? item.status}
+        </Text>
       </View>
       <Text style={styles.cardRoute}>📍 {item.pickup_city} → {item.dropoff_city}</Text>
       <Text style={styles.cardSub}>🚐 {item.vehicle_category?.toUpperCase()}</Text>
@@ -114,7 +118,7 @@ export default function AdminMissionsScreen() {
         <Text style={styles.cardSub}>📝 Raison de l’annulation : {cancelReasonText(item)}</Text>
       )}
       <View style={styles.cardFooter}>
-        <Text style={styles.cardPrice}>{item.negotiated_price} DH</Text>
+        <Text style={styles.cardPrice}>{item.negotiated_price != null ? `${item.negotiated_price} DH` : '—'}</Text>
         <Text style={styles.cardCommission}>Commission : {item.commission_amount} DH</Text>
       </View>
       <Text style={styles.cardDate}>{new Date(item.created_at).toLocaleDateString('fr-MA')}</Text>

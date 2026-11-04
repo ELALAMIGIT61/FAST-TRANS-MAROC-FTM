@@ -9,6 +9,9 @@ export const NOTIF_ICONS: Record<string, string> = {
   mission_cancelled:  '❌',
   wallet_low_balance: '💸',
   commission_rate_changed: '💰',
+  // A1 (migration 077)
+  voice_message:      '🎤',
+  rating_reminder:    '⭐',
   document_expiry:    '⚠️',
   document_rejected:  '❌',
   document_verified:  '✅',

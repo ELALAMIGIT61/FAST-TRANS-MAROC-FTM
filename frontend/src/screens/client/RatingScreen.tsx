@@ -11,6 +11,7 @@ import {
 import { showMessage } from '../../utils/dialogs';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../constants/theme';
 import { submitClientRating } from '../../services/missionService';
+import { cleanServerMessage } from '../../services/settingsService';
 import type { Mission } from '../../services/missionService';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
@@ -59,7 +60,8 @@ export default function RatingScreen({ route, navigation }: Props) {
     setIsLoading(false);
 
     if (result.error) {
-      showMessage('Erreur', result.error);
+      // A1 (migration 077) : message du serveur sans son code (ex. delai depasse)
+      showMessage(result.error.startsWith('notation_expiree') ? 'Notation impossible' : 'Erreur', cleanServerMessage(result.error));
     } else {
       navigation.navigate('ClientHome', { clientProfileId: mission.client_id ?? '' });
     }
