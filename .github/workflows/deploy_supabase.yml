@@ -101,6 +101,26 @@ jobs:
             --project-ref ${{ env.SUPABASE_PROJECT_ID }} \
             --password ${{ env.SUPABASE_DB_PASSWORD }}
 
+      - name: Set SMS secrets (only those present in GitHub Secrets)
+        # Option B, lot SMS-2 (11/11/2026) : transmet a Supabase les cles rangees
+        # dans GitHub Secrets. Une cle absente est ignoree (le deploiement continue).
+        # Les valeurs ne sont jamais affichees (GitHub les masque en plus).
+        env:
+          ADASMS_API_KEY: ${{ secrets.ADASMS_API_KEY }}
+          ADASMS_SENDER_ID: ${{ secrets.ADASMS_SENDER_ID }}
+          SEND_SMS_HOOK_SECRET: ${{ secrets.SEND_SMS_HOOK_SECRET }}
+          TWILIO_ACCOUNT_SID: ${{ secrets.TWILIO_ACCOUNT_SID }}
+          TWILIO_AUTH_TOKEN: ${{ secrets.TWILIO_AUTH_TOKEN }}
+          TWILIO_FROM: ${{ secrets.TWILIO_FROM }}
+          TWILIO_MESSAGING_SERVICE_SID: ${{ secrets.TWILIO_MESSAGING_SERVICE_SID }}
+        run: |
+          f="$(mktemp)"
+          for n in ADASMS_API_KEY ADASMS_SENDER_ID SEND_SMS_HOOK_SECRET TWILIO_ACCOUNT_SID TWILIO_AUTH_TOKEN TWILIO_FROM TWILIO_MESSAGING_SERVICE_SID; do
+            if [ -n "${!n}" ]; then printf '%s=%s\n' "$n" "${!n}" >> "$f"; echo "secret $n : transmis"; else echo "secret $n : absent (ignore)"; fi
+          done
+          if [ -s "$f" ]; then supabase secrets set --env-file "$f" --project-ref "$SUPABASE_PROJECT_ID" > /dev/null; fi
+          rm -f "$f"
+
       - name: Deploy all Edge Functions
         run: |
           echo "🚀 Deploying Edge Functions..."
@@ -108,6 +128,7 @@ jobs:
           supabase functions deploy register-push-token
           supabase functions deploy check-document-reminders
           supabase functions deploy send-tracking-sms
+          supabase functions deploy send-sms --no-verify-jwt
           echo "✅ All Edge Functions deployed"
 
       - name: Verify functions deployment
