@@ -1,5 +1,11 @@
 # Configuration minimale pour Supabase CLI
 # Ce fichier permet à la CLI de reconnaître votre projet
+#
+# ATTENTION : ne JAMAIS lancer « supabase config push » sur ce projet.
+# L'outil Supabase envoie toute la partie connexion (auth) : tout réglage absent
+# de ce fichier reprendrait sa valeur par défaut, ce qui pourrait couper la
+# connexion par SMS en production. Les réglages de connexion sont gérés dans le
+# tableau de bord Supabase (décision du porteur du 11/11/2026).
 
 [api]
 enabled = true
@@ -17,7 +23,8 @@ major_version = 17
 enabled = true
 port = 54323
 
-[inbucket]
+# Lot 6 (E1) : ancien nom [inbucket], déprécié par l'outil Supabase (sans effet en production)
+[local_smtp]
 enabled = true
 port = 54324
 smtp_port = 54325

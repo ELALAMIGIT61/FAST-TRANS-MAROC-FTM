@@ -91,3 +91,6 @@ temp/
 *firebase-adminsdk*.json
 *service-account*.json
 secrets/
+
+# Lot 6 (E1) : fichiers de travail de l'outil Supabase (jamais dans un commit)
+supabase/.temp/

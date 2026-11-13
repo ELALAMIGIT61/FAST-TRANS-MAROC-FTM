@@ -28,7 +28,9 @@ export default function NotificationBell() {
     if (!profileId) return;
     const result = await getNotifications(profileId, 0, true);
     if (result.success) {
-      setUnreadCount(result.unreadCount ?? 0);
+      // Lot 6 (A1) : totalCount = nombre exact de notifications non lues (requete
+      // filtree sur is_read = false) ; unreadCount ne comptait que la 1re page de 30.
+      setUnreadCount(result.totalCount ?? 0);
     }
   }, [profileId]);
 

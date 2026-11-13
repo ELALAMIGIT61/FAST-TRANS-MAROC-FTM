@@ -385,7 +385,9 @@ export async function handleNotificationTap(
       .from('drivers')
       .select('id')
       .eq('profile_id', profileId)
-      .single();
+      // Lot 6 (A14) : maybeSingle (et non single) pour un client ou un admin sans
+      // fiche chauffeur : plus d'erreur 406 inutile dans le journal.
+      .maybeSingle();
     return driverRow?.id ?? null;
   };
 
