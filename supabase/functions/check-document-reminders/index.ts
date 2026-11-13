@@ -52,6 +52,7 @@ async function notifyDocumentExpiry(
 ) {
   const docLabels: Record<string, string> = {
     driver_license:       'Permis de conduire',
+    vehicle_registration: 'Carte grise', // lot 1 (B1) : rappels de la carte grise
     insurance:            'Assurance',
     technical_inspection: 'Visite technique',
   };
