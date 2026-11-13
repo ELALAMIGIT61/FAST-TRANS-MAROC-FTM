@@ -157,72 +157,80 @@ export async function topupWallet(
     return { error: 'Recharge minimum : 100 DH' };
   }
 
-  const { data: currentWallet, error: fetchError } = await supabase
-    .from('wallet')
-    .select('balance')
-    .eq('id', walletId)
-    .single();
-
-  if (fetchError) {
-    console.log('[FTM-DEBUG] Wallet - Topup fetch error', { error: fetchError.message });
-    return { error: fetchError.message };
-  }
-
-  const balanceBefore = parseFloat(String((currentWallet as { balance: number }).balance));
-  const balanceAfter = balanceBefore + parseFloat(String(amount));
-
-  const { error: updateError } = await supabase
-    .from('wallet')
-    .update({ balance: balanceAfter })
-    .eq('id', walletId);
-
-  if (updateError) {
-    console.log('[FTM-DEBUG] Wallet - Topup update error', { error: updateError.message });
-    return { error: updateError.message };
-  }
-
-  const { data: transaction, error: txError } = await supabase
-    .from('transactions')
-    .insert({
-      wallet_id: walletId,
-      mission_id: null,
-      transaction_type: 'topup',
-      amount: parseFloat(String(amount)),
-      balance_before: balanceBefore,
-      balance_after: balanceAfter,
-      status: 'completed',
-      description: `Recharge wallet — Réf: ${agentRef || 'N/A'}`,
-      metadata: { agent_ref: agentRef, payment_method: 'cash_agent' },
-      processed_at: new Date().toISOString(),
-    })
-    .select()
-    .single();
-
-  if (txError) {
-    console.log('[FTM-DEBUG] Wallet - Topup transaction record error', {
-      error: txError.message,
-    });
-    return {
-      error: `Solde mis a jour mais echec de l'enregistrement de la transaction: ${txError.message}`,
-      balanceBefore,
-      balanceAfter,
-    };
-  }
-
-  console.log('[FTM-DEBUG] Wallet - Topup completed', {
+  // Lot 1 (B2) : credit fait par le serveur en une seule operation indivisible
+  // (solde = solde + montant, et transaction enregistree en meme temps). Avant, la
+  // lecture puis la reecriture du solde pouvaient effacer une commission prelevee
+  // entre-temps par le serveur.
+  return creditWalletOnServer(
     walletId,
-    amount,
-    balanceBefore,
-    balanceAfter,
-    transactionId: (transaction as Transaction | null)?.id,
-  });
+    parseFloat(String(amount)),
+    'topup',
+    null,
+    `Recharge wallet — Réf: ${agentRef || 'N/A'}`,
+    { agent_ref: agentRef, payment_method: 'cash_agent' },
+  );
+}
 
+// Lot 1 (B2) : appel commun a la fonction serveur admin_credit_wallet (admin seulement).
+// Le message d'erreur du serveur commence par un code (ex. « acces_refuse: ») : on
+// n'affiche que le texte qui suit.
+async function creditWalletOnServer(
+  walletId: string,
+  amount: number,
+  type: 'topup' | 'refund',
+  missionId: string | null,
+  description: string,
+  metadata: Record<string, unknown>,
+): Promise<{
+  success?: true;
+  balanceBefore?: number;
+  balanceAfter?: number;
+  transaction?: Transaction;
+  error?: string;
+}> {
+  const { data, error } = await supabase.rpc('admin_credit_wallet', {
+    p_wallet_id:   walletId,
+    p_amount:      amount,
+    p_type:        type,
+    p_mission_id:  missionId,
+    p_description: description,
+    p_metadata:    metadata,
+  });
+  if (error) {
+    console.log('[FTM-DEBUG] Wallet - Server credit error', { type, error: error.message });
+    return { error: serverMessage(error.message) };
+  }
+  const r = data as { transaction_id: string; balance_before: number; balance_after: number };
+  const balanceBefore = parseFloat(String(r.balance_before));
+  const balanceAfter = parseFloat(String(r.balance_after));
+  console.log('[FTM-DEBUG] Wallet - Server credit completed', {
+    walletId, type, amount, balanceBefore, balanceAfter, transactionId: r.transaction_id,
+  });
   return {
     success: true,
     balanceBefore,
     balanceAfter,
-    transaction: transaction as Transaction,
+    transaction: {
+      id: r.transaction_id,
+      wallet_id: walletId,
+      mission_id: missionId,
+      transaction_type: type,
+      amount,
+      balance_before: balanceBefore,
+      balance_after: balanceAfter,
+      status: 'completed',
+      description,
+      metadata,
+      created_at: new Date().toISOString(),
+      processed_at: new Date().toISOString(),
+    } as Transaction,
   };
+}
+
+// Retire le code place en tete d'un message d'erreur du serveur (« code: texte »).
+function serverMessage(message: string): string {
+  const m = /^[a-z_]+:\s*(.*)$/s.exec(message);
+  return m ? m[1] : message;
 }
 
 // ─── requestWalletTopup ─────────────────────────────────────────────────────────
@@ -317,73 +325,15 @@ export async function refundWallet(
     reason,
   });
 
-  const { data: currentWallet, error: fetchError } = await supabase
-    .from('wallet')
-    .select('balance')
-    .eq('id', walletId)
-    .single();
-
-  if (fetchError) {
-    console.log('[FTM-DEBUG] Wallet - Refund fetch error', { error: fetchError.message });
-    return { error: fetchError.message };
-  }
-
-  const balanceBefore = parseFloat(String((currentWallet as { balance: number }).balance));
-  const balanceAfter = balanceBefore + parseFloat(String(amount));
-
-  const { error: updateError } = await supabase
-    .from('wallet')
-    .update({ balance: balanceAfter })
-    .eq('id', walletId);
-
-  if (updateError) {
-    console.log('[FTM-DEBUG] Wallet - Refund update error', { error: updateError.message });
-    return { error: updateError.message };
-  }
-
-  const { data: transaction, error: txError } = await supabase
-    .from('transactions')
-    .insert({
-      wallet_id: walletId,
-      mission_id: missionId || null,
-      transaction_type: 'refund',
-      amount: parseFloat(String(amount)),
-      balance_before: balanceBefore,
-      balance_after: balanceAfter,
-      status: 'completed',
-      description: `Remboursement — ${reason}`,
-      metadata: { reason, initiated_by: 'admin' },
-      processed_at: new Date().toISOString(),
-    })
-    .select()
-    .single();
-
-  if (txError) {
-    console.log('[FTM-DEBUG] Wallet - Refund transaction record error', {
-      error: txError.message,
-    });
-    return {
-      error: `Solde mis a jour mais echec de l'enregistrement de la transaction: ${txError.message}`,
-      balanceBefore,
-      balanceAfter,
-    };
-  }
-
-  console.log('[FTM-DEBUG] Wallet - Refund completed', {
+  // Lot 1 (B2) : credit fait par le serveur en une seule operation indivisible.
+  return creditWalletOnServer(
     walletId,
-    amount,
-    balanceBefore,
-    balanceAfter,
-    reason,
-    transactionId: (transaction as Transaction | null)?.id,
-  });
-
-  return {
-    success: true,
-    balanceBefore,
-    balanceAfter,
-    transaction: transaction as Transaction,
-  };
+    parseFloat(String(amount)),
+    'refund',
+    missionId || null,
+    `Remboursement — ${reason}`,
+    { reason, initiated_by: 'admin' },
+  );
 }
 
 // ─── getTransactionHistory ────────────────────────────────────────────────────
@@ -790,40 +740,19 @@ export async function validatePendingTransaction(
   transactionId: string
 ): Promise<{ success?: true; error?: string }> {
   console.log('[FTM-DEBUG] Admin - Validating pending transaction', { transactionId });
-  // Reservation atomique : on passe la demande a 'completed' UNIQUEMENT si elle
-  // est encore 'pending'. Un second clic (ou appel concurrent) n'affectera aucune
-  // ligne et s'arretera ici, ce qui empeche le double credit (modele aligne sur
-  // rejectPendingTransaction). Le credit n'a lieu qu'apres cette reservation reussie.
-  const { data: tx, error: reserveError } = await supabase
-    .from('transactions')
-    .update({ status: 'completed', description: 'Demande validee -- creditee via nouvelle transaction' })
-    .eq('id', transactionId)
-    .eq('status', 'pending')
-    .select('id, wallet_id, transaction_type, amount, status, mission_id, metadata')
-    .maybeSingle();
-  if (reserveError) {
-    console.log('[FTM-DEBUG] Admin - Validate reserve error', { error: reserveError.message });
-    return { error: reserveError.message };
+  // Lot 1 (B2/B3) : le serveur fait tout en une seule operation indivisible :
+  // la demande passe de « en attente » a « validee » avec sa date de traitement
+  // (processed_at), puis le portefeuille est credite (solde = solde + montant).
+  // Un second clic ne trouve plus de demande en attente : rien n'est credite deux
+  // fois. Si le credit echoue, rien n'est enregistre et la demande reste en attente.
+  const { data, error } = await supabase.rpc('admin_validate_pending_transaction', {
+    p_transaction_id: transactionId,
+  });
+  if (error) {
+    console.log('[FTM-DEBUG] Admin - Validate pending transaction error', { error: error.message });
+    return { error: serverMessage(error.message) };
   }
-  if (!tx) {
-    return { error: 'Cette transaction a deja ete traitee.' };
-  }
-  const agentRef = (tx.metadata as { note?: string } | null)?.note || 'Demande validee';
-  const result =
-    tx.transaction_type === 'refund'
-      ? await refundWallet(tx.wallet_id, tx.amount, tx.mission_id, agentRef)
-      : await topupWallet(tx.wallet_id, tx.amount, agentRef);
-  if (result.error) {
-    // Le credit a echoue apres la reservation : on remet la demande en 'pending'
-    // pour qu'elle puisse etre re-traitee, plutot que de la laisser 'completed'
-    // sans credit effectif.
-    console.log('[FTM-DEBUG] Admin - Validate credit error, reverting to pending', { error: result.error });
-    await supabase
-      .from('transactions')
-      .update({ status: 'pending', description: 'Demande en attente (echec credit, a retraiter)' })
-      .eq('id', transactionId);
-    return { error: result.error };
-  }
+  const tx = data as { wallet_id: string; transaction_type: string; amount: number };
   const { data: walletRow } = await supabase
     .from('wallet')
     .select('driver_id, drivers ( profile_id )')
@@ -845,7 +774,7 @@ export async function rejectPendingTransaction(
   console.log('[FTM-DEBUG] Admin - Rejecting pending transaction', { transactionId, reason });
   const { data, error } = await supabase
     .from('transactions')
-    .update({ status: 'failed', description: `Rejetee: ${reason}` })
+    .update({ status: 'failed', description: `Rejetee: ${reason}`, processed_at: new Date().toISOString() })
     .eq('id', transactionId)
     .eq('status', 'pending')
     .select('wallet_id, transaction_type, amount')
