@@ -3,25 +3,42 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl, Act
 import { showMessage, confirmAction } from '../../utils/dialogs';
 import { useNavigation } from '@react-navigation/native';
 import { COLORS } from '../../constants/theme';
-import { getAllDrivers, toggleUserActive } from '../../services/adminService';
+import { getAllDrivers, getProfilesByRole, toggleUserActive } from '../../services/adminService';
+
+// Lot 4 (A6, accord du porteur du 13/11/2026 pour ce fichier protege) : onglets
+// Chauffeurs | Clients | Administrateurs. Les administrateurs sont affiches sans
+// bouton Suspendre (eviter qu'un admin suspende l'autre ou se suspende lui-meme ;
+// les changements d'administrateur suivent les procedures du 12/11/2026).
+// Accents et fleche du bouton Retour corriges (A5).
+type Tab = 'driver' | 'client' | 'admin';
+const TAB_LABELS: Record<Tab, string> = { driver: 'Chauffeurs', client: 'Clients', admin: 'Administrateurs' };
 
 interface UserProfile { id: string; full_name: string; phone_number: string; is_active: boolean; }
 interface DriverUser { id: string; vehicle_category: string; license_plate: string; is_verified: boolean; profiles: UserProfile; }
+interface PlainUser { id: string; full_name: string; phone_number: string; is_active: boolean; }
 
 export default function AdminUsersScreen() {
   const navigation = useNavigation<any>();
   const [drivers, setDrivers] = useState<DriverUser[]>([]);
   const [filtered, setFiltered] = useState<DriverUser[]>([]);
+  const [tab, setTab] = useState<Tab>('driver');
+  const [clients, setClients] = useState<PlainUser[]>([]);
+  const [admins, setAdmins] = useState<PlainUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
   const [processing, setProcessing] = useState<string | null>(null);
   const loadUsers = useCallback(async () => {
-    const result = await getAllDrivers('all');
+    const [result, clientResult, adminResult] = await Promise.all([
+      getAllDrivers('all'), getProfilesByRole('client'), getProfilesByRole('admin'),
+    ]);
     if (result.success && result.drivers) {
       setDrivers(result.drivers as DriverUser[]);
       setFiltered(result.drivers as DriverUser[]);
     }
+    if (clientResult.success) setClients(clientResult.profiles as PlainUser[]);
+    if (adminResult.success) setAdmins(adminResult.profiles as PlainUser[]);
+    setSearch('');
     setLoading(false);
     setRefreshing(false);
   }, []);
@@ -33,6 +50,49 @@ export default function AdminUsersScreen() {
     const lower = text.toLowerCase();
     setFiltered(drivers.filter(d => d.profiles?.full_name?.toLowerCase().includes(lower) || d.profiles?.phone_number?.includes(text)));
   };
+  const matches = (u: PlainUser) =>
+    search.trim() === '' ||
+    u.full_name?.toLowerCase().includes(search.toLowerCase()) ||
+    u.phone_number?.includes(search);
+
+  const handleToggleClient = async (client: PlainUser) => {
+    const newStatus = client.is_active === false;
+    const action = newStatus ? 'activer' : 'suspendre';
+    const confirmed = await confirmAction('Confirmation', 'Voulez-vous ' + action + ' le compte de ' + client.full_name + ' ?');
+    if (confirmed === false) return;
+    setProcessing(client.id);
+    const result = await toggleUserActive(client.id, newStatus);
+    if (result.success) { await loadUsers(); }
+    else { showMessage('Erreur', result.error ?? 'Une erreur est survenue'); }
+    setProcessing(null);
+  };
+
+  const renderPlainCard = (item: PlainUser, canToggle: boolean) => (
+    <View style={styles.card}>
+      <View style={styles.cardHeader}>
+        <View>
+          <Text style={styles.cardName}>👤 {item.full_name}</Text>
+          <Text style={styles.cardSub}>📞 {item.phone_number}</Text>
+        </View>
+        <View style={[styles.statusBadge, item.is_active ? styles.activeBadge : styles.suspendedBadge]}>
+          <Text style={styles.statusBadgeText}>{item.is_active ? 'Actif' : 'Suspendu'}</Text>
+        </View>
+      </View>
+      {canToggle && (
+        <TouchableOpacity
+          style={[styles.toggleBtn, item.is_active ? styles.suspendBtn : styles.activateBtn]}
+          onPress={() => handleToggleClient(item)}
+          disabled={processing === item.id}
+        >
+          {processing === item.id
+            ? <ActivityIndicator size='small' color='#FFF' />
+            : <Text style={styles.toggleBtnText}>{item.is_active ? 'Suspendre' : 'Activer'}</Text>
+          }
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+
   const handleToggleActive = async (driver: DriverUser) => {
     const newStatus = driver.profiles.is_active === false;
     const action = newStatus ? 'activer' : 'suspendre';
@@ -56,7 +116,7 @@ export default function AdminUsersScreen() {
         </View>
       </View>
       <Text style={styles.cardSub}>{item.vehicle_category?.toUpperCase()} — {item.license_plate}</Text>
-      <Text style={styles.cardSub}>{item.is_verified ? 'Verifie' : 'Non verifie'}</Text>
+      <Text style={styles.cardSub}>{item.is_verified ? 'Vérifié' : 'Non vérifié'}</Text>
       <TouchableOpacity
         style={[styles.toggleBtn, item.profiles?.is_active ? styles.suspendBtn : styles.activateBtn]}
         onPress={() => handleToggleActive(item)}
@@ -72,31 +132,51 @@ export default function AdminUsersScreen() {
   if (loading) {
     return <View style={styles.centered}><ActivityIndicator size='large' color={COLORS.primary} /></View>;
   }
+  const plainList = (tab === 'client' ? clients : admins).filter(matches);
+  const counts: Record<Tab, number> = { driver: drivers.length, client: clients.length, admin: admins.length };
+
   return (
     <View style={styles.container}>
-      <FlatList
-        data={filtered}
+      <FlatList<DriverUser | PlainUser>
+        data={tab === 'driver' ? filtered : plainList}
         keyExtractor={item => item.id}
-        renderItem={renderUserCard}
+        renderItem={({ item }) =>
+          tab === 'driver'
+            ? renderUserCard({ item: item as DriverUser })
+            : renderPlainCard(item as PlainUser, tab === 'client')
+        }
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         ListHeaderComponent={
           <View>
             <View style={styles.headerRow}>
               <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-                <Text style={styles.backBtnText}>Retour</Text>
+                <Text style={styles.backBtnText}>← Retour</Text>
               </TouchableOpacity>
-              <Text style={styles.header}>Gestion utilisateurs ({drivers.length})</Text>
+              <Text style={styles.header}>Gestion utilisateurs</Text>
+            </View>
+            <View style={styles.tabsRow}>
+              {(['driver', 'client', 'admin'] as Tab[]).map((t) => (
+                <TouchableOpacity
+                  key={t}
+                  style={[styles.tabBtn, tab === t && styles.tabBtnActive]}
+                  onPress={() => { setTab(t); handleSearch(''); }}
+                >
+                  <Text style={[styles.tabBtnText, tab === t && styles.tabBtnTextActive]}>
+                    {TAB_LABELS[t]} ({counts[t]})
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </View>
             <TextInput
               style={styles.searchInput}
-              placeholder='Recherche par nom / telephone'
+              placeholder='Recherche par nom / téléphone'
               value={search}
               onChangeText={handleSearch}
               placeholderTextColor='#AAA'
             />
           </View>
         }
-        ListEmptyComponent={<Text style={styles.empty}>Aucun utilisateur trouve.</Text>}
+        ListEmptyComponent={<Text style={styles.empty}>Aucun utilisateur trouvé.</Text>}
       />
     </View>
   );
@@ -108,6 +188,11 @@ const styles = StyleSheet.create({
   backBtn: { padding: 4 },
   backBtnText: { color: COLORS.primary, fontSize: 14, fontWeight: '600' },
   header: { fontSize: 16, fontWeight: '700', color: COLORS.primary, flex: 1 },
+  tabsRow: { flexDirection: 'row', marginHorizontal: 12, marginBottom: 8, gap: 6 },
+  tabBtn: { flex: 1, paddingVertical: 8, borderRadius: 8, backgroundColor: '#E5E7EB', alignItems: 'center' },
+  tabBtnActive: { backgroundColor: COLORS.primary },
+  tabBtnText: { fontSize: 12, fontWeight: '600', color: '#374151' },
+  tabBtnTextActive: { color: '#FFF' },
   searchInput: { backgroundColor: '#FFF', borderRadius: 10, padding: 12, marginHorizontal: 12, marginBottom: 8, fontSize: 14, color: '#333', borderWidth: 1, borderColor: '#E5E7EB' },
   card: { backgroundColor: '#FFF', margin: 12, marginBottom: 0, borderRadius: 12, padding: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 3, elevation: 2 },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 },

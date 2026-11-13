@@ -29,7 +29,47 @@ type Group = {
   max: number;
   // valeur minimale autorisee (0 par defaut)
   min?: number;
+  // Lot 4 (A8) : avertissement ajoute a la confirmation (reglages SMS)
+  warning?: string;
 };
+
+// Lot 4 (A8) : reglages individuels (adresses, SMS de connexion), regroupes par
+// rubrique avec un libelle clair (avant : rubrique « Autres reglages », libelle
+// technique). Les limites reprennent celles controlees par le serveur.
+type SingleSetting = { key: string; label: string; unit: string; min: number; max: number };
+type SingleSection = { id: string; title: string; help: string; warning?: string; items: SingleSetting[] };
+
+const SINGLE_SECTIONS: SingleSection[] = [
+  {
+    id: 'addresses',
+    title: 'Adresses',
+    help: 'Saisie et conservation des adresses des clients. Mode de saisie : 0 = adresse tapée + épingle, 1 = mixte, 2 = suggestions.',
+    items: [
+      { key: 'address_entry_mode', label: 'Mode de saisie (0, 1 ou 2)', unit: '', min: 0, max: 2 },
+      { key: 'saved_addresses_max', label: 'Adresses enregistrées par client', unit: '', min: 1, max: 20 },
+      { key: 'saved_addresses_unused_months', label: 'Effacement d’une adresse inutilisée', unit: 'mois', min: 1, max: 120 },
+      { key: 'learned_point_max_distance_m', label: 'Distance max. pour apprendre le point', unit: 'm', min: 10, max: 10000 },
+      { key: 'learned_point_max_age_minutes', label: 'Ancienneté max. de la position du chauffeur', unit: 'min', min: 1, max: 1440 },
+      { key: 'google_data_retention_days', label: 'Effacement des données Google après la mission', unit: 'jours', min: 1, max: 30 },
+    ],
+  },
+  {
+    id: 'sms',
+    title: 'SMS de connexion',
+    help: 'Envoi des codes de connexion par SMS. Mode : 0 = AdaSMS seul, 1 = AdaSMS + secours automatique, 2 = secours seul. Le secours n’est utilisé que s’il est configuré.',
+    warning: 'Attention : ce réglage agit sur la connexion par SMS de tous les utilisateurs.',
+    items: [
+      { key: 'sms_mode', label: 'Mode d’envoi (0, 1 ou 2)', unit: '', min: 0, max: 2 },
+      { key: 'sms_breaker_failures', label: 'Disjoncteur : échecs AdaSMS consécutifs', unit: '', min: 1, max: 20 },
+      { key: 'sms_breaker_minutes', label: 'Disjoncteur : durée du passage au secours', unit: 'min', min: 1, max: 1440 },
+      { key: 'sms_timeout_primary_ms', label: 'Délai d’attente AdaSMS sans secours', unit: 'ms', min: 500, max: 4500 },
+      { key: 'sms_timeout_with_fallback_ms', label: 'Délai d’attente AdaSMS avec secours', unit: 'ms', min: 500, max: 3000 },
+      { key: 'sms_resend_fallback_from', label: 'Renvoi du code par le secours à partir de l’envoi n°', unit: '', min: 2, max: 10 },
+      { key: 'sms_resend_window_minutes', label: 'Fenêtre de comptage des renvois', unit: 'min', min: 1, max: 120 },
+      { key: 'sms_log_retention_months', label: 'Effacement du journal des SMS', unit: 'mois', min: 1, max: 24 },
+    ],
+  },
+];
 
 const GROUPS: Group[] = [
   // A1 (migrations 073 et 074) : commission et solde minimum
@@ -212,7 +252,8 @@ export default function AdminSettingsScreen() {
     if (value === setting.value) return;
     const ok = await confirmAction(
       'Modifier le réglage',
-      `${label} : passer de ${formatValue(setting.value, unit)} à ${formatValue(value, unit)} ?\n\n` +
+      (group?.warning ? `${group.warning}\n\n` : '') +
+        `${label} : passer de ${formatValue(setting.value, unit)} à ${formatValue(value, unit)} ?\n\n` +
         'Le changement s’applique immédiatement.',
       { confirmLabel: 'Enregistrer', cancelLabel: 'Annuler' }
     );
@@ -274,6 +315,14 @@ export default function AdminSettingsScreen() {
     rows.forEach((s) => known.add(s.key));
     return { group, rows };
   });
+  // Lot 4 (A8) : rubriques des reglages individuels
+  const singleSections = SINGLE_SECTIONS.map((section) => {
+    const rows = section.items
+      .map((item) => ({ item, setting: settings.find((s) => s.key === item.key) }))
+      .filter((r): r is { item: SingleSetting; setting: AppSetting } => r.setting !== undefined);
+    rows.forEach((r) => known.add(r.setting.key));
+    return { section, rows };
+  });
   const others = settings.filter((s) => !known.has(s.key));
 
   return (
@@ -310,6 +359,25 @@ export default function AdminSettingsScreen() {
         )
       )}
 
+      {singleSections.map(({ section, rows }) =>
+        rows.length === 0 ? null : (
+          <View key={section.id} style={styles.card}>
+            <Text style={styles.cardTitle}>{section.title}</Text>
+            <Text style={styles.cardHelp}>{section.help}</Text>
+            {section.warning && <Text style={styles.cardWarning}>⚠️ {section.warning}</Text>}
+            {rows.map(({ item, setting }) =>
+              renderRow(
+                setting,
+                { prefix: item.key, title: section.title, help: '', short: item.label,
+                  unit: item.unit, max: item.max, min: item.min, warning: section.warning },
+                item.label,
+                item.label,
+              )
+            )}
+          </View>
+        )
+      )}
+
       {others.length > 0 && (
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Autres réglages</Text>
@@ -337,6 +405,7 @@ const styles = StyleSheet.create({
   },
   cardTitle: { fontSize: 15, fontWeight: '700', color: '#1A1A2E' },
   cardHelp: { fontSize: 12, color: '#6C757D', marginTop: 4, marginBottom: 8 },
+  cardWarning: { fontSize: 13, color: '#B45309', fontWeight: '600', marginBottom: 8 },
   row: {
     flexDirection: 'row',
     alignItems: 'center',

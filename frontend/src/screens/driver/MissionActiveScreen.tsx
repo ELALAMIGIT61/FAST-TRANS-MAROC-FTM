@@ -407,7 +407,7 @@ export default function MissionActiveScreen({ route, navigation }: Props) {
         </Text>
       )}
       {refundRequested && (
-        <Text style={styles.missionNumber}>Demande de remboursement envoyee.</Text>
+        <Text style={styles.missionNumber}>Demande de remboursement envoyée.</Text>
       )}
       {/* A1 (retouche 37) : retour a l'accueil depuis une mission terminee,
           annulee ou non realisee */}

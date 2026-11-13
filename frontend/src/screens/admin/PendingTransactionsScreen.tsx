@@ -78,7 +78,7 @@ export default function PendingTransactionsScreen() {
     });
     if (!ok) return;
     setProcessingId(tx.id);
-    const result = await rejectPendingTransaction(tx.id, 'Rejetee par admin');
+    const result = await rejectPendingTransaction(tx.id, 'Rejetée par l\'administrateur');
     setProcessingId(null);
     if (result.error) {
       showMessage('Erreur', result.error);

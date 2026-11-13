@@ -154,6 +154,8 @@ export default function WalletManagementScreen() {
   return (
     <View style={styles.container}>
       <BackButton />
+      {/* Lot 4 (A4) : titre de la page, comme les autres pages d'administration */}
+      <Text style={styles.pageTitle}>👛 Portefeuilles des chauffeurs</Text>
       <TextInput
         style={styles.searchInput}
         placeholder="Recherche par nom / téléphone"
@@ -226,6 +228,7 @@ export default function WalletManagementScreen() {
 }
 
 const styles = StyleSheet.create({
+  pageTitle: { fontSize: 20, fontWeight: '700', color: '#1A1A2E', marginHorizontal: 16, marginTop: 4, marginBottom: 8 },
   container: { flex: 1, backgroundColor: '#F5F7FA' },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   searchInput: {

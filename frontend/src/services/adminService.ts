@@ -133,6 +133,22 @@ export async function rejectDocument(driverId: string, documentType: DocumentTyp
   return { success: true };
 }
 
+// Lot 4 (A6) : profils des clients ou des administrateurs, pour l'ecran
+// « Gestion utilisateurs » (lecture permise a l'admin par la policy profiles_select_admin).
+export async function getProfilesByRole(role: 'client' | 'admin') {
+  console.log('[FTM-DEBUG] Admin - Fetching profiles by role', { role });
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id, full_name, phone_number, is_active, role, created_at')
+    .eq('role', role)
+    .order('created_at', { ascending: false });
+  if (error) {
+    console.log('[FTM-DEBUG] Admin - Fetch profiles by role error', { role, error: error.message });
+    return { error: error.message };
+  }
+  return { success: true as const, profiles: data ?? [] };
+}
+
 export async function getAllDrivers(filter: string = 'all') {
   console.log('[FTM-DEBUG] Admin - Fetching all drivers', { filter });
 

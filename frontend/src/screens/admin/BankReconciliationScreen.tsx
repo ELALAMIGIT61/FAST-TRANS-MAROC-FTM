@@ -94,7 +94,7 @@ export default function BankReconciliationScreen() {
       <BackButton />
       <Text style={styles.title}>🏦 Rapprochement bancaire</Text>
       <Text style={styles.subtitle}>
-        Paiements deja credites, en attente de verification sur le releve bancaire reel.
+        Paiements déjà crédités, en attente de vérification sur le relevé bancaire réel.
       </Text>
       {transactions.length === 0 && (
         <Text style={styles.emptyText}>Aucun paiement en attente de rapprochement.</Text>
@@ -128,7 +128,7 @@ export default function BankReconciliationScreen() {
               {isProcessing ? (
                 <ActivityIndicator color="#FFF" size="small" />
               ) : (
-                <Text style={styles.confirmButtonText}>Marquer comme verifie</Text>
+                <Text style={styles.confirmButtonText}>Marquer comme vérifié</Text>
               )}
             </TouchableOpacity>
           </View>

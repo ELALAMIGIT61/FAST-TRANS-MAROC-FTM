@@ -289,7 +289,7 @@ export async function notifyDriverLowBalance(driverProfileId: string, balance: n
     driverProfileId,
     'wallet_low_balance',
     '\u26a0\ufe0f Wallet insuffisant',
-    `Votre solde (${balance.toFixed(2)} DH) est insuffisant. Rechargez au moins ${minimum.toFixed(2)} DH (deficit: ${deficit} DH) pour continuer a recevoir des missions.`,
+    `Votre solde (${balance.toFixed(2)} DH) est insuffisant. Rechargez au moins ${minimum.toFixed(2)} DH (déficit : ${deficit} DH) pour continuer à recevoir des missions.`,
     { balance, minimum, screen: 'WalletDashboard' }
   );
 }
@@ -304,8 +304,8 @@ export async function notifyTransactionValidated(
   return insertNotification(
     driverProfileId,
     'transaction_validated',
-    '\u2705 Demande validee',
-    `${label} de ${amount.toFixed(2)} DH validee. Votre solde a ete mis a jour.`,
+    '\u2705 Demande validée',
+    `${label} de ${amount.toFixed(2)} DH validée. Votre solde a été mis à jour.`,
     { amount, transactionType, screen: 'WalletDashboard' }
   );
 }
@@ -321,8 +321,8 @@ export async function notifyTransactionRejected(
   return insertNotification(
     driverProfileId,
     'transaction_rejected',
-    '\u274c Demande rejetee',
-    `${label} de ${amount.toFixed(2)} DH rejetee. Motif : ${reason}`,
+    '\u274c Demande rejetée',
+    `${label} de ${amount.toFixed(2)} DH rejetée. Motif : ${reason}`,
     { amount, transactionType, screen: 'WalletDashboard' }
   );
 }
@@ -337,8 +337,8 @@ export async function notifyTransactionBankConfirmed(
   return insertNotification(
     driverProfileId,
     'transaction_bank_confirmed',
-    '\u2705 Paiement confirme',
-    `${label} de ${amount.toFixed(2)} DH definitivement confirmee apres verification bancaire.`,
+    '\u2705 Paiement confirmé',
+    `${label} de ${amount.toFixed(2)} DH définitivement confirmée après vérification bancaire.`,
     { amount, transactionType, screen: 'WalletDashboard' }
   );
 }

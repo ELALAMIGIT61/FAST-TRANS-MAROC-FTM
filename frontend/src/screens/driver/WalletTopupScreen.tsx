@@ -205,7 +205,7 @@ export default function WalletTopupScreen() {
                 <Text style={styles.proofButtonText}>Prendre une photo</Text>
               </TouchableOpacity>
             </View>
-            {proofUri && <Text style={styles.proofSelected}>✅ Justificatif selectionne</Text>}
+            {proofUri && <Text style={styles.proofSelected}>✅ Justificatif sélectionné</Text>}
           </>
         )}
 
@@ -228,7 +228,7 @@ export default function WalletTopupScreen() {
         {/* Info note */}
         <View style={styles.noteBox}>
           <Text style={styles.noteText}>
-            {'\u2139\ufe0f'} Votre demande sera examinee par l'equipe FTM. Le solde sera credite apres validation du paiement.
+            {'\u2139\ufe0f'} Votre demande sera examinée par l'équipe FTM. Le solde sera crédité après validation du paiement.
           </Text>
         </View>
 

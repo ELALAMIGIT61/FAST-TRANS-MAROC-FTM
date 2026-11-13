@@ -774,7 +774,7 @@ export async function rejectPendingTransaction(
   console.log('[FTM-DEBUG] Admin - Rejecting pending transaction', { transactionId, reason });
   const { data, error } = await supabase
     .from('transactions')
-    .update({ status: 'failed', description: `Rejetee: ${reason}`, processed_at: new Date().toISOString() })
+    .update({ status: 'failed', description: `Rejetée : ${reason}`, processed_at: new Date().toISOString() })
     .eq('id', transactionId)
     .eq('status', 'pending')
     .select('wallet_id, transaction_type, amount')
@@ -819,10 +819,10 @@ export async function requestRefund(
   // chauffeur), cloturee par le serveur (migration 071) ; l'admin decide.
   const isNotPerformed = mission.status === 'expired' && !!mission.driver_id;
   if (mission.status !== 'cancelled_client' && mission.status !== 'cancelled_driver' && !isNotPerformed) {
-    return { error: 'Cette mission n\'est ni annulee ni clôturee comme non realisee.' };
+    return { error: 'Cette mission n\'est ni annulée ni clôturée comme non réalisée.' };
   }
   if (!mission.commission_charged_at) {
-    return { error: 'Aucune commission n\'a ete prelevee pour cette mission.' };
+    return { error: 'Aucune commission n\'a été prélevée pour cette mission.' };
   }
   if (mission.driver_id !== driverId) {
     return { error: 'Cette mission ne vous appartient pas.' };
@@ -843,7 +843,7 @@ export async function requestRefund(
     .eq('transaction_type', 'refund')
     .limit(1);
   if (existing && existing.length > 0) {
-    return { error: 'Une demande de remboursement existe deja pour cette mission.' };
+    return { error: 'Une demande de remboursement existe déjà pour cette mission.' };
   }
   const { data: transaction, error: txError } = await supabase
     .from('transactions')
