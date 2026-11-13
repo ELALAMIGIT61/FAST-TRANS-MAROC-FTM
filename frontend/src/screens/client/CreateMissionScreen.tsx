@@ -27,6 +27,8 @@ import { MAX_LOAD_KG, formatTonnes, parseQuantity } from '../../utils/cargo';
 import { usePendingNavigation } from '../../hooks/usePendingNavigation';
 import { ensureGeocodingPermission, geocodeInCity, districtAt, GeoPoint } from '../../services/geocodingService';
 import { getCommissionAmounts, DEFAULT_COMMISSION_AMOUNTS } from '../../services/settingsService';
+import { SavedAddress, listSavedAddresses, markSavedAddressUsed } from '../../services/savedAddressService';
+import SavedAddressList from '../../components/SavedAddressList';
 
 type RootStackParamList = {
   CreateMission: { clientProfileId: string };
@@ -114,6 +116,17 @@ export default function CreateMissionScreen({ route, navigation }: Props) {
   const [pickupCity, setPickupCity] = useState('');
   const [dropoffAddress, setDropoffAddress] = useState('');
   const [dropoffCity, setDropoffCity] = useState('');
+  // Lot 5 (C1) : repere facultatif du depart et de l'arrivee (200 caracteres au
+  // plus) ; le serveur le range avec l'adresse exacte (migration 078).
+  const [pickupLandmark, setPickupLandmark] = useState('');
+  const [dropoffLandmark, setDropoffLandmark] = useState('');
+  // Lot 5 (C3) : adresses enregistrees (« Mes adresses »). L'adresse choisie est
+  // gardee tant que le client ne modifie ni l'adresse ni la ville ; son point
+  // precis, s'il existe, remplace alors la localisation a partir du texte.
+  const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
+  const [savedListFor, setSavedListFor] = useState<'pickup' | 'dropoff' | null>(null);
+  const [pickupSaved, setPickupSaved] = useState<SavedAddress | null>(null);
+  const [dropoffSaved, setDropoffSaved] = useState<SavedAddress | null>(null);
   const [scheduledPickupTime, setScheduledPickupTime] = useState<Date | null>(null);
   const [vehicleCategory, setVehicleCategory] = useState<VehicleCategory | null>(null);
   const [needsLoading, setNeedsLoading] = useState(false);
@@ -125,11 +138,44 @@ export default function CreateMissionScreen({ route, navigation }: Props) {
   const [isLoading, setIsLoading] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
 
+  const loadSavedAddresses = useCallback(async () => {
+    if (!clientProfileId) return;
+    const { addresses } = await listSavedAddresses(clientProfileId);
+    setSavedAddresses(addresses);
+    // Adresse choisie puis renommee : nom a jour ; supprimee : plus utilisee
+    setPickupSaved((cur) => (cur ? addresses.find((a) => a.id === cur.id) ?? null : null));
+    setDropoffSaved((cur) => (cur ? addresses.find((a) => a.id === cur.id) ?? null : null));
+  }, [clientProfileId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadSavedAddresses();
+    }, [loadSavedAddresses])
+  );
+
+  const chooseSaved = (which: 'pickup' | 'dropoff', a: SavedAddress) => {
+    const known = findCity(a.city);
+    if (which === 'pickup') {
+      setPickupAddress(a.address);
+      setPickupCity(known ? known.name : a.city);
+      setPickupLandmark(a.landmark ?? '');
+      setPickupCoords(null);
+      setPickupSaved(a);
+    } else {
+      setDropoffAddress(a.address);
+      setDropoffCity(known ? known.name : a.city);
+      setDropoffLandmark(a.landmark ?? '');
+      setDropoffSaved(a);
+    }
+    setSavedListFor(null);
+  };
+
   const locateClient = useCallback(async () => {
     setIsLocating(true);
     const result = await getClientCurrentLocation();
     if (result.success && result.latitude && result.longitude) {
       setPickupCoords({ lat: result.latitude, lng: result.longitude });
+      setPickupSaved(null);
       const geo = await reverseGeocode(result.latitude, result.longitude);
       setPickupAddress(geo.address);
       const known = findCity(geo.city);
@@ -211,11 +257,17 @@ export default function CreateMissionScreen({ route, navigation }: Props) {
       );
       if (!timeOk) return;
       const permission = await ensureGeocodingPermission();
+      // Lot 5 (C3) : point precis d'une adresse enregistree, s'il existe
+      const savedPoint = (a: SavedAddress | null) =>
+        a && a.lat != null && a.lng != null ? { lat: a.lat, lng: a.lng, precise: true } : null;
       const pickup = pickupCoords
         ? { ...pickupCoords, precise: true }
-        : await resolvePoint(pickupAddress.trim(), pickupCity, 'Adresse de départ', permission);
+        : savedPoint(pickupSaved) ??
+          (await resolvePoint(pickupAddress.trim(), pickupCity, 'Adresse de départ', permission));
       if (!pickup) return;
-      const dropoff = await resolvePoint(dropoffAddress.trim(), dropoffCity, "Adresse d'arrivée", permission);
+      const dropoff =
+        savedPoint(dropoffSaved) ??
+        (await resolvePoint(dropoffAddress.trim(), dropoffCity, "Adresse d'arrivée", permission));
       if (!dropoff) return;
       // A1 (migration 072) : quartier deduit de la position (pas de saisie du
       // client). Pas de quartier si l'adresse a ete placee au centre de la
@@ -237,6 +289,8 @@ export default function CreateMissionScreen({ route, navigation }: Props) {
         dropoff_city: dropoffCity,
         pickup_district: pickupDistrict,
         dropoff_district: dropoffDistrict,
+        pickup_landmark: pickupLandmark.trim() || undefined,
+        dropoff_landmark: dropoffLandmark.trim() || undefined,
         description: description || undefined,
         needs_loading_help: needsLoading,
         negotiated_price: negotiatedPrice ? parseFloat(negotiatedPrice) : undefined,
@@ -248,6 +302,10 @@ export default function CreateMissionScreen({ route, navigation }: Props) {
       if (result.error) {
         showMessage('Erreur', result.error);
       } else if (result.mission) {
+        // Lot 5 (C3) : date de dernier usage des adresses enregistrees choisies
+        [pickupSaved?.id, dropoffSaved?.id].forEach((id) => {
+          if (id) markSavedAddressUsed(id);
+        });
         // A1 : l'accueil reste sous le suivi (retour possible par le bouton
         // « Retour » et par la touche retour du telephone) ; auparavant le
         // suivi remplacait l'accueil et le client restait bloque.
@@ -263,6 +321,33 @@ export default function CreateMissionScreen({ route, navigation }: Props) {
       setIsLoading(false);
     }
   };
+  // Lot 5 (C3) : texte sous une adresse enregistree choisie
+  const savedHint = (a: SavedAddress) =>
+    a.lat != null && a.lng != null
+      ? `🏷 Adresse enregistrée${a.label ? ` « ${a.label} »` : ''} : son point précis sera utilisé.`
+      : `🏷 Adresse enregistrée${a.label ? ` « ${a.label} »` : ''} : elle sera située à partir du texte.`;
+
+  // Lot 5 (C3) : bouton « Mes adresses » et liste, sous le depart ou l'arrivee
+  const renderSavedToggle = (which: 'pickup' | 'dropoff') => (
+    <>
+      <TouchableOpacity
+        style={styles.gpsButton}
+        onPress={() => setSavedListFor(savedListFor === which ? null : which)}
+      >
+        <Text style={styles.gpsButtonText}>
+          📍 Mes adresses ({savedAddresses.length}) {savedListFor === which ? '▲' : '▼'}
+        </Text>
+      </TouchableOpacity>
+      {savedListFor === which && (
+        <SavedAddressList
+          addresses={savedAddresses}
+          onChoose={(a) => chooseSaved(which, a)}
+          onChanged={loadSavedAddresses}
+        />
+      )}
+    </>
+  );
+
   const handleLogout = async () => {
     const ok = await confirmAction('Déconnexion', 'Voulez-vous vraiment vous déconnecter ?', {
       confirmLabel: 'Se déconnecter',
@@ -328,6 +413,7 @@ export default function CreateMissionScreen({ route, navigation }: Props) {
             // Adresse modifiee a la main : la position GPS n'est plus utilisee.
             setPickupAddress(text);
             setPickupCoords(null);
+            setPickupSaved(null);
           }}
           placeholder="Adresse de départ"
           placeholderTextColor={COLORS.textSecondary}
@@ -337,25 +423,57 @@ export default function CreateMissionScreen({ route, navigation }: Props) {
           onChange={(city) => {
             setPickupCity(city);
             setPickupCoords(null);
+            setPickupSaved(null);
           }}
           placeholder="Ville de départ"
+        />
+        <TextInput
+          style={styles.input}
+          value={pickupLandmark}
+          onChangeText={setPickupLandmark}
+          placeholder="Repère (optionnel) : ex. en face de la pharmacie, portail bleu"
+          placeholderTextColor={COLORS.textSecondary}
+          maxLength={200}
         />
         <Text style={styles.pickupHint}>
           {pickupCoords
             ? '📍 Votre position actuelle sera utilisée comme point de départ.'
-            : 'Tapez l\'adresse et choisissez la ville, ou touchez « 🎯 Ma position actuelle ».'}
+            : pickupSaved
+              ? savedHint(pickupSaved)
+              : 'Tapez l\'adresse et choisissez la ville, ou touchez « 🎯 Ma position actuelle ».'}
         </Text>
+        {renderSavedToggle('pickup')}
 
         {/* ARRIVÉE */}
         <Text style={styles.sectionLabel}>🏁 ARRIVÉE</Text>
         <TextInput
           style={styles.input}
           value={dropoffAddress}
-          onChangeText={setDropoffAddress}
+          onChangeText={(text) => {
+            setDropoffAddress(text);
+            setDropoffSaved(null);
+          }}
           placeholder="Adresse de livraison"
           placeholderTextColor={COLORS.textSecondary}
         />
-        <CityPicker value={dropoffCity} onChange={setDropoffCity} placeholder="Ville d'arrivée" />
+        <CityPicker
+          value={dropoffCity}
+          onChange={(city) => {
+            setDropoffCity(city);
+            setDropoffSaved(null);
+          }}
+          placeholder="Ville d'arrivée"
+        />
+        <TextInput
+          style={styles.input}
+          value={dropoffLandmark}
+          onChangeText={setDropoffLandmark}
+          placeholder="Repère (optionnel) : ex. à côté de la mosquée, 2e étage"
+          placeholderTextColor={COLORS.textSecondary}
+          maxLength={200}
+        />
+        {dropoffSaved && <Text style={styles.pickupHint}>{savedHint(dropoffSaved)}</Text>}
+        {renderSavedToggle('dropoff')}
 
         {/* VÉHICULE */}
         <Text style={styles.sectionLabel}>VÉHICULE</Text>

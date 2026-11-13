@@ -26,6 +26,9 @@ export interface CreateMissionData {
   // A1 (migration 072) : quartier deduit de la position, sans saisie du client
   pickup_district?: string | null;
   dropoff_district?: string | null;
+  // Lot 5 (C1, migration 078) : reperes facultatifs, ranges par le serveur avec l'adresse exacte
+  pickup_landmark?: string;
+  dropoff_landmark?: string;
   description?: string;
   needs_loading_help?: boolean;
   negotiated_price?: number;
@@ -117,6 +120,8 @@ export async function createMission(
       dropoff_city: missionData.dropoff_city,
       pickup_district: missionData.pickup_district ?? null,
       dropoff_district: missionData.dropoff_district ?? null,
+      pickup_landmark: missionData.pickup_landmark?.trim() || null,
+      dropoff_landmark: missionData.dropoff_landmark?.trim() || null,
       description: missionData.description ?? null,
       needs_loading_help: missionData.needs_loading_help ?? false,
       negotiated_price: missionData.negotiated_price ?? null,
@@ -788,6 +793,9 @@ export interface MissionExactLocation {
   dropoff_lng: number | null;
   // A1 (R-DESC, migration 077) : description rangee avec l'adresse exacte
   description: string | null;
+  // Lot 5 (C1, migration 078) : reperes du depart et de l'arrivee
+  pickup_landmark: string | null;
+  dropoff_landmark: string | null;
 }
 
 export async function getMissionExactLocation(
@@ -795,7 +803,7 @@ export async function getMissionExactLocation(
 ): Promise<{ location: MissionExactLocation | null; error?: string }> {
   const { data, error } = await supabase
     .from('mission_exact_locations')
-    .select('pickup_address, pickup_lat, pickup_lng, dropoff_address, dropoff_lat, dropoff_lng, description')
+    .select('pickup_address, pickup_lat, pickup_lng, dropoff_address, dropoff_lat, dropoff_lng, description, pickup_landmark, dropoff_landmark')
     .eq('mission_id', missionId)
     .maybeSingle();
   if (error) {

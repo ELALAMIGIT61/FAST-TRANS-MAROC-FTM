@@ -135,6 +135,9 @@ export default function MissionTrackingScreen({ route, navigation }: Props) {
   // verrouillee. Prenom et plaque du chauffeur : au prelevement de la commission.
   const [exactPickup, setExactPickup] = useState<string | null>(null);
   const [exactDropoff, setExactDropoff] = useState<string | null>(null);
+  // Lot 5 (C1) : reperes, lus avec l'adresse exacte
+  const [pickupLandmark, setPickupLandmark] = useState<string | null>(null);
+  const [dropoffLandmark, setDropoffLandmark] = useState<string | null>(null);
   const [driverIdentity, setDriverIdentity] = useState<{ first_name: string; license_plate: string } | null>(null);
 
   useEffect(() => {
@@ -143,6 +146,8 @@ export default function MissionTrackingScreen({ route, navigation }: Props) {
       if (!active || !location) return;
       setExactPickup(location.pickup_address);
       setExactDropoff(location.dropoff_address);
+      setPickupLandmark(location.pickup_landmark);
+      setDropoffLandmark(location.dropoff_landmark);
     });
     return () => {
       active = false;
@@ -233,8 +238,10 @@ export default function MissionTrackingScreen({ route, navigation }: Props) {
             <View style={styles.addressCard}>
               <Text style={styles.addressLabel}>📍 Départ</Text>
               <Text style={styles.addressText}>{exactPickup ?? mission.pickup_address}</Text>
+              {!!pickupLandmark && <Text style={styles.landmarkText}>Repère : {pickupLandmark}</Text>}
               <Text style={styles.addressLabel}>🏁 Arrivée</Text>
               <Text style={styles.addressText}>{exactDropoff ?? mission.dropoff_address}</Text>
+              {!!dropoffLandmark && <Text style={styles.landmarkText}>Repère : {dropoffLandmark}</Text>}
             </View>
             {/* A1 (correction 14) : une distance de 0 s'affichait "0" hors d'un <Text> : plantage sur telephone */}
             {!!mission.estimated_distance_km && (
@@ -306,6 +313,7 @@ export default function MissionTrackingScreen({ route, navigation }: Props) {
             <View style={styles.addressCard}>
               <Text style={styles.addressLabel}>🏁 Destination</Text>
               <Text style={styles.addressText}>{exactDropoff ?? mission.dropoff_address}</Text>
+              {!!dropoffLandmark && <Text style={styles.landmarkText}>Repère : {dropoffLandmark}</Text>}
             </View>
             {driverIdentityText && <Text style={styles.distanceText}>{driverIdentityText}</Text>}
             {voiceChannelOpen && (
@@ -428,6 +436,7 @@ const styles = StyleSheet.create({
   },
   addressLabel: { fontSize: 12, fontWeight: '700', color: COLORS.textSecondary, letterSpacing: 1 },
   addressText: { fontSize: 15, color: COLORS.text, marginBottom: SPACING.xs },
+  landmarkText: { fontSize: 13, color: COLORS.textSecondary, marginTop: -2, marginBottom: SPACING.xs },
   distanceText: { fontSize: 14, color: COLORS.textSecondary },
   driverCard: {
     width: '100%',

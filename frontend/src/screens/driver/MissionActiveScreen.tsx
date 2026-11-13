@@ -247,6 +247,8 @@ export default function MissionActiveScreen({ route, navigation }: Props) {
             <>
               <Text style={styles.addressText}>{exact.pickup_address}</Text>
               <Text style={styles.cityText}>{mission.pickup_city}</Text>
+              {/* Lot 5 (C1) : repere, visible en meme temps que l'adresse exacte */}
+              {!!exact.pickup_landmark && <Text style={styles.cityText}>🧭 Repère : {exact.pickup_landmark}</Text>}
             </>
           ) : (
             <>
@@ -310,6 +312,7 @@ export default function MissionActiveScreen({ route, navigation }: Props) {
             <>
               <Text style={styles.addressText}>{exact.dropoff_address}</Text>
               <Text style={styles.cityText}>{mission.dropoff_city}</Text>
+              {!!exact.dropoff_landmark && <Text style={styles.cityText}>🧭 Repère : {exact.dropoff_landmark}</Text>}
             </>
           ) : (
             <Text style={styles.addressText}>{mission.dropoff_address}</Text>
