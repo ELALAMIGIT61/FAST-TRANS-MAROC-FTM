@@ -89,10 +89,16 @@ export default function VehicleInfoScreen({ navigation }: Props) {
     })();
   }, []);
 
+  // Lot 3 (A9) : capacite obligatoire, nombre entier superieur a 0 (avant : un
+  // champ vide envoyait 0, refuse par la base avec un message technique). Pas de
+  // maximum metier ; 6 chiffres au plus, pour rester dans les limites de la base.
+  const isCapacityValid = /^[0-9]{1,6}$/.test(capacityKg.trim()) && parseInt(capacityKg.trim(), 10) > 0;
+
   const isFormValid =
     vehicleCategory !== null &&
     licensePlate.trim().length > 0 &&
-    LICENSE_PLATE_REGEX.test(licensePlate.trim().toUpperCase());
+    LICENSE_PLATE_REGEX.test(licensePlate.trim().toUpperCase()) &&
+    isCapacityValid;
 
   async function handleNext() {
     if (!isFormValid) return;
@@ -108,7 +114,7 @@ export default function VehicleInfoScreen({ navigation }: Props) {
           vehicle_brand:       vehicleBrand.trim(),
           vehicle_model:       vehicleModel.trim(),
           license_plate:       licensePlate.trim().toUpperCase(),
-          vehicle_capacity_kg: capacityKg ? parseInt(capacityKg, 10) : 0,
+          vehicle_capacity_kg: parseInt(capacityKg.trim(), 10),
         })
         .eq('id', existingDriverId);
       setIsLoading(false);
@@ -139,7 +145,7 @@ export default function VehicleInfoScreen({ navigation }: Props) {
       vehicle_brand:       vehicleBrand.trim(),
       vehicle_model:       vehicleModel.trim(),
       license_plate:       licensePlate.trim().toUpperCase(),
-      vehicle_capacity_kg: capacityKg ? parseInt(capacityKg, 10) : 0,
+      vehicle_capacity_kg: parseInt(capacityKg.trim(), 10),
     });
 
     setIsLoading(false);
@@ -205,7 +211,7 @@ export default function VehicleInfoScreen({ navigation }: Props) {
       />
       <TextInput
         style={styles.input}
-        placeholder="Capacité max (kg)"
+        placeholder="Capacité max (kg) — obligatoire"
         value={capacityKg}
         onChangeText={setCapacityKg}
         keyboardType="numeric"

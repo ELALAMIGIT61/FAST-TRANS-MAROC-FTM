@@ -3,7 +3,7 @@
 // Volet 4b-5 : dates de la carte grise (expiration + 1re mise en circulation),
 // saisie des dates sans decalage de fuseau (DateOnlyField), NB visite technique.
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import BackButton from '../../../components/BackButton';
 import {
   View,
@@ -18,6 +18,7 @@ import { showMessage } from '../../../utils/dialogs';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
 import { saveDriverDocuments } from '../../../services/driverService';
+import { supabase } from '../../../lib/supabaseClient';
 import { saveRegistrationDates } from '../../../services/documentService';
 import DateOnlyField, { todayIsoDate } from '../../../components/DateOnlyField';
 import { COLORS } from '../../../constants/theme';
@@ -58,6 +59,8 @@ export default function LegalDocumentsScreen({ navigation, route }: Props) {
 
   const [licenseNumber,    setLicenseNumber]    = useState('');
   const [licenseExpiry,    setLicenseExpiry]    = useState<string | null>(null);
+  // Lot 3 (A9) : le numero de la carte grise est la plaque saisie a l'etape
+  // « Vehicule » (avant : saisie une seconde fois ici, avec un risque d'ecart).
   const [regNumber,        setRegNumber]        = useState('');
   const [regExpiry,        setRegExpiry]        = useState<string | null>(null);
   const [firstServiceDate, setFirstServiceDate] = useState<string | null>(null);
@@ -65,6 +68,21 @@ export default function LegalDocumentsScreen({ navigation, route }: Props) {
   const [insuranceExpiry,  setInsuranceExpiry]  = useState<string | null>(null);
   const [techExpiry,       setTechExpiry]       = useState<string | null>(null);
   const [isLoading,        setIsLoading]        = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      const { data, error } = await supabase
+        .from('drivers')
+        .select('license_plate')
+        .eq('id', driverId)
+        .maybeSingle();
+      if (error || !data) {
+        console.log('[FTM-DEBUG] Onboarding - License plate lookup error', { driverId, error: error?.message });
+        return;
+      }
+      setRegNumber(String(data.license_plate ?? ''));
+    })();
+  }, [driverId]);
 
   const today = todayIsoDate();
 
@@ -141,12 +159,11 @@ export default function LegalDocumentsScreen({ navigation, route }: Props) {
       />
 
       <Text style={styles.sectionTitle}>📄 Carte grise</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Numéro d'immatriculation"
-        value={regNumber}
-        onChangeText={setRegNumber}
-      />
+      <Text style={styles.input}>
+        {regNumber
+          ? `Numéro d'immatriculation : ${regNumber}`
+          : "Numéro d'immatriculation : chargement…"}
+      </Text>
       <DateOnlyField
         label="Date d'expiration"
         value={regExpiry}

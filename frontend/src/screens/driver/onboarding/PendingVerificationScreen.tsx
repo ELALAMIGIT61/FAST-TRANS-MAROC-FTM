@@ -18,6 +18,7 @@ import { RouteProp } from '@react-navigation/native';
 import { supabase } from '../../../lib/supabaseClient';
 import { DOCUMENT_LABELS, DocumentType, DOCUMENT_TYPES } from '../../../services/documentService';
 import { COLORS } from '../../../constants/theme';
+import { requestRouteRefresh } from '../../../navigation/routeRefresh';
 
 type VerificationStatus = 'pending' | 'verified' | 'rejected' | 'expired';
 
@@ -49,6 +50,31 @@ export default function PendingVerificationScreen({ navigation, route }: Props) 
     { docType: DOCUMENT_TYPES.INSURANCE,            status: 'pending' },
     { docType: DOCUMENT_TYPES.TECHNICAL_INSPECTION, status: 'pending' },
   ]);
+
+  // Lot 3 (A10) : vrai statut des 4 documents des l'ouverture de l'ecran
+  // (avant : « En attente » affiche jusqu'a la prochaine action de l'admin).
+  useEffect(() => {
+    (async () => {
+      const { data, error } = await supabase
+        .from('drivers')
+        .select('is_verified, driver_license_verified, vehicle_registration_verified, insurance_verified, technical_inspection_verified')
+        .eq('id', driverId)
+        .maybeSingle();
+      if (error || !data) {
+        console.log('[FTM-DEBUG] Driver - Initial verification status error', { driverId, error: error?.message });
+        return;
+      }
+      setDocStatuses([
+        { docType: DOCUMENT_TYPES.DRIVER_LICENSE,       status: (data.driver_license_verified ?? 'pending') as VerificationStatus },
+        { docType: DOCUMENT_TYPES.VEHICLE_REGISTRATION, status: (data.vehicle_registration_verified ?? 'pending') as VerificationStatus },
+        { docType: DOCUMENT_TYPES.INSURANCE,            status: (data.insurance_verified ?? 'pending') as VerificationStatus },
+        { docType: DOCUMENT_TYPES.TECHNICAL_INSPECTION, status: (data.technical_inspection_verified ?? 'pending') as VerificationStatus },
+      ]);
+      if (data.is_verified === true) {
+        showMessage('✅ Dossier validé !', 'Votre compte chauffeur est actif.', () => requestRouteRefresh());
+      }
+    })();
+  }, [driverId]);
 
   useEffect(() => {
     console.log('[FTM-DEBUG] Driver - Subscribing to verification updates', { driverId });
@@ -84,8 +110,10 @@ export default function PendingVerificationScreen({ navigation, route }: Props) 
           ]);
 
           if (n.is_verified === true) {
+            // Lot 3 (A10) : bascule vers l'accueil du chauffeur sans redemarrage
+            // (avant : navigation.replace('DriverHome') visait un ecran absent).
             showMessage('✅ Dossier validé !', 'Votre compte chauffeur est actif.', () =>
-              navigation.replace('DriverHome'),
+              requestRouteRefresh(),
             );
           }
         }

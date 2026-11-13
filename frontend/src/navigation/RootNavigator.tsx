@@ -7,6 +7,7 @@ import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
 import { supabase } from "../lib/supabaseClient";
+import { setRouteRefreshHandler } from "./routeRefresh";
 import { loadSavedLanguage } from "../services/i18nService";
 import { COLORS } from "../constants/theme";
 import { navigationRef, setupDevicePush, resetDevicePush } from "../services/pushSetup";
@@ -360,7 +361,22 @@ export default function RootNavigator() {
       }
     });
 
-    return () => subscription.unsubscribe();
+    // Lot 3 (A10) : un ecran peut demander le recalcul de l'espace a afficher
+    // (ex. dossier chauffeur valide pendant l'attente : bascule vers l'accueil).
+    setRouteRefreshHandler(() => {
+      initializeApp().then(({ route, driverId, vehicleCategory, clientProfileId: clientId }) => {
+        if (clientId) setClientProfileId(clientId);
+        if (driverId) setDriverProfileId(driverId);
+        if (vehicleCategory) setDriverVehicleCategory(vehicleCategory);
+        setInitialRoute(route);
+        initialRouteRef.current = route;
+      });
+    });
+
+    return () => {
+      subscription.unsubscribe();
+      setRouteRefreshHandler(null);
+    };
   }, []);
 
   // Session 3.4 : equipement du telephone pour les notifications (inactif sur le web)
