@@ -129,6 +129,7 @@ jobs:
           supabase functions deploy check-document-reminders
           supabase functions deploy send-tracking-sms
           supabase functions deploy send-sms --no-verify-jwt
+          supabase functions deploy check-sms-credit
           echo "✅ All Edge Functions deployed"
 
       - name: Verify functions deployment

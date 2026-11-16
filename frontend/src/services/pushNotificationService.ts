@@ -412,6 +412,8 @@ export async function handleNotificationTap(
     VoiceChat: () => openWithMission('VoiceChat'),
     WalletDashboard: openWallet,
     DriverHomeScreen: () => navigate('DriverHome'),
+    // Lot 2 (B5) : alerte de credit SMS -> reglages de l'administrateur
+    AdminSettingsScreen: () => navigate('AdminSettings'),
     MissionOfferScreen: async () => {
       const driverId = await currentDriverId();
       if (driverId) {

@@ -17,6 +17,7 @@ export const NOTIF_ICONS: Record<string, string> = {
   document_verified:  '✅',
   parcel_status:      '📦',
   offer_update:       '💰',
+  sms_credit_alert:   '📉', // lot 2 (B5) : credit SMS AdaSMS
 };
 
 // ─── MISSIONS ──────────────────────────────────────────────────────────────────

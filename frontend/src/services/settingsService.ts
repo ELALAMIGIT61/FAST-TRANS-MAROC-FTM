@@ -27,6 +27,34 @@ export async function getAppSettings(): Promise<{ settings?: AppSetting[]; error
   };
 }
 
+// Lot 2 (B5, migration 082) : dernier etat du credit SMS AdaSMS, lu toutes les
+// heures par le serveur (lisible par l'administrateur seul)
+export interface SmsCreditState {
+  checked_at: string | null;
+  ok_at: string | null;
+  sms_remaining: number | null;
+  balance_mad: number | null;
+  last_error: string | null;
+  level: number;
+}
+
+export async function getSmsCreditState(): Promise<{ state?: SmsCreditState | null; error?: string }> {
+  const { data, error } = await supabase
+    .from('sms_credit_state')
+    .select('checked_at, ok_at, sms_remaining, balance_mad, last_error, level')
+    .eq('id', 1)
+    .maybeSingle();
+  if (error) {
+    console.log('[FTM-DEBUG] Settings - SMS credit load error', { error: error.message });
+    return { error: error.message };
+  }
+  return {
+    state: data
+      ? { ...(data as SmsCreditState), balance_mad: data.balance_mad === null ? null : Number(data.balance_mad) }
+      : null,
+  };
+}
+
 export async function updateAppSetting(
   key: string,
   value: number

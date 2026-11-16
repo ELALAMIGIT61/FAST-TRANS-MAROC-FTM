@@ -66,6 +66,7 @@ const CHANNEL_BY_TYPE: Record<string, string> = {
 const HIGH_PRIORITY_TYPES = new Set<string>([
   'commission_rate_changed',
   'wallet_low_balance',
+  'sms_credit_alert', // lot 2 (B5, migration 082) : credit SMS AdaSMS bas
 ]);
 
 const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);

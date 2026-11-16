@@ -18,7 +18,14 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import BackButton from '../../components/BackButton';
 import { showMessage, confirmAction } from '../../utils/dialogs';
-import { getAppSettings, updateAppSetting, cleanServerMessage, type AppSetting } from '../../services/settingsService';
+import {
+  getAppSettings,
+  updateAppSetting,
+  cleanServerMessage,
+  getSmsCreditState,
+  type AppSetting,
+  type SmsCreditState,
+} from '../../services/settingsService';
 
 type Group = {
   prefix: string;
@@ -69,7 +76,35 @@ const SINGLE_SECTIONS: SingleSection[] = [
       { key: 'sms_log_retention_months', label: 'Effacement du journal des SMS', unit: 'mois', min: 1, max: 24 },
     ],
   },
+  // Lot 2 (B5, migration 082) : alerte de credit SMS bas
+  {
+    id: 'sms_credit',
+    title: 'Alerte crédit SMS (AdaSMS)',
+    help: 'Le crédit du compte AdaSMS est lu toutes les heures. Les administrateurs sont prévenus sous le seuil d’alerte (puis rappel régulier), sous le seuil critique, et si AdaSMS refuse la clé. Surveillance : 1 = activée, 0 = arrêtée.',
+    items: [
+      { key: 'sms_credit_check_enabled', label: 'Surveillance (1 ou 0)', unit: '', min: 0, max: 1 },
+      { key: 'sms_credit_alert_threshold', label: 'Seuil d’alerte', unit: 'SMS', min: 1, max: 100000 },
+      { key: 'sms_credit_critical_threshold', label: 'Seuil critique', unit: 'SMS', min: 0, max: 100000 },
+      { key: 'sms_credit_reminder_hours', label: 'Rappel tant que le crédit reste bas', unit: 'h', min: 1, max: 168 },
+    ],
+  },
 ];
+
+// Lot 2 (B5) : ligne d'etat du credit SMS en tete de la rubrique
+function smsCreditLine(state: SmsCreditState | null): string {
+  if (!state || !state.ok_at || state.sms_remaining === null) {
+    return state?.checked_at
+      ? `Crédit AdaSMS : non lu (dernière tentative le ${formatDate(state.checked_at)}${state.last_error ? ` : ${state.last_error}` : ''})`
+      : 'Crédit AdaSMS : pas encore lu (lecture toutes les heures).';
+  }
+  const icon = state.level === 2 ? '🔴' : state.level === 1 ? '🟠' : '🟢';
+  const balance = state.balance_mad === null ? '' : ` (${state.balance_mad.toFixed(2)} MAD HT)`;
+  let line = `${icon} Crédit AdaSMS : ${state.sms_remaining} SMS${balance}, lu le ${formatDate(state.ok_at)}.`;
+  if (state.checked_at && new Date(state.checked_at).getTime() > new Date(state.ok_at).getTime()) {
+    line += ` Dernière lecture en échec le ${formatDate(state.checked_at)}${state.last_error ? ` (${state.last_error})` : ''}.`;
+  }
+  return line;
+}
 
 const GROUPS: Group[] = [
   // A1 (migrations 073 et 074) : commission et solde minimum
@@ -217,10 +252,12 @@ export default function AdminSettingsScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [savingKey, setSavingKey] = useState<string | null>(null);
+  const [smsCredit, setSmsCredit] = useState<SmsCreditState | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
-    const result = await getAppSettings();
+    const [result, credit] = await Promise.all([getAppSettings(), getSmsCreditState()]);
+    setSmsCredit(credit.state ?? null);
     setLoading(false);
     if (result.error) {
       setError(result.error);
@@ -365,6 +402,7 @@ export default function AdminSettingsScreen() {
             <Text style={styles.cardTitle}>{section.title}</Text>
             <Text style={styles.cardHelp}>{section.help}</Text>
             {section.warning && <Text style={styles.cardWarning}>⚠️ {section.warning}</Text>}
+            {section.id === 'sms_credit' && <Text style={styles.cardStatus}>{smsCreditLine(smsCredit)}</Text>}
             {rows.map(({ item, setting }) =>
               renderRow(
                 setting,
@@ -406,6 +444,7 @@ const styles = StyleSheet.create({
   cardTitle: { fontSize: 15, fontWeight: '700', color: '#1A1A2E' },
   cardHelp: { fontSize: 12, color: '#6C757D', marginTop: 4, marginBottom: 8 },
   cardWarning: { fontSize: 13, color: '#B45309', fontWeight: '600', marginBottom: 8 },
+  cardStatus: { fontSize: 14, color: '#1A1A2E', fontWeight: '600', marginBottom: 8 },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
