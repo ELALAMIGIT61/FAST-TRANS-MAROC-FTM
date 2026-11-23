@@ -160,6 +160,10 @@ export default function DriverOpenMissionsScreen({ route, navigation }: Props) {
                 ⚖️ {formatCargo(mission.cargo_weight_kg, mission.cargo_volume_m3) ?? 'Poids et volume non indiqués'}
               </Text>
               <Text style={styles.cardMeta}>N° {mission.mission_number}</Text>
+              {/* Mention de l'existence d'une description (contenu visible apres la commission) */}
+              {mission.has_description ? (
+                <Text style={styles.cardMeta}>📝 Description disponible après la commission</Text>
+              ) : null}
               {/* A1 (migration 076) : historique du client */}
               <ClientRecordLine
                 record={{

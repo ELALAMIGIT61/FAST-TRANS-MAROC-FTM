@@ -521,6 +521,11 @@ export default function DocumentStatusScreen({ navigation }: Props) {
                     maxDate={todayIsoDate()}
                   />
                 ) : null}
+                {isCarteGrise ? (
+                  <Text style={styles.formHint}>
+                    🚚 Nouveau véhicule ? Utilisez d'abord « Changer de véhicule » pour modifier la plaque, puis remplacez la carte grise.
+                  </Text>
+                ) : null}
 
                 {formError ? <Text style={styles.formError}>{formError}</Text> : null}
 
@@ -588,6 +593,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1, borderTopColor: '#E0E0E0',
   },
   formError:      { color: '#DC3545', fontSize: 13, marginBottom: 6 },
+  formHint:       { color: '#555', fontSize: 13, fontStyle: 'italic', marginBottom: 8 },
   cancelBtn:      {
     borderWidth: 1, borderColor: '#999', borderRadius: 8,
     paddingVertical: 8, paddingHorizontal: 14,
