@@ -203,7 +203,8 @@ export async function saveDocumentReplacement(
   docType: DocumentType,
   url: string,
   expiry: string,
-  firstServiceDate?: string | null
+  firstServiceDate?: string | null,
+  insuranceNumber?: string | null
 ): Promise<{ success?: boolean; error?: string }> {
   const columns: Record<DocumentType, { url: string; expiry: string; verified: string }> = {
     driver_license:       { url: 'driver_license_url',       expiry: 'driver_license_expiry',       verified: 'driver_license_verified' },
@@ -225,6 +226,10 @@ export async function saveDocumentReplacement(
   };
   if (docType === 'vehicle_registration' && firstServiceDate) {
     update.vehicle_first_service_date = firstServiceDate;
+  }
+  // Nouvelle assurance : le numero de police est enregistre avec le document
+  if (docType === 'insurance' && insuranceNumber) {
+    update.insurance_number = insuranceNumber;
   }
 
   console.log('[FTM-DEBUG] Document - Saving replacement', { driverId, docType, expiry, firstServiceDate });

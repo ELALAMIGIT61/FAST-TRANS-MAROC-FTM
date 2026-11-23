@@ -105,6 +105,7 @@ export default function DocumentStatusScreen({ navigation }: Props) {
   const [draftExpiry,       setDraftExpiry]       = useState<string | null>(null);
   const [draftFirstService, setDraftFirstService] = useState<string | null>(null);
   const [formError,         setFormError]         = useState<string | null>(null);
+  const [draftNumber,       setDraftNumber]       = useState('');
 
   // Véhicule (C.1.2)
   const [vehicle,        setVehicle]        = useState<VehicleInfo | null>(null);
@@ -188,6 +189,7 @@ export default function DocumentStatusScreen({ navigation }: Props) {
     setEditing(doc.docType);
     setDraftExpiry(doc.expiry ? doc.expiry.slice(0, 10) : null);
     setDraftFirstService(doc.firstServiceDate ? doc.firstServiceDate.slice(0, 10) : null);
+    setDraftNumber(doc.number ?? '');
     setFormError(null);
   }
 
@@ -195,6 +197,7 @@ export default function DocumentStatusScreen({ navigation }: Props) {
     setEditing(null);
     setDraftExpiry(null);
     setDraftFirstService(null);
+    setDraftNumber('');
     setFormError(null);
   }
 
@@ -205,6 +208,15 @@ export default function DocumentStatusScreen({ navigation }: Props) {
     }
     if (draftExpiry < today) {
       return "La date d'expiration ne peut pas être déjà passée.";
+    }
+    if (doc.docType === DOCUMENT_TYPES.INSURANCE) {
+      const number = draftNumber.trim();
+      if (!number) {
+        return "Indiquez le numéro de police de la nouvelle assurance.";
+      }
+      if (number.length > 50) {
+        return 'Le numéro de police ne doit pas dépasser 50 caractères.';
+      }
     }
     if (doc.docType === DOCUMENT_TYPES.VEHICLE_REGISTRATION) {
       if (!draftFirstService) {
@@ -259,6 +271,7 @@ export default function DocumentStatusScreen({ navigation }: Props) {
       result.url,
       draftExpiry as string,
       doc.docType === DOCUMENT_TYPES.VEHICLE_REGISTRATION ? draftFirstService : null,
+      doc.docType === DOCUMENT_TYPES.INSURANCE ? draftNumber.trim() : null,
     );
 
     setUploading(null);
@@ -454,6 +467,7 @@ export default function DocumentStatusScreen({ navigation }: Props) {
         const isEditing = editing === doc.docType;
         const isCarteGrise = doc.docType === DOCUMENT_TYPES.VEHICLE_REGISTRATION;
         const isVisiteTechnique = doc.docType === DOCUMENT_TYPES.TECHNICAL_INSPECTION;
+        const isAssurance = doc.docType === DOCUMENT_TYPES.INSURANCE;
 
         return (
           <View key={doc.docType} style={styles.card}>
@@ -520,6 +534,19 @@ export default function DocumentStatusScreen({ navigation }: Props) {
                     onChange={setDraftFirstService}
                     maxDate={todayIsoDate()}
                   />
+                ) : null}
+                {isAssurance ? (
+                  <>
+                    <Text style={styles.fieldLabel}>Numéro de police d'assurance</Text>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Numéro de police (ex : Ass-789456)"
+                      value={draftNumber}
+                      onChangeText={setDraftNumber}
+                      autoCapitalize="characters"
+                      maxLength={50}
+                    />
+                  </>
                 ) : null}
                 {isCarteGrise ? (
                   <Text style={styles.formHint}>
@@ -593,6 +620,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1, borderTopColor: '#E0E0E0',
   },
   formError:      { color: '#DC3545', fontSize: 13, marginBottom: 6 },
+  fieldLabel:     { fontSize: 13, color: '#666', marginBottom: 4 },
   formHint:       { color: '#555', fontSize: 13, fontStyle: 'italic', marginBottom: 8 },
   cancelBtn:      {
     borderWidth: 1, borderColor: '#999', borderRadius: 8,
