@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabaseClient';
 import { RealtimeChannel } from '@supabase/supabase-js';
+import { readLocalFileBytes } from './fileUploadService';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -685,17 +686,17 @@ export async function uploadPaymentProof(
   mimeType: string
 ): Promise<{ success?: true; url?: string; error?: string }> {
   console.log('[FTM-DEBUG] Wallet - Payment proof upload start', { driverId, mimeType });
-  const response = await fetch(fileUri);
-  const blob = await response.blob();
-  if (blob.size > 5 * 1024 * 1024) {
-    console.log('[FTM-DEBUG] Wallet - Payment proof file too large', { size: blob.size });
-    return { error: 'Fichier trop volumineux (max 5 MB).' };
+  // Correction de l'envoi des fichiers : lecture en octets, comme les messages vocaux
+  const read = await readLocalFileBytes(fileUri);
+  if (read.error || !read.bytes) {
+    return { error: read.error ?? 'Le fichier choisi ne peut pas être lu.' };
   }
+  const bytes = read.bytes;
   const extension = mimeType === 'application/pdf' ? 'pdf' : 'jpg';
   const filePath = `${driverId}/${Date.now()}.${extension}`;
   const { data, error: uploadError } = await supabase.storage
     .from('payment-proofs')
-    .upload(filePath, blob, { contentType: mimeType, upsert: false });
+    .upload(filePath, bytes.buffer as ArrayBuffer, { contentType: mimeType, upsert: false });
   if (uploadError) {
     console.log('[FTM-DEBUG] Wallet - Payment proof upload error', { error: uploadError.message });
     return { error: `Erreur upload justificatif: ${uploadError.message}` };

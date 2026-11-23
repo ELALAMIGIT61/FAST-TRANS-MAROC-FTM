@@ -4,6 +4,7 @@
 import { supabase } from '../lib/supabaseClient';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
+import { readLocalFileBytes } from './fileUploadService';
 
 export const DOCUMENT_TYPES = {
   DRIVER_LICENSE:       'driver_license',
@@ -58,21 +59,19 @@ export async function uploadDocument(
 ): Promise<UploadResult> {
   console.log('[FTM-DEBUG] Document - Upload start', { driverId, docType, mimeType });
 
-  // Fetch the file as a blob
-  const response = await fetch(fileUri);
-  const blob = await response.blob();
-
-  if (blob.size > 5 * 1024 * 1024) {
-    console.log('[FTM-DEBUG] Document - File too large', { size: blob.size });
-    return { error: 'Fichier trop volumineux (max 5 MB).' };
+  // Correction de l'envoi des fichiers : lecture en octets, comme les messages vocaux
+  const read = await readLocalFileBytes(fileUri);
+  if (read.error || !read.bytes) {
+    return { error: read.error ?? 'Le fichier choisi ne peut pas être lu.' };
   }
+  const bytes = read.bytes;
 
   const extension = mimeType === 'application/pdf' ? 'pdf' : 'jpg';
   const filePath  = `${driverId}/${docType}.${extension}`;
 
   const { data, error: uploadError } = await supabase.storage
     .from('driver-documents')
-    .upload(filePath, blob, { contentType: mimeType, upsert: true });
+    .upload(filePath, bytes.buffer as ArrayBuffer, { contentType: mimeType, upsert: true });
 
   if (uploadError) {
     console.log('[FTM-DEBUG] Document - Upload error', { docType, error: uploadError.message });
