@@ -179,9 +179,12 @@ export default function DocumentReviewScreen() {
       <Text style={styles.cardSub}>Inscrit le {new Date(item.created_at).toLocaleDateString('fr-MA')}</Text>
       <View style={styles.docRow}>
         {docs.map(d => (
-          <Text key={d.key} style={styles.docBadge}>
-            {statusIcon((item as any)[d.verifiedField])} {d.label.replace(/^\S+\s+/, '')}
-          </Text>
+          // Pastille et nom dans deux textes separes : sur certains telephones
+          // Android, la pastille 🟡 faussait la largeur et coupait le dernier mot.
+          <View key={d.key} style={styles.docBadgeRow}>
+            <Text style={styles.docBadgeIcon}>{statusIcon((item as any)[d.verifiedField])}</Text>
+            <Text style={styles.docBadge}> {d.label.replace(/^\S+\s+/, '')}</Text>
+          </View>
         ))}
       </View>
       <Text style={styles.viewDocs}>Voir les documents →</Text>
@@ -326,7 +329,10 @@ const styles = StyleSheet.create({
   cardName: { fontSize: 15, fontWeight: '700', color: '#1A1A2E', marginBottom: 4 },
   cardSub: { fontSize: 13, color: '#666', marginBottom: 2 },
   docRow: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 8, gap: 6 },
-  docBadge: { fontSize: 12, color: '#555', marginRight: 8 },
+  docBadge: { fontSize: 12, color: '#555' },
+  docBadgeRow: { flexDirection: 'row', alignItems: 'center', marginRight: 8 },
+  // Largeur fixe : evite que la pastille 🟡 soit coupee sur certains telephones Android
+  docBadgeIcon: { fontSize: 12, width: 20, textAlign: 'center' },
   viewDocs: { marginTop: 10, color: COLORS.primary, fontWeight: '600', fontSize: 13 },
   empty: { textAlign: 'center', color: '#888', marginTop: 40, fontSize: 15 },
   modal: { flex: 1, backgroundColor: '#F5F7FA', padding: 16 },
