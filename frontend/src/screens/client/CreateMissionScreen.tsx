@@ -26,7 +26,7 @@ import { findCity } from '../../constants/moroccoCities';
 import { MAX_LOAD_KG, formatTonnes, parseQuantity } from '../../utils/cargo';
 import { usePendingNavigation } from '../../hooks/usePendingNavigation';
 import { ensureGeocodingPermission, geocodeInCity, districtAt, GeoPoint } from '../../services/geocodingService';
-import { getCommissionAmounts, DEFAULT_COMMISSION_AMOUNTS } from '../../services/settingsService';
+import { getCommissionAmounts, DEFAULT_COMMISSION_AMOUNTS, cleanServerMessage } from '../../services/settingsService';
 import { SavedAddress, listSavedAddresses, markSavedAddressUsed } from '../../services/savedAddressService';
 import SavedAddressList from '../../components/SavedAddressList';
 
@@ -300,7 +300,8 @@ export default function CreateMissionScreen({ route, navigation }: Props) {
       });
 
       if (result.error) {
-        showMessage('Erreur', result.error);
+        // Petites corrections du 24/11/2026 : sans le code technique du serveur
+        showMessage('Erreur', cleanServerMessage(result.error));
       } else if (result.mission) {
         // Lot 5 (C3) : date de dernier usage des adresses enregistrees choisies
         [pickupSaved?.id, dropoffSaved?.id].forEach((id) => {

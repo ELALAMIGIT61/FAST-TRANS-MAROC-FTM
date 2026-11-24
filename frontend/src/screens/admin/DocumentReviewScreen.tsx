@@ -180,7 +180,7 @@ export default function DocumentReviewScreen() {
       <View style={styles.docRow}>
         {docs.map(d => (
           <Text key={d.key} style={styles.docBadge}>
-            {statusIcon((item as any)[d.verifiedField])} {d.label.split(' ')[1]}
+            {statusIcon((item as any)[d.verifiedField])} {d.label.replace(/^\S+\s+/, '')}
           </Text>
         ))}
       </View>

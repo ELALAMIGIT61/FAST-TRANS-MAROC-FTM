@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabaseClient';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { readLocalFileBytes } from './fileUploadService';
+import { cleanServerMessage } from './settingsService';
 
 export const DOCUMENT_TYPES = {
   DRIVER_LICENSE:       'driver_license',
@@ -75,7 +76,8 @@ export async function uploadDocument(
 
   if (uploadError) {
     console.log('[FTM-DEBUG] Document - Upload error', { docType, error: uploadError.message });
-    return { error: `Erreur upload ${docType}: ${uploadError.message}` };
+    // Petites corrections du 24/11/2026 : message clair, le detail reste dans le journal
+    return { error: `L'envoi du document « ${DOCUMENT_LABELS[docType]?.fr ?? docType} » a échoué. Vérifiez votre connexion et réessayez.` };
   }
 
   console.log('[FTM-DEBUG] Document - Upload success', { docType, path: data.path });
@@ -86,7 +88,7 @@ export async function uploadDocument(
 
   if (signError) {
     console.log('[FTM-DEBUG] Document - Signed URL error', { error: signError.message });
-    return { error: 'Document uploadé mais URL non générée.' };
+    return { error: "Le document a été envoyé mais n'a pas pu être enregistré. Réessayez." };
   }
 
   console.log('[FTM-DEBUG] Document - Signed URL created', {
@@ -127,7 +129,7 @@ export async function saveDocumentUrl(
 
   if (error) {
     console.log('[FTM-DEBUG] Document - Save URL error', { error: error.message });
-    return { error: error.message };
+    return { error: cleanServerMessage(error.message) };
   }
 
   console.log('[FTM-DEBUG] Document - URL saved successfully', { driverId, docType });
@@ -242,11 +244,11 @@ export async function saveDocumentReplacement(
 
   if (error) {
     console.log('[FTM-DEBUG] Document - Save replacement error', { error: error.message });
-    return { error: error.message };
+    return { error: cleanServerMessage(error.message) };
   }
   if (!data || data.length !== 1) {
     console.log('[FTM-DEBUG] Document - Save replacement: no row updated', { driverId, docType });
-    return { error: "Le document n'a pas pu etre enregistre (aucune ligne modifiee)." };
+    return { error: "Le document n'a pas pu être enregistré (aucune ligne modifiée)." };
   }
 
   console.log('[FTM-DEBUG] Document - Replacement saved', { driverId, docType });
@@ -277,11 +279,11 @@ export async function saveRegistrationDates(
 
   if (error) {
     console.log('[FTM-DEBUG] Document - Save registration dates error', { error: error.message });
-    return { error: error.message };
+    return { error: cleanServerMessage(error.message) };
   }
   if (!data || data.length !== 1) {
     console.log('[FTM-DEBUG] Document - Save registration dates: no row updated', { driverId });
-    return { error: "Les dates de la carte grise n'ont pas pu etre enregistrees (aucune ligne modifiee)." };
+    return { error: "Les dates de la carte grise n'ont pas pu être enregistrées (aucune ligne modifiée)." };
   }
 
   console.log('[FTM-DEBUG] Document - Registration dates saved', { driverId });
@@ -332,7 +334,7 @@ export async function saveVehicleChange(
     if (error.code === '23505') {
       return { error: 'Cette plaque est déjà enregistrée pour un autre chauffeur. Vérifiez la saisie ou contactez l\'administrateur.' };
     }
-    return { error: error.message };
+    return { error: cleanServerMessage(error.message) };
   }
   if (!data || data.length !== 1) {
     console.log('[FTM-DEBUG] Vehicle - Save vehicle change: no row updated', { driverId });
