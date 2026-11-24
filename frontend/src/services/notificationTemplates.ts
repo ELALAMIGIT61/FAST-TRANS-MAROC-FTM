@@ -149,34 +149,6 @@ export async function notifyDocumentExpiry(
   );
 }
 
-export async function notifyDocumentVerified(driverProfileId: string, documentType: string) {
-  console.log('[FTM-DEBUG] Push - Notify document verified', { driverProfileId, documentType });
-  return insertNotification(
-    driverProfileId,
-    'document_verified',
-    '✅ Document validé',
-    `Votre ${DOC_LABELS[documentType] || documentType} a été approuvé. Continuez à accepter des missions.`,
-    { document_type: documentType, screen: 'DocumentStatusScreen' }
-  );
-}
-
-export async function notifyDocumentRejected(
-  driverProfileId: string,
-  documentType: string,
-  reason: string
-) {
-  console.log('[FTM-DEBUG] Push - Notify document rejected', {
-    driverProfileId, documentType, reason,
-  });
-  return insertNotification(
-    driverProfileId,
-    'document_rejected',
-    '❌ Document refusé — Action requise',
-    `Votre ${DOC_LABELS[documentType] || documentType} a été refusé : "${reason}". Re-uploadez un document valide.`,
-    { document_type: documentType, reason, screen: 'DocumentStatusScreen' }
-  );
-}
-
 // ─── MISSION OFFERS ────────────────────────────────────────────────────────────
 
 export async function notifyClientOfferUpdate(
@@ -295,51 +267,3 @@ export async function notifyDriverLowBalance(driverProfileId: string, balance: n
   );
 }
 
-export async function notifyTransactionValidated(
-  driverProfileId: string,
-  transactionType: string,
-  amount: number
-) {
-  const label = transactionType === 'refund' ? 'Remboursement' : 'Recharge';
-  console.log('[FTM-DEBUG] Push - Notify transaction validated', { driverProfileId, transactionType, amount });
-  return insertNotification(
-    driverProfileId,
-    'transaction_validated',
-    '\u2705 Demande validée',
-    `${label} de ${amount.toFixed(2)} DH validée. Votre solde a été mis à jour.`,
-    { amount, transactionType, screen: 'WalletDashboard' }
-  );
-}
-
-export async function notifyTransactionRejected(
-  driverProfileId: string,
-  transactionType: string,
-  amount: number,
-  reason: string
-) {
-  const label = transactionType === 'refund' ? 'Remboursement' : 'Recharge';
-  console.log('[FTM-DEBUG] Push - Notify transaction rejected', { driverProfileId, transactionType, amount, reason });
-  return insertNotification(
-    driverProfileId,
-    'transaction_rejected',
-    '\u274c Demande rejetée',
-    `${label} de ${amount.toFixed(2)} DH rejetée. Motif : ${reason}`,
-    { amount, transactionType, screen: 'WalletDashboard' }
-  );
-}
-
-export async function notifyTransactionBankConfirmed(
-  driverProfileId: string,
-  transactionType: string,
-  amount: number
-) {
-  const label = transactionType === 'refund' ? 'Remboursement' : 'Recharge';
-  console.log('[FTM-DEBUG] Push - Notify transaction bank confirmed', { driverProfileId, transactionType, amount });
-  return insertNotification(
-    driverProfileId,
-    'transaction_bank_confirmed',
-    '\u2705 Paiement confirmé',
-    `${label} de ${amount.toFixed(2)} DH définitivement confirmée après vérification bancaire.`,
-    { amount, transactionType, screen: 'WalletDashboard' }
-  );
-}

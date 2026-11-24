@@ -1,14 +1,7 @@
 import { supabase } from '../lib/supabaseClient';
-import { notifyDocumentVerified, notifyDocumentRejected } from './notificationTemplates';
+import { cleanServerMessage } from './settingsService';
 
 type DocumentType = 'driver_license' | 'vehicle_registration' | 'insurance' | 'technical_inspection';
-
-const columnMap: Record<DocumentType, string> = {
-  driver_license: 'driver_license_verified',
-  vehicle_registration: 'vehicle_registration_verified',
-  insurance: 'insurance_verified',
-  technical_inspection: 'technical_inspection_verified',
-};
 
 export async function getPendingDrivers() {
   console.log('[FTM-DEBUG] Admin - Fetching pending drivers');
@@ -67,69 +60,44 @@ export async function getPendingDrivers() {
   return { success: true, drivers: (data ?? []) as unknown[] };
 }
 
+// Migration 084 : le serveur fait l'action ET envoie la notification au chauffeur
+// (« Document validé », et « Dossier complet validé » quand tout est approuvé ;
+// « Document refusé » avec le motif), en une seule operation : soit tout est
+// fait, soit rien. L'application n'envoie plus ces notifications elle-meme.
+// profileId est garde pour ne pas modifier l'ecran (le serveur le retrouve seul).
 export async function verifyDocument(driverId: string, documentType: DocumentType, profileId: string) {
-  const column = columnMap[documentType];
-  if (!column) {
-    console.log('[FTM-DEBUG] Admin - Unknown document type', { documentType });
-    return { error: 'Type de document inconnu.' };
-  }
+  console.log('[FTM-DEBUG] Admin - Verifying document', { driverId, documentType, profileId });
 
-  console.log('[FTM-DEBUG] Admin - Verifying document', { driverId, documentType, column, profileId });
-
-  const { error } = await supabase
-    .from('drivers')
-    .update({ [column]: 'verified' })
-    .eq('id', driverId);
+  const { data, error } = await supabase.rpc('admin_verify_document', {
+    p_driver_id: driverId,
+    p_document_type: documentType,
+  });
 
   if (error) {
     console.log('[FTM-DEBUG] Admin - Verify document error', { error: error.message, driverId, documentType });
-    return { error: error.message };
+    return { error: cleanServerMessage(error.message) };
   }
 
-  console.log('[FTM-DEBUG] Admin - Document verified', { driverId, documentType });
-
-  const { data: driver } = await supabase
-    .from('drivers')
-    .select('is_verified')
-    .eq('id', driverId)
-    .single();
-
-  await notifyDocumentVerified(profileId, documentType);
-
-  if (driver?.is_verified) {
-    console.log('[FTM-DEBUG] Admin - Driver fully verified!', { driverId });
-    await supabase.from('notifications').insert({
-      profile_id: profileId,
-      type: 'driver_fully_verified',
-      title: '🎉 Dossier complet validé !',
-      body: 'Tous vos documents ont été approuvés. Activez votre disponibilité pour recevoir des missions.',
-      data: { screen: 'DriverHomeStack' },
-    });
-    console.log('[FTM-DEBUG] Admin - Full verification notification sent', { profileId });
-  }
-
-  return { success: true, isFullyVerified: driver?.is_verified };
+  const isFullyVerified = (data as { is_fully_verified?: boolean } | null)?.is_fully_verified === true;
+  console.log('[FTM-DEBUG] Admin - Document verified', { driverId, documentType, isFullyVerified });
+  return { success: true, isFullyVerified };
 }
 
 export async function rejectDocument(driverId: string, documentType: DocumentType, profileId: string, reason: string) {
-  const column = columnMap[documentType];
-
   console.log('[FTM-DEBUG] Admin - Rejecting document', { driverId, documentType, reason, profileId });
 
-  const { error } = await supabase
-    .from('drivers')
-    .update({ [column]: 'rejected' })
-    .eq('id', driverId);
+  const { error } = await supabase.rpc('admin_reject_document', {
+    p_driver_id: driverId,
+    p_document_type: documentType,
+    p_reason: reason,
+  });
 
   if (error) {
     console.log('[FTM-DEBUG] Admin - Reject document error', { error: error.message });
-    return { error: error.message };
+    return { error: cleanServerMessage(error.message) };
   }
 
   console.log('[FTM-DEBUG] Admin - Document rejected', { driverId, documentType, reason });
-
-  await notifyDocumentRejected(profileId, documentType, reason);
-
   return { success: true };
 }
 

@@ -746,24 +746,15 @@ export async function validatePendingTransaction(
   // (processed_at), puis le portefeuille est credite (solde = solde + montant).
   // Un second clic ne trouve plus de demande en attente : rien n'est credite deux
   // fois. Si le credit echoue, rien n'est enregistre et la demande reste en attente.
-  const { data, error } = await supabase.rpc('admin_validate_pending_transaction', {
+  const { error } = await supabase.rpc('admin_validate_pending_transaction', {
     p_transaction_id: transactionId,
   });
   if (error) {
     console.log('[FTM-DEBUG] Admin - Validate pending transaction error', { error: error.message });
     return { error: serverMessage(error.message) };
   }
-  const tx = data as { wallet_id: string; transaction_type: string; amount: number };
-  const { data: walletRow } = await supabase
-    .from('wallet')
-    .select('driver_id, drivers ( profile_id )')
-    .eq('id', tx.wallet_id)
-    .single();
-  const profileId = (walletRow as { drivers?: { profile_id?: string } } | null)?.drivers?.profile_id;
-  if (profileId) {
-    const { notifyTransactionValidated } = await import('./notificationTemplates');
-    await notifyTransactionValidated(profileId, tx.transaction_type, tx.amount);
-  }
+  // Migration 084 : la notification « Demande validée » est creee par le serveur
+  // dans la meme operation que le credit ; l'application ne l'envoie plus.
   return { success: true };
 }
 
@@ -773,26 +764,15 @@ export async function rejectPendingTransaction(
   reason: string
 ): Promise<{ success?: true; error?: string }> {
   console.log('[FTM-DEBUG] Admin - Rejecting pending transaction', { transactionId, reason });
-  const { data, error } = await supabase
-    .from('transactions')
-    .update({ status: 'failed', description: `Rejetée : ${reason}`, processed_at: new Date().toISOString() })
-    .eq('id', transactionId)
-    .eq('status', 'pending')
-    .select('wallet_id, transaction_type, amount')
-    .single();
+  // Migration 084 : le serveur rejette la demande ET envoie « Demande rejetée »
+  // en une seule operation ; un second clic ne trouve plus de demande en attente.
+  const { error } = await supabase.rpc('admin_reject_pending_transaction', {
+    p_transaction_id: transactionId,
+    p_reason: reason,
+  });
   if (error) {
     console.log('[FTM-DEBUG] Admin - Reject pending transaction error', { error: error.message });
-    return { error: error.message };
-  }
-  const { data: walletRow } = await supabase
-    .from('wallet')
-    .select('driver_id, drivers ( profile_id )')
-    .eq('id', data.wallet_id)
-    .single();
-  const profileId = (walletRow as { drivers?: { profile_id?: string } } | null)?.drivers?.profile_id;
-  if (profileId) {
-    const { notifyTransactionRejected } = await import('./notificationTemplates');
-    await notifyTransactionRejected(profileId, data.transaction_type, data.amount, reason);
+    return { error: serverMessage(error.message) };
   }
   return { success: true };
 }
@@ -904,26 +884,14 @@ export async function markBankReconciled(
   transactionId: string
 ): Promise<{ success?: true; error?: string }> {
   console.log('[FTM-DEBUG] Admin - Marking bank reconciled', { transactionId });
-  const { data, error } = await supabase
-    .from('transactions')
-    .update({ bank_reconciled_at: new Date().toISOString() })
-    .eq('id', transactionId)
-    .is('bank_reconciled_at', null)
-    .select('wallet_id, transaction_type, amount')
-    .single();
+  // Migration 084 : le serveur enregistre la confirmation ET envoie
+  // « Paiement confirmé » en une seule operation.
+  const { error } = await supabase.rpc('admin_confirm_bank_reconciliation', {
+    p_transaction_id: transactionId,
+  });
   if (error) {
     console.log('[FTM-DEBUG] Admin - Mark bank reconciled error', { error: error.message });
-    return { error: error.message };
-  }
-  const { data: walletRow } = await supabase
-    .from('wallet')
-    .select('driver_id, drivers ( profile_id )')
-    .eq('id', data.wallet_id)
-    .single();
-  const profileId = (walletRow as { drivers?: { profile_id?: string } } | null)?.drivers?.profile_id;
-  if (profileId) {
-    const { notifyTransactionBankConfirmed } = await import('./notificationTemplates');
-    await notifyTransactionBankConfirmed(profileId, data.transaction_type, data.amount);
+    return { error: serverMessage(error.message) };
   }
   return { success: true };
 }
