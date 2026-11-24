@@ -23,6 +23,9 @@ export interface DriverDashboard {
   active_missions: number;
   recharges_current_month: number;
   commissions_current_month: number;
+  // Migration 085 : missions conclues pas encore terminees, et missions terminees ce mois
+  ongoing_missions: number;
+  completed_missions_current_month: number;
 }
 
 export interface WalletBalance {

@@ -181,12 +181,12 @@ export default function WalletDashboardScreen({ route }: NativeStackScreenProps<
           <Text style={styles.statValue}>{formatAmount(dashboard.total_commissions)} DH</Text>
           <Text style={styles.statLabel}>Commissions totales</Text>
         </View>
+        {/* Migration 085 (decision du porteur, 24/11/2026) : missions terminees ce
+            mois a cote des commissions du mois, puis missions en cours. */}
         <View style={styles.statCard}>
           <Text style={styles.statIcon}>🚚</Text>
-          <Text style={styles.statValue}>
-            {dashboard.active_missions + dashboard.pending_missions}
-          </Text>
-          <Text style={styles.statLabel}>Ce mois (actives)</Text>
+          <Text style={styles.statValue}>{dashboard.completed_missions_current_month ?? 0}</Text>
+          <Text style={styles.statLabel}>Missions ce mois</Text>
         </View>
         <View style={styles.statCard}>
           <Text style={styles.statIcon}>💸</Text>
@@ -194,6 +194,11 @@ export default function WalletDashboardScreen({ route }: NativeStackScreenProps<
             {formatAmount(dashboard.commissions_current_month)} DH
           </Text>
           <Text style={styles.statLabel}>Commissions ce mois</Text>
+        </View>
+        <View style={styles.statCard}>
+          <Text style={styles.statIcon}>🕒</Text>
+          <Text style={styles.statValue}>{dashboard.ongoing_missions ?? 0}</Text>
+          <Text style={styles.statLabel}>Missions en cours</Text>
         </View>
       </View>
 
