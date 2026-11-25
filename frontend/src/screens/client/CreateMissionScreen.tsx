@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
+  BackHandler,
 } from 'react-native';
 import { showMessage, confirmAction } from '../../utils/dialogs';
 import { COLORS, FONTS, SPACING, BORDER_RADIUS } from '../../constants/theme';
@@ -137,6 +138,30 @@ export default function CreateMissionScreen({ route, navigation }: Props) {
   const [cargoVolume, setCargoVolume] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
+  // Refonte du 25/11/2026 (fiche de travail validee le 24/11/2026) : la saisie
+  // se fait en 3 etapes sur ce meme ecran ; les informations restent en
+  // memoire quand le client avance ou recule. L'envoi ne change pas.
+  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const scrollRef = useRef<ScrollView>(null);
+  const goToStep = useCallback((next: 1 | 2 | 3) => {
+    setStep(next);
+    setSavedListFor(null);
+    scrollRef.current?.scrollTo({ y: 0, animated: false });
+  }, []);
+
+  // Touche retour du telephone : etape precedente au lieu de quitter l'accueil.
+  useFocusEffect(
+    useCallback(() => {
+      const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+        if (step > 1) {
+          goToStep((step - 1) as 1 | 2);
+          return true;
+        }
+        return false;
+      });
+      return () => sub.remove();
+    }, [step, goToStep])
+  );
 
   const loadSavedAddresses = useCallback(async () => {
     if (!clientProfileId) return;
@@ -223,6 +248,46 @@ export default function CreateMissionScreen({ route, navigation }: Props) {
     return goOn ? { lat: center.lat, lng: center.lng, precise: false } : null;
   };
 
+  // Controles a chaque « Suivant » (memes regles qu'a l'envoi). Le bouton reste
+  // actif et un message nomme le champ manquant.
+  const checkStep1 = (): string | null => {
+    if (!pickupAddress.trim()) return "Indiquez l'adresse de chargement.";
+    if (!pickupCity) return 'Choisissez la ville de chargement dans la liste.';
+    if (!dropoffAddress.trim()) return "Indiquez l'adresse de livraison.";
+    if (!dropoffCity) return 'Choisissez la ville de livraison dans la liste.';
+    return null;
+  };
+  const checkStep2 = (): { title: string; text: string } | null => {
+    if (!scheduledPickupTime) return { title: 'Date et heure', text: "Choisissez la date et l'heure de prise en charge." };
+    if (!vehicleCategory) return { title: 'Véhicule', text: 'Choisissez un véhicule.' };
+    const weight = parseQuantity(cargoWeight);
+    const volume = parseQuantity(cargoVolume);
+    if ((weight !== null && !(weight > 0)) || (volume !== null && !(volume > 0))) {
+      return { title: 'Chargement', text: 'Le poids et le volume doivent être des nombres positifs.' };
+    }
+    if (weightRequired && weight === null) {
+      return { title: 'Chargement', text: "Merci d'indiquer le poids approximatif du chargement." };
+    }
+    return null;
+  };
+  const handleNext = () => {
+    if (step === 1) {
+      const msg = checkStep1();
+      if (msg) {
+        showMessage('Trajet', msg);
+        return;
+      }
+      goToStep(2);
+    } else if (step === 2) {
+      const pb = checkStep2();
+      if (pb) {
+        showMessage(pb.title, pb.text);
+        return;
+      }
+      goToStep(3);
+    }
+  };
+
   const handleSubmit = async () => {
     if (!canSubmit) return;
     // A1 F6 : controle du poids et du volume saisis
@@ -247,7 +312,10 @@ export default function CreateMissionScreen({ route, navigation }: Props) {
             'Voulez-vous choisir une autre catégorie ?',
           { confirmLabel: 'Continuer quand même', cancelLabel: 'Changer de catégorie' }
         );
-        if (!keep) return;
+        if (!keep) {
+          goToStep(2); // « Changer de catégorie »
+          return;
+        }
       }
       // A1 (correction 23) : confirmation de la date et de l'heure avant l'envoi.
       const timeOk = await confirmAction(
@@ -255,7 +323,10 @@ export default function CreateMissionScreen({ route, navigation }: Props) {
         `Prise en charge le ${formatMissionDateTime(scheduledPickupTime!)}. Confirmer ?`,
         { confirmLabel: 'Confirmer', cancelLabel: 'Modifier' }
       );
-      if (!timeOk) return;
+      if (!timeOk) {
+        goToStep(2); // « Modifier » la date
+        return;
+      }
       const permission = await ensureGeocodingPermission();
       // Lot 5 (C3) : point precis d'une adresse enregistree, s'il existe
       const savedPoint = (a: SavedAddress | null) =>
@@ -263,12 +334,18 @@ export default function CreateMissionScreen({ route, navigation }: Props) {
       const pickup = pickupCoords
         ? { ...pickupCoords, precise: true }
         : savedPoint(pickupSaved) ??
-          (await resolvePoint(pickupAddress.trim(), pickupCity, 'Adresse de départ', permission));
-      if (!pickup) return;
+          (await resolvePoint(pickupAddress.trim(), pickupCity, 'Adresse de chargement', permission));
+      if (!pickup) {
+        goToStep(1); // « Corriger l'adresse »
+        return;
+      }
       const dropoff =
         savedPoint(dropoffSaved) ??
-        (await resolvePoint(dropoffAddress.trim(), dropoffCity, "Adresse d'arrivée", permission));
-      if (!dropoff) return;
+        (await resolvePoint(dropoffAddress.trim(), dropoffCity, 'Adresse de livraison', permission));
+      if (!dropoff) {
+        goToStep(1); // « Corriger l'adresse »
+        return;
+      }
       // A1 (migration 072) : quartier deduit de la position (pas de saisie du
       // client). Pas de quartier si l'adresse a ete placee au centre de la
       // ville : il serait faux ; la ville seule est alors montree.
@@ -360,231 +437,311 @@ export default function CreateMissionScreen({ route, navigation }: Props) {
   };
 
 
+  const STEP_TITLES = ['Trajet', 'Date, véhicule et chargement', 'Description, prix et récapitulatif'];
+  // Recapitulatif de l'etape 3
+  const recapWeight = parseQuantity(cargoWeight);
+  const recapVolume = parseQuantity(cargoVolume);
+  const recapVehicle = [
+    selectedVehicle?.label,
+    recapWeight ? `${recapWeight.toLocaleString('fr-FR')} kg` : null,
+    recapVolume ? `${recapVolume.toLocaleString('fr-FR')} m³` : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+
   return (
     <KeyboardAvoidingView
       style={styles.flex}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <ScrollView
+        ref={scrollRef}
+        style={styles.container}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+      >
         <View style={styles.headerRow}>
           <Text style={styles.title}>Nouvelle mission</Text>
           <NotificationBell />
-          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-            <Text style={styles.logoutButtonText}>🚪 Se déconnecter</Text>
-          </TouchableOpacity>
-        </View>
-
-        {openMissions.length > 0 && (
-          <View style={styles.openMissionsBox}>
-            <Text style={styles.openMissionsTitle}>Mes missions en cours</Text>
-            {openMissions.map((m) => (
-              <TouchableOpacity
-                key={String(m.id)}
-                style={styles.openMissionRow}
-                onPress={() =>
-                  m.status === 'completed'
-                    ? navigation.navigate('Rating', { mission: m })
-                    : navigation.navigate('MissionTracking', { mission: m })
-                }
-              >
-                <Text style={styles.openMissionText}>
-                  {missionStatusLabel(m.status)} — N° {String(m.mission_number ?? '')}
-                </Text>
-                <Text style={styles.openMissionLink}>
-                  {m.status === 'completed' ? '⭐ Noter' : 'Suivre →'}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
-
-        {/* DÉPART */}
-        <Text style={styles.sectionLabel}>📍 DÉPART</Text>
-        <TouchableOpacity style={styles.gpsButton} onPress={locateClient} disabled={isLocating}>
-          {isLocating ? (
-            <ActivityIndicator color={COLORS.primary} />
-          ) : (
-            <Text style={styles.gpsButtonText}>🎯 Ma position actuelle</Text>
-          )}
-        </TouchableOpacity>
-        <TextInput
-          style={styles.input}
-          value={pickupAddress}
-          onChangeText={(text) => {
-            // Adresse modifiee a la main : la position GPS n'est plus utilisee.
-            setPickupAddress(text);
-            setPickupCoords(null);
-            setPickupSaved(null);
-          }}
-          placeholder="Adresse de départ"
-          placeholderTextColor={COLORS.textSecondary}
-        />
-        <CityPicker
-          value={pickupCity}
-          onChange={(city) => {
-            setPickupCity(city);
-            setPickupCoords(null);
-            setPickupSaved(null);
-          }}
-          placeholder="Ville de départ"
-        />
-        <TextInput
-          style={styles.input}
-          value={pickupLandmark}
-          onChangeText={setPickupLandmark}
-          placeholder="Repère (optionnel) : ex. en face de la pharmacie, portail bleu"
-          placeholderTextColor={COLORS.textSecondary}
-          maxLength={200}
-        />
-        <Text style={styles.pickupHint}>
-          {pickupCoords
-            ? '📍 Votre position actuelle sera utilisée comme point de départ.'
-            : pickupSaved
-              ? savedHint(pickupSaved)
-              : 'Tapez l\'adresse et choisissez la ville, ou touchez « 🎯 Ma position actuelle ».'}
-        </Text>
-        {renderSavedToggle('pickup')}
-
-        {/* ARRIVÉE */}
-        <Text style={styles.sectionLabel}>🏁 ARRIVÉE</Text>
-        <TextInput
-          style={styles.input}
-          value={dropoffAddress}
-          onChangeText={(text) => {
-            setDropoffAddress(text);
-            setDropoffSaved(null);
-          }}
-          placeholder="Adresse de livraison"
-          placeholderTextColor={COLORS.textSecondary}
-        />
-        <CityPicker
-          value={dropoffCity}
-          onChange={(city) => {
-            setDropoffCity(city);
-            setDropoffSaved(null);
-          }}
-          placeholder="Ville d'arrivée"
-        />
-        <TextInput
-          style={styles.input}
-          value={dropoffLandmark}
-          onChangeText={setDropoffLandmark}
-          placeholder="Repère (optionnel) : ex. à côté de la mosquée, 2e étage"
-          placeholderTextColor={COLORS.textSecondary}
-          maxLength={200}
-        />
-        {dropoffSaved && <Text style={styles.pickupHint}>{savedHint(dropoffSaved)}</Text>}
-        {renderSavedToggle('dropoff')}
-
-        {/* VÉHICULE */}
-        <Text style={styles.sectionLabel}>VÉHICULE</Text>
-        <View style={styles.vehicleRow}>
-          {VEHICLE_OPTIONS.map((v) => (
-            <TouchableOpacity
-              key={v.key}
-              style={[styles.vehicleCard, vehicleCategory === v.key && styles.vehicleCardActive]}
-              onPress={() => setVehicleCategory(v.key)}
-            >
-              <Text style={styles.vehicleIcon}>{v.icon}</Text>
-              <Text style={[styles.vehicleLabel, vehicleCategory === v.key && styles.vehicleLabelActive]}>
-                {v.label}
-              </Text>
-              <Text style={[styles.vehicleCommission, vehicleCategory === v.key && styles.vehicleCommissionActive]}>
-                {commissions[v.key] ?? v.commission} DH
-              </Text>
-              <Text style={styles.vehicleLoad}>jusqu'à {formatTonnes(MAX_LOAD_KG[v.key])}</Text>
+          {step === 1 && (
+            <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+              <Text style={styles.logoutButtonText}>🚪 Se déconnecter</Text>
             </TouchableOpacity>
+          )}
+        </View>
+        <View style={styles.progressRow}>
+          {[1, 2, 3].map((n) => (
+            <View key={n} style={[styles.progressSegment, n <= step && styles.progressSegmentActive]} />
           ))}
         </View>
-
-        {/* A1 F6 : CHARGEMENT */}
-        <Text style={styles.sectionLabel}>CHARGEMENT</Text>
-        <TextInput
-          style={styles.input}
-          value={cargoWeight}
-          onChangeText={setCargoWeight}
-          placeholder={
-            weightRequired
-              ? 'Poids approximatif en kg (obligatoire)'
-              : 'Poids approximatif en kg (optionnel)'
-          }
-          placeholderTextColor={COLORS.textSecondary}
-          keyboardType="decimal-pad"
-          maxLength={7}
-        />
-        <TextInput
-          style={styles.input}
-          value={cargoVolume}
-          onChangeText={setCargoVolume}
-          placeholder="Volume approximatif en m³ (optionnel)"
-          placeholderTextColor={COLORS.textSecondary}
-          keyboardType="decimal-pad"
-          maxLength={6}
-        />
-        <Text style={styles.cargoHelp}>
-          Repères : 1 palette ≈ 1,5 m³ · 1 réfrigérateur ≈ 1 m³ · un studio ≈ 10 m³ · un 3 pièces ≈ 25 m³
-        </Text>
-
-        {/* DATE / HEURE DE PRISE EN CHARGE */}
-        <Text style={styles.sectionLabel}>DATE ET HEURE DE PRISE EN CHARGE</Text>
-        <DateTimeField
-          label="Quand souhaitez-vous être pris en charge ?"
-          value={scheduledPickupTime}
-          onChange={setScheduledPickupTime}
-          variant="mission"
-        />
-
-        {/* OPTIONS */}
-        <Text style={styles.sectionLabel}>OPTIONS</Text>
-        <View style={styles.toggleRow}>
-          <Text style={styles.toggleLabel}>💪 Manutention nécessaire</Text>
-          <Switch
-            value={needsLoading}
-            onValueChange={setNeedsLoading}
-            trackColor={{ false: COLORS.border, true: COLORS.primary }}
-            thumbColor={needsLoading ? '#fff' : '#f4f3f4'}
-          />
+        <View style={styles.stepTitleRow}>
+          <Text style={styles.stepTitle}>{STEP_TITLES[step - 1]}</Text>
+          <Text style={styles.stepCounter}>Étape {step} sur 3</Text>
         </View>
-        <TextInput
-          style={[styles.input, styles.textArea]}
-          value={description}
-          onChangeText={setDescription}
-          // A1 (R-DESC, decision du porteur du 04/11/2026) : le texte oriente vers la marchandise
-          placeholder="Décrivez la marchandise : nature, quantité, précautions de chargement… (optionnel)"
-          placeholderTextColor={COLORS.textSecondary}
-          multiline
-          numberOfLines={3}
-        />
-        <TextInput
-          style={styles.input}
-          value={negotiatedPrice}
-          onChangeText={setNegotiatedPrice}
-          placeholder="Prix proposé en DH (optionnel)"
-          placeholderTextColor={COLORS.textSecondary}
-          keyboardType="numeric"
-        />
 
-        {/* RÉSUMÉ */}
-        {selectedVehicle && (
-          <View style={styles.summaryBox}>
-            <Text style={styles.summaryText}>
-              Commission : <Text style={styles.summaryHighlight}>{commissions[selectedVehicle.key] ?? selectedVehicle.commission} DH</Text>
+        {step === 1 && (
+          <>
+            {openMissions.length > 0 && (
+              <View style={styles.openMissionsBox}>
+                <Text style={styles.openMissionsTitle}>Mes missions en cours</Text>
+                {openMissions.map((m) => (
+                  <TouchableOpacity
+                    key={String(m.id)}
+                    style={styles.openMissionRow}
+                    onPress={() =>
+                      m.status === 'completed'
+                        ? navigation.navigate('Rating', { mission: m })
+                        : navigation.navigate('MissionTracking', { mission: m })
+                    }
+                  >
+                    <Text style={styles.openMissionText}>
+                      {missionStatusLabel(m.status)} — N° {String(m.mission_number ?? '')}
+                    </Text>
+                    <Text style={styles.openMissionLink}>
+                      {m.status === 'completed' ? '⭐ Noter' : 'Suivre →'}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+            {/* CHARGEMENT (adresse de depart) */}
+            <Text style={styles.sectionLabel}>📍 CHARGEMENT</Text>
+            <TouchableOpacity style={styles.gpsButton} onPress={locateClient} disabled={isLocating}>
+              {isLocating ? (
+                <ActivityIndicator color={COLORS.primary} />
+              ) : (
+                <Text style={styles.gpsButtonText}>🎯 Ma position actuelle</Text>
+              )}
+            </TouchableOpacity>
+            <TextInput
+              style={styles.input}
+              value={pickupAddress}
+              onChangeText={(text) => {
+                // Adresse modifiee a la main : la position GPS n'est plus utilisee.
+                setPickupAddress(text);
+                setPickupCoords(null);
+                setPickupSaved(null);
+              }}
+              placeholder="Adresse de chargement"
+              placeholderTextColor={COLORS.textSecondary}
+            />
+            <CityPicker
+              value={pickupCity}
+              onChange={(city) => {
+                setPickupCity(city);
+                setPickupCoords(null);
+                setPickupSaved(null);
+              }}
+              placeholder="Ville de chargement"
+            />
+            <TextInput
+              style={styles.input}
+              value={pickupLandmark}
+              onChangeText={setPickupLandmark}
+              placeholder="Repère (optionnel) : ex. en face de la pharmacie, portail bleu"
+              placeholderTextColor={COLORS.textSecondary}
+              maxLength={200}
+            />
+            <Text style={styles.pickupHint}>
+              {pickupCoords
+                ? '📍 Votre position actuelle sera utilisée comme point de départ.'
+                : pickupSaved
+                  ? savedHint(pickupSaved)
+                  : 'Tapez l\'adresse et choisissez la ville, ou touchez « 🎯 Ma position actuelle ».'}
             </Text>
-          </View>
+            {renderSavedToggle('pickup')}
+            {/* LIVRAISON (adresse d'arrivee) */}
+            <Text style={styles.sectionLabel}>🏁 LIVRAISON</Text>
+            <TextInput
+              style={styles.input}
+              value={dropoffAddress}
+              onChangeText={(text) => {
+                setDropoffAddress(text);
+                setDropoffSaved(null);
+              }}
+              placeholder="Adresse de livraison"
+              placeholderTextColor={COLORS.textSecondary}
+            />
+            <CityPicker
+              value={dropoffCity}
+              onChange={(city) => {
+                setDropoffCity(city);
+                setDropoffSaved(null);
+              }}
+              placeholder="Ville de livraison"
+            />
+            <TextInput
+              style={styles.input}
+              value={dropoffLandmark}
+              onChangeText={setDropoffLandmark}
+              placeholder="Repère (optionnel) : ex. à côté de la mosquée, 2e étage"
+              placeholderTextColor={COLORS.textSecondary}
+              maxLength={200}
+            />
+            {dropoffSaved && <Text style={styles.pickupHint}>{savedHint(dropoffSaved)}</Text>}
+            {renderSavedToggle('dropoff')}
+          </>
         )}
 
-        <TouchableOpacity
-          style={[styles.submitButton, !canSubmit && styles.submitButtonDisabled]}
-          onPress={handleSubmit}
-          disabled={!canSubmit}
-        >
-          {isLoading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.submitButtonText}>Trouver un chauffeur</Text>
-          )}
-        </TouchableOpacity>
+        {step === 2 && (
+          <>
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>Date et heure de prise en charge</Text>
+              <DateTimeField
+                label="Quand souhaitez-vous être pris en charge ?"
+                value={scheduledPickupTime}
+                onChange={setScheduledPickupTime}
+                variant="mission"
+              />
+            </View>
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>Véhicule et chargement</Text>
+              <View style={styles.vehicleRow}>
+                {VEHICLE_OPTIONS.map((v) => (
+                  <TouchableOpacity
+                    key={v.key}
+                    style={[styles.vehicleCard, styles.vehicleCardLarge, vehicleCategory === v.key && styles.vehicleCardActive]}
+                    onPress={() => setVehicleCategory(v.key)}
+                  >
+                    <Text style={styles.vehicleIcon}>{v.icon}</Text>
+                    <Text style={[styles.vehicleLabel, vehicleCategory === v.key && styles.vehicleLabelActive]}>
+                      {v.label}
+                    </Text>
+                    <Text style={[styles.vehicleCommission, vehicleCategory === v.key && styles.vehicleCommissionActive]}>
+                      {commissions[v.key] ?? v.commission} DH
+                    </Text>
+                    <Text style={styles.vehicleLoad}>jusqu'à {formatTonnes(MAX_LOAD_KG[v.key])}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <TextInput
+                style={[styles.input, styles.inputLarge]}
+                value={cargoWeight}
+                onChangeText={setCargoWeight}
+                placeholder={
+                  weightRequired
+                    ? 'Poids approximatif en kg (obligatoire)'
+                    : 'Poids approximatif en kg (optionnel)'
+                }
+                placeholderTextColor={COLORS.textSecondary}
+                keyboardType="decimal-pad"
+                maxLength={7}
+              />
+              <TextInput
+                style={[styles.input, styles.inputLarge]}
+                value={cargoVolume}
+                onChangeText={setCargoVolume}
+                placeholder="Volume approximatif en m³ (optionnel)"
+                placeholderTextColor={COLORS.textSecondary}
+                keyboardType="decimal-pad"
+                maxLength={6}
+              />
+              <Text style={styles.cargoHelp}>
+                Repères : 1 palette ≈ 1,5 m³ · 1 réfrigérateur ≈ 1 m³ · un studio ≈ 10 m³ · un 3 pièces ≈ 25 m³
+              </Text>
+            </View>
+          </>
+        )}
+
+        {step === 3 && (
+          <>
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>Description et prix</Text>
+              <View style={styles.toggleRow}>
+                <Text style={styles.toggleLabel}>💪 Manutention nécessaire</Text>
+                <Switch
+                  value={needsLoading}
+                  onValueChange={setNeedsLoading}
+                  trackColor={{ false: COLORS.border, true: COLORS.primary }}
+                  thumbColor={needsLoading ? '#fff' : '#f4f3f4'}
+                />
+              </View>
+              <TextInput
+                style={[styles.input, styles.inputLarge, styles.textAreaLarge]}
+                value={description}
+                onChangeText={setDescription}
+                // A1 (R-DESC, decision du porteur du 04/11/2026) : le texte oriente vers la marchandise
+                placeholder="Décrivez la marchandise : nature, quantité, précautions de chargement… (optionnel)"
+                placeholderTextColor={COLORS.textSecondary}
+                multiline
+                numberOfLines={3}
+              />
+              <TextInput
+                style={[styles.input, styles.inputLarge]}
+                value={negotiatedPrice}
+                onChangeText={setNegotiatedPrice}
+                placeholder="Prix proposé en DH (optionnel)"
+                placeholderTextColor={COLORS.textSecondary}
+                keyboardType="numeric"
+              />
+              {selectedVehicle && (
+                <View style={[styles.summaryBox, styles.summaryBoxLarge]}>
+                  <Text style={[styles.summaryText, styles.summaryTextLarge]}>
+                    Commission : <Text style={styles.summaryHighlight}>{commissions[selectedVehicle.key] ?? selectedVehicle.commission} DH</Text>
+                  </Text>
+                </View>
+              )}
+            </View>
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>Récapitulatif</Text>
+              <Text style={styles.recapLine}>
+                <Text style={styles.recapLabel}>Chargement : </Text>
+                {pickupAddress.trim()}, {pickupCity}
+              </Text>
+              <Text style={styles.recapLine}>
+                <Text style={styles.recapLabel}>Livraison : </Text>
+                {dropoffAddress.trim()}, {dropoffCity}
+              </Text>
+              <Text style={styles.recapLine}>
+                <Text style={styles.recapLabel}>Date : </Text>
+                {scheduledPickupTime ? formatMissionDateTime(scheduledPickupTime) : '—'}
+              </Text>
+              <Text style={styles.recapLine}>
+                <Text style={styles.recapLabel}>Véhicule : </Text>
+                {recapVehicle || '—'}
+              </Text>
+              {needsLoading && (
+                <Text style={styles.recapLine}>
+                  <Text style={styles.recapLabel}>Manutention : </Text>
+                  oui
+                </Text>
+              )}
+            </View>
+          </>
+        )}
       </ScrollView>
+
+      {/* Boutons fixes en bas de l'ecran */}
+      <View style={styles.footer}>
+        {step > 1 && (
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => goToStep((step - 1) as 1 | 2)}
+            disabled={isLoading}
+          >
+            <Text style={styles.backButtonText}>Retour</Text>
+          </TouchableOpacity>
+        )}
+        {step < 3 ? (
+          <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
+            <Text style={styles.submitButtonText}>Suivant</Text>
+          </TouchableOpacity>
+        ) : (
+          <>
+          <TouchableOpacity
+            style={[styles.submitButton, styles.nextButton, !canSubmit && styles.submitButtonDisabled]}
+            onPress={handleSubmit}
+            disabled={!canSubmit}
+          >
+            {isLoading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.submitButtonText}>Trouver un chauffeur</Text>
+            )}
+          </TouchableOpacity>
+          </>
+        )}
+      </View>
     </KeyboardAvoidingView>
   );
 }
@@ -701,6 +858,63 @@ const styles = StyleSheet.create({
   },
   submitButtonDisabled: { opacity: 0.5 },
   submitButtonText: { color: '#fff', fontSize: 17, fontWeight: '700' },
+  // Refonte en 3 etapes (25/11/2026)
+  progressRow: { flexDirection: 'row', gap: 6, marginBottom: SPACING.sm },
+  progressSegment: { flex: 1, height: 6, borderRadius: 3, backgroundColor: COLORS.border },
+  progressSegmentActive: { backgroundColor: COLORS.primary },
+  stepTitleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+    marginBottom: SPACING.md,
+  },
+  stepTitle: { fontSize: 18, fontWeight: '700', color: COLORS.primary, flexShrink: 1 },
+  stepCounter: { fontSize: 13, color: COLORS.textSecondary, marginLeft: SPACING.sm },
+  card: {
+    backgroundColor: COLORS.surface,
+    borderRadius: BORDER_RADIUS.lg,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    padding: SPACING.md,
+    marginBottom: SPACING.lg,
+  },
+  cardTitle: { fontSize: 18, fontWeight: '700', color: COLORS.text, marginBottom: SPACING.md },
+  inputLarge: { minHeight: 52, fontSize: 16, paddingHorizontal: SPACING.md },
+  textAreaLarge: { minHeight: 120, textAlignVertical: 'top' },
+  vehicleCardLarge: { paddingVertical: SPACING.md },
+  summaryBoxLarge: { padding: SPACING.md },
+  summaryTextLarge: { fontSize: 18 },
+  recapLine: { fontSize: 15, color: COLORS.text, marginBottom: SPACING.sm, lineHeight: 21 },
+  recapLabel: { fontWeight: '700' },
+  footer: {
+    flexDirection: 'row',
+    gap: SPACING.sm,
+    paddingHorizontal: SPACING.md,
+    paddingTop: SPACING.sm,
+    paddingBottom: SPACING.md,
+    backgroundColor: COLORS.surface,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+  },
+  backButton: {
+    flex: 1,
+    minHeight: 52,
+    borderRadius: BORDER_RADIUS.lg,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  backButtonText: { color: COLORS.primary, fontSize: 17, fontWeight: '700' },
+  nextButton: {
+    flex: 2,
+    backgroundColor: COLORS.primary,
+    borderRadius: BORDER_RADIUS.lg,
+    minHeight: 52,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 0,
+  },
   logoutButton: {
     paddingVertical: 4,
     paddingHorizontal: 8,
