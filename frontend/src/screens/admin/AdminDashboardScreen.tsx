@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -36,12 +36,9 @@ export default function AdminDashboardScreen() {
   const [refreshing, setRefreshing] = useState(false);
   // A1 F5 : nombre de commentaires en attente, relu a chaque retour sur l'ecran
   const [reviewsToModerate, setReviewsToModerate] = useState(0);
-
-  useFocusEffect(
-    useCallback(() => {
-      getReviewsToModerate().then((r) => setReviewsToModerate(r.reviews?.length ?? 0));
-    }, [])
-  );
+  // Tableau de bord en 2 onglets (fiche de travail du 25/11/2026) :
+  // « Traitement » (ouvert par defaut) et « Gestion »
+  const [tab, setTab] = useState<'traitement' | 'gestion'>('traitement');
 
   const loadStats = useCallback(async () => {
     const result = await getAdminStats();
@@ -52,9 +49,15 @@ export default function AdminDashboardScreen() {
     setRefreshing(false);
   }, []);
 
-  useEffect(() => {
-    loadStats();
-  }, [loadStats]);
+  // Fiche du 25/11/2026 : tous les nombres sont relus a chaque retour sur
+  // le tableau de bord (et plus seulement a l'ouverture), pour que les
+  // compteurs baissent aussitot apres un traitement.
+  useFocusEffect(
+    useCallback(() => {
+      loadStats();
+      getReviewsToModerate().then((r) => setReviewsToModerate(r.reviews?.length ?? 0));
+    }, [loadStats])
+  );
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -70,6 +73,23 @@ export default function AdminDashboardScreen() {
     if (result.error) showMessage('Erreur', result.error);
   };
 
+
+  // Onglet « Traitement » : les 4 sujets a traiter, avec leur compteur
+  const pendingDrivers = stats?.pendingDrivers ?? 0;
+  const todoItems = [
+    { route: 'DocumentReview', icon: '📋', label: 'Documents en attente', count: pendingDrivers },
+    { route: 'PendingTransactions', icon: '💰', label: 'Demandes financières', count: stats?.pendingTransactions ?? 0 },
+    { route: 'BankReconciliation', icon: '🏦', label: 'Rapprochement bancaire', count: stats?.unreconciledTransactions ?? 0 },
+    { route: 'AdminReviews', icon: '⭐', label: 'Avis à modérer', count: reviewsToModerate },
+  ];
+  const toTreat = todoItems.reduce((sum, item) => sum + item.count, 0);
+  // Onglet « Gestion » : les ecrans de gestion, en grille de 2 colonnes
+  const manageItems = [
+    { route: 'AdminMissions', icon: '🚚', label: 'Toutes les missions' },
+    { route: 'AdminUsers', icon: '👥', label: 'Gestion utilisateurs' },
+    { route: 'WalletManagement', icon: '👛', label: 'Portefeuilles des chauffeurs' },
+    { route: 'AdminSettings', icon: '⚙️', label: 'Réglages' },
+  ];
 
   if (loading) {
     return (
@@ -88,128 +108,103 @@ export default function AdminDashboardScreen() {
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
     >
       <View style={styles.headerRow}>
-        <Text style={styles.title}>🛡️ Admin FTM — Dashboard</Text>
+        <Text style={styles.title}>🛡️ Admin FTM</Text>
         <NotificationBell />
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
           <Text style={styles.logoutButtonText}>🚪 Se déconnecter</Text>
         </TouchableOpacity>
       </View>
 
-      <Text style={styles.sectionTitle}>── KPIs ──</Text>
-      <View style={styles.kpiGrid}>
-        <View style={styles.kpiCard}>
-          <Text style={styles.kpiLabel}>Missions Total</Text>
-          <Text style={styles.kpiValue}>{stats?.totalMissions ?? 0}</Text>
-          <Text style={styles.kpiSub}>Taux : {stats?.completionRate}</Text>
-        </View>
-        <View style={styles.kpiCard}>
-          <Text style={styles.kpiLabel}>Commissions Collectées</Text>
-          <Text style={styles.kpiValue}>{stats?.totalCommissionsDH} DH</Text>
-        </View>
-        <View style={styles.kpiCard}>
-          <Text style={styles.kpiLabel}>Chauffeurs Total</Text>
-          <Text style={styles.kpiValue}>{stats?.totalDrivers ?? 0}</Text>
-          <Text style={styles.kpiSub}>Vérifiés : {stats?.verifiedDrivers ?? 0}</Text>
-        </View>
-        <View style={[styles.kpiCard, (stats?.pendingDrivers ?? 0) > 0 && styles.kpiCardWarning]}>
-          <Text style={styles.kpiLabel}>En attente</Text>
-          <Text style={[styles.kpiValue, (stats?.pendingDrivers ?? 0) > 0 && styles.kpiValueWarning]}>
-            {(stats?.pendingDrivers ?? 0) > 0 ? '⚠️ ' : ''}{stats?.pendingDrivers ?? 0}
-          </Text>
-        </View>
-        <View style={styles.kpiCard}>
-          <Text style={styles.kpiLabel}>Clients Total</Text>
-          <Text style={styles.kpiValue}>{stats?.totalClients ?? 0}</Text>
-        </View>
+      <View style={styles.tabRow}>
+        <TouchableOpacity
+          style={[styles.tab, tab === 'traitement' && styles.tabActive]}
+          onPress={() => setTab('traitement')}
+        >
+          <Text style={[styles.tabText, tab === 'traitement' && styles.tabTextActive]}>📌 Traitement</Text>
+          {toTreat > 0 && (
+            <View style={styles.tabBadge}>
+              <Text style={styles.tabBadgeText}>{toTreat}</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, tab === 'gestion' && styles.tabActive]}
+          onPress={() => setTab('gestion')}
+        >
+          <Text style={[styles.tabText, tab === 'gestion' && styles.tabTextActive]}>📊 Gestion</Text>
+        </TouchableOpacity>
       </View>
 
-      <Text style={styles.sectionTitle}>── NAVIGATION ──</Text>
-
-      <TouchableOpacity
-        style={styles.navItem}
-        onPress={() => navigation.navigate('DocumentReview')}
-      >
-        <Text style={styles.navText}>📋 Documents en attente</Text>
-        {(stats?.pendingDrivers ?? 0) > 0 && (
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>{stats?.pendingDrivers}</Text>
+      {tab === 'traitement' ? (
+        <>
+          <Text style={styles.sectionTitle}>Chiffres clés</Text>
+          <View style={styles.tileGrid}>
+            <View style={styles.statTile}>
+              <Text style={styles.statIcon}>🚚</Text>
+              <Text style={styles.statValue}>{stats?.totalMissions ?? 0}</Text>
+              <Text style={styles.statLabel}>Missions</Text>
+              <Text style={styles.statSub}>Taux : {stats?.completionRate}</Text>
+            </View>
+            <View style={styles.statTile}>
+              <Text style={styles.statIcon}>💵</Text>
+              <Text style={styles.statValue} numberOfLines={1} adjustsFontSizeToFit>
+                {stats?.totalCommissionsDH} DH
+              </Text>
+              <Text style={styles.statLabel}>Commissions collectées</Text>
+            </View>
+            <View style={styles.statTile}>
+              <Text style={styles.statIcon}>🚛</Text>
+              <Text style={styles.statValue}>{stats?.totalDrivers ?? 0}</Text>
+              <Text style={styles.statLabel}>Chauffeurs</Text>
+              <Text style={styles.statSub}>Vérifiés : {stats?.verifiedDrivers ?? 0}</Text>
+            </View>
+            <View style={styles.statTile}>
+              <Text style={styles.statIcon}>⏳</Text>
+              <Text style={[styles.statValue, pendingDrivers > 0 && styles.valueWarning]}>{pendingDrivers}</Text>
+              <Text style={styles.statLabel}>En attente</Text>
+            </View>
+            <View style={styles.statTile}>
+              <Text style={styles.statIcon}>👤</Text>
+              <Text style={styles.statValue}>{stats?.totalClients ?? 0}</Text>
+              <Text style={styles.statLabel}>Clients</Text>
+            </View>
           </View>
-        )}
-        <Text style={styles.navArrow}>→</Text>
-      </TouchableOpacity>
 
-      <TouchableOpacity
-        style={styles.navItem}
-        onPress={() => navigation.navigate('PendingTransactions')}
-      >
-        <Text style={styles.navText}>💰 Demandes financieres</Text>
-        {(stats?.pendingTransactions ?? 0) > 0 && (
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>{stats?.pendingTransactions}</Text>
+          <Text style={styles.sectionTitle}>À traiter</Text>
+          {todoItems.map((item) => (
+            <TouchableOpacity
+              key={item.route}
+              style={[styles.todoCard, item.count > 0 ? styles.todoCardWarning : styles.todoCardDone]}
+              onPress={() => navigation.navigate(item.route)}
+            >
+              <Text style={styles.todoIcon}>{item.icon}</Text>
+              <Text style={styles.todoLabel}>{item.label}</Text>
+              {item.count > 0 ? (
+                <Text style={styles.todoCount}>{item.count}</Text>
+              ) : (
+                <Text style={styles.todoDone}>Rien à traiter ✅</Text>
+              )}
+              <Text style={styles.navArrow}>→</Text>
+            </TouchableOpacity>
+          ))}
+        </>
+      ) : (
+        <>
+          <Text style={styles.sectionTitle}>Gestion</Text>
+          <View style={styles.tileGrid}>
+            {manageItems.map((item) => (
+              <TouchableOpacity
+                key={item.route}
+                style={styles.manageTile}
+                onPress={() => navigation.navigate(item.route)}
+              >
+                <Text style={styles.manageIcon}>{item.icon}</Text>
+                <Text style={styles.manageLabel}>{item.label}</Text>
+              </TouchableOpacity>
+            ))}
           </View>
-        )}
-        <Text style={styles.navArrow}>→</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={styles.navItem}
-        onPress={() => navigation.navigate('BankReconciliation')}
-      >
-        <Text style={styles.navText}>🏦 Rapprochement bancaire</Text>
-        {(stats?.unreconciledTransactions ?? 0) > 0 && (
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>{stats?.unreconciledTransactions}</Text>
-          </View>
-        )}
-        <Text style={styles.navArrow}>→</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={styles.navItem}
-        onPress={() => navigation.navigate('AdminMissions')}
-      >
-        <Text style={styles.navText}>🚚 Toutes les missions</Text>
-        <Text style={styles.navArrow}>→</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={styles.navItem}
-        onPress={() => navigation.navigate('AdminUsers')}
-      >
-        <Text style={styles.navText}>👥 Gestion utilisateurs</Text>
-        <Text style={styles.navArrow}>→</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={styles.navItem}
-        onPress={() => navigation.navigate('WalletManagement')}
-      >
-        <Text style={styles.navText}>💰 Wallets & Transactions</Text>
-        <Text style={styles.navArrow}>→</Text>
-      </TouchableOpacity>
-
-      {/* A1 F5 : commentaires des clients a publier ou refuser */}
-      <TouchableOpacity
-        style={styles.navItem}
-        onPress={() => navigation.navigate('AdminReviews')}
-      >
-        <Text style={styles.navText}>⭐ Avis à modérer</Text>
-        {reviewsToModerate > 0 && (
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>{reviewsToModerate}</Text>
-          </View>
-        )}
-        <Text style={styles.navArrow}>→</Text>
-      </TouchableOpacity>
-
-      {/* A1 : regles de fonctionnement modifiables sans migration */}
-      <TouchableOpacity
-        style={styles.navItem}
-        onPress={() => navigation.navigate('AdminSettings')}
-      >
-        <Text style={styles.navText}>⚙️ Réglages</Text>
-        <Text style={styles.navArrow}>→</Text>
-      </TouchableOpacity>
+        </>
+      )}
     </ScrollView>
   );
 }
@@ -243,90 +238,103 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     marginRight: 8,
   },
+  // Sous-titres mis en valeur (maquette validee le 25/11/2026)
   sectionTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#888',
-    marginBottom: 12,
+    fontSize: 17,
+    fontWeight: '800',
+    color: COLORS.primary,
+    borderBottomWidth: 2,
+    borderBottomColor: '#D6E4F5',
+    paddingBottom: 4,
     marginTop: 8,
-  },
-  kpiGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-    marginBottom: 24,
-  },
-  kpiCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    width: '47%',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  kpiCardWarning: {
-    borderLeftWidth: 3,
-    borderLeftColor: '#F59E0B',
-  },
-  kpiLabel: {
-    fontSize: 12,
-    color: '#888',
-    marginBottom: 4,
-  },
-  kpiValue: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#1A1A2E',
-  },
-  kpiValueWarning: {
-    color: '#F59E0B',
-  },
-  kpiSub: {
-    fontSize: 11,
-    color: '#AAA',
-    marginTop: 2,
-  },
-  navItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
     marginBottom: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 1,
   },
-  navText: {
+  tabRow: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderBottomColor: '#DEE2E6',
+    marginBottom: 14,
+  },
+  tab: {
     flex: 1,
-    fontSize: 15,
-    fontWeight: '500',
-    color: '#1A1A2E',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 3,
+    borderBottomColor: 'transparent',
   },
-  navArrow: {
-    fontSize: 16,
-    color: '#CCC',
-  },
-  badge: {
-    backgroundColor: '#EF4444',
-    borderRadius: 10,
-    minWidth: 20,
-    height: 20,
+  tabActive: { borderBottomColor: COLORS.primary },
+  tabText: { fontSize: 16, fontWeight: '600', color: '#6C757D' },
+  tabTextActive: { fontWeight: '700', color: COLORS.primary },
+  tabBadge: {
+    backgroundColor: '#F59E0B',
+    borderRadius: 11,
+    minWidth: 22,
+    height: 22,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 6,
-    marginRight: 8,
+    marginLeft: 6,
   },
-  badgeText: {
-    color: '#FFF',
-    fontSize: 11,
-    fontWeight: '700',
+  tabBadgeText: { color: '#FFF', fontSize: 12, fontWeight: '700' },
+  tileGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    marginBottom: 6,
   },
+  statTile: {
+    width: '48.5%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 6,
+    marginBottom: 8,
+    alignItems: 'center',
+    elevation: 2,
+  },
+  statIcon: { fontSize: 18 },
+  statValue: { fontSize: 19, fontWeight: '800', color: '#1A1A2E' },
+  statLabel: { fontSize: 14, fontWeight: '600', color: '#1A1A2E', textAlign: 'center' },
+  statSub: { fontSize: 12, color: '#888' },
+  valueWarning: { color: '#F59E0B' },
+  todoCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    borderLeftWidth: 4,
+    paddingVertical: 11,
+    paddingHorizontal: 14,
+    marginBottom: 10,
+    elevation: 2,
+  },
+  todoCardWarning: { borderLeftColor: '#F59E0B' },
+  todoCardDone: { borderLeftColor: '#28A745' },
+  todoIcon: { fontSize: 22, marginRight: 12 },
+  todoLabel: { flex: 1, fontSize: 16, fontWeight: '600', color: '#1A1A2E' },
+  todoCount: { fontSize: 26, fontWeight: '800', color: '#F59E0B', marginLeft: 8 },
+  todoDone: { fontSize: 14, fontWeight: '600', color: '#28A745', marginLeft: 8 },
+  navArrow: {
+    fontSize: 16,
+    color: '#CCC',
+    marginLeft: 8,
+  },
+  manageTile: {
+    width: '48.5%',
+    minHeight: 120,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    paddingVertical: 20,
+    paddingHorizontal: 10,
+    marginBottom: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 2,
+  },
+  manageIcon: { fontSize: 34, marginBottom: 10 },
+  manageLabel: { fontSize: 15, fontWeight: '600', color: '#1A1A2E', textAlign: 'center' },
   logoutButton: {
     paddingVertical: 4,
     paddingHorizontal: 8,
