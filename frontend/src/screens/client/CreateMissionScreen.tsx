@@ -542,9 +542,11 @@ export default function CreateMissionScreen({ route, navigation }: Props) {
               placeholderTextColor={COLORS.textSecondary}
               maxLength={200}
             />
-            <Text style={styles.pickupHint}>
+            {/* Retouche du 25/11/2026 : message de la position ou de l'adresse
+                enregistree mis en evidence ; l'aide de depart reste discrete */}
+            <Text style={pickupCoords || pickupSaved ? styles.sourceHint : styles.pickupHint}>
               {pickupCoords
-                ? '📍 Votre position actuelle sera utilisée comme point de départ.'
+                ? '📍 Votre position actuelle sera utilisée comme adresse de chargement.'
                 : pickupSaved
                   ? savedHint(pickupSaved)
                   : 'Tapez l\'adresse et choisissez la ville, ou touchez « 🎯 Ma position actuelle ».'}
@@ -578,7 +580,7 @@ export default function CreateMissionScreen({ route, navigation }: Props) {
               placeholderTextColor={COLORS.textSecondary}
               maxLength={200}
             />
-            {dropoffSaved && <Text style={styles.pickupHint}>{savedHint(dropoffSaved)}</Text>}
+            {dropoffSaved && <Text style={styles.sourceHint}>{savedHint(dropoffSaved)}</Text>}
             {renderSavedToggle('dropoff')}
           </>
         )}
@@ -798,6 +800,18 @@ const styles = StyleSheet.create({
   },
   gpsButtonText: { color: COLORS.primary, fontWeight: '600', fontSize: 15 },
   pickupHint: { color: COLORS.textSecondary, fontSize: 13, marginTop: -4, marginBottom: 8 },
+  sourceHint: {
+    backgroundColor: COLORS.primary + '10',
+    borderRadius: BORDER_RADIUS.md,
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.md,
+    color: COLORS.primary,
+    fontSize: 14,
+    fontWeight: '600',
+    marginTop: -4,
+    marginBottom: 8,
+    overflow: 'hidden',
+  },
   input: {
     backgroundColor: COLORS.surface,
     borderWidth: 1,

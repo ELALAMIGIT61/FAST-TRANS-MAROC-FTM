@@ -106,9 +106,9 @@ export default function NewMissionModal({
           <ClientRecordLine missionId={mission.id} style={styles.clientRecord} />
 
           <View style={styles.addressSection}>
-            <Text style={styles.addressLabel}>📍 Départ</Text>
+            <Text style={styles.addressLabel}>📍 Chargement</Text>
             <Text style={styles.addressText}>{mission.pickup_address}</Text>
-            <Text style={styles.addressLabel}>🏁 Arrivée</Text>
+            <Text style={styles.addressLabel}>🏁 Livraison</Text>
             <Text style={styles.addressText}>{mission.dropoff_address}</Text>
             {/* A1 (migration 072) : quartier et ville seulement avant la commission */}
             <Text style={styles.hintText}>{exactAddressHint(mission.scheduled_pickup_time)}</Text>

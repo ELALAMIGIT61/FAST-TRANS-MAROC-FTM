@@ -307,7 +307,7 @@ export default function MissionActiveScreen({ route, navigation }: Props) {
         <Text style={styles.missionNumber}>N° {mission.mission_number}</Text>
 
         <View style={styles.addressCard}>
-          <Text style={styles.addressLabel}>🏁 Destination</Text>
+          <Text style={styles.addressLabel}>🏁 Livraison</Text>
           {exact?.dropoff_address ? (
             <>
               <Text style={styles.addressText}>{exact.dropoff_address}</Text>

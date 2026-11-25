@@ -236,10 +236,10 @@ export default function MissionTrackingScreen({ route, navigation }: Props) {
             <Text style={styles.statusTitle}>Recherche d'un chauffeur...</Text>
             <Text style={styles.missionNumber}>N° {mission.mission_number}</Text>
             <View style={styles.addressCard}>
-              <Text style={styles.addressLabel}>📍 Départ</Text>
+              <Text style={styles.addressLabel}>📍 Chargement</Text>
               <Text style={styles.addressText}>{exactPickup ?? mission.pickup_address}</Text>
               {!!pickupLandmark && <Text style={styles.landmarkText}>Repère : {pickupLandmark}</Text>}
-              <Text style={styles.addressLabel}>🏁 Arrivée</Text>
+              <Text style={styles.addressLabel}>🏁 Livraison</Text>
               <Text style={styles.addressText}>{exactDropoff ?? mission.dropoff_address}</Text>
               {!!dropoffLandmark && <Text style={styles.landmarkText}>Repère : {dropoffLandmark}</Text>}
             </View>
@@ -311,7 +311,7 @@ export default function MissionTrackingScreen({ route, navigation }: Props) {
             <Text style={styles.statusIcon}>🚚</Text>
             <Text style={styles.statusTitle}>Mission en cours</Text>
             <View style={styles.addressCard}>
-              <Text style={styles.addressLabel}>🏁 Destination</Text>
+              <Text style={styles.addressLabel}>🏁 Livraison</Text>
               <Text style={styles.addressText}>{exactDropoff ?? mission.dropoff_address}</Text>
               {!!dropoffLandmark && <Text style={styles.landmarkText}>Repère : {dropoffLandmark}</Text>}
             </View>
