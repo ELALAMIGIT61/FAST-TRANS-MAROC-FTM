@@ -122,14 +122,22 @@ export async function saveDocumentUrl(
 
   console.log('[FTM-DEBUG] Document - Saving URL to drivers', { driverId, column });
 
-  const { error } = await supabase
+  // Fiche du 26/11/2026 : on verifie qu'une ligne a bien ete modifiee, comme
+  // pour le remplacement (une ecriture bloquee par RLS echoue en silence :
+  // 0 ligne, aucune erreur).
+  const { data, error } = await supabase
     .from('drivers')
     .update({ [column]: url })
-    .eq('id', driverId);
+    .eq('id', driverId)
+    .select('id');
 
   if (error) {
     console.log('[FTM-DEBUG] Document - Save URL error', { error: error.message });
     return { error: cleanServerMessage(error.message) };
+  }
+  if (!data || data.length !== 1) {
+    console.log('[FTM-DEBUG] Document - Save URL: no row updated', { driverId, docType });
+    return { error: "Le document n'a pas pu être enregistré. Réessayez." };
   }
 
   console.log('[FTM-DEBUG] Document - URL saved successfully', { driverId, docType });

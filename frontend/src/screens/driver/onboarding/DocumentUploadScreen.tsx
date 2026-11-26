@@ -64,7 +64,15 @@ export default function DocumentUploadScreen({ navigation, route }: Props) {
       return;
     }
 
-    await saveDocumentUrl(driverId, docType, result.url!);
+    // Fiche du 26/11/2026 : le resultat de l'enregistrement du lien est verifie ;
+    // en cas d'echec, le document reste a renvoyer (« Erreur — Réessayer »).
+    const saved = await saveDocumentUrl(driverId, docType, result.url!);
+    if (saved.error) {
+      console.log('[FTM-DEBUG] Document - Save URL failed', { docType, error: saved.error });
+      setUploadStatus(prev => ({ ...prev, [docType]: { status: 'error', url: null } }));
+      showMessage('Erreur', saved.error);
+      return;
+    }
     setUploadStatus(prev => ({ ...prev, [docType]: { status: 'done', url: result.url! } }));
     console.log('[FTM-DEBUG] Document - Upload complete', { docType, url: result.url });
   }
@@ -80,9 +88,9 @@ export default function DocumentUploadScreen({ navigation, route }: Props) {
 
   function getStatusLabel(status: UploadStatusValue['status']): string {
     switch (status) {
-      case 'done':      return '✅ Uploadé';
+      case 'done':      return '✅ Envoyé';
       case 'error':     return '❌ Erreur — Réessayer';
-      case 'uploading': return '⏳ Upload en cours...';
+      case 'uploading': return '⏳ Envoi en cours...';
       default:          return 'En attente';
     }
   }
@@ -95,7 +103,7 @@ export default function DocumentUploadScreen({ navigation, route }: Props) {
         <View style={[styles.progressFill, { width: '75%' }]} />
       </View>
 
-      <Text style={styles.title}>Uploadez vos documents</Text>
+      <Text style={styles.title}>Envoyez vos documents</Text>
       <Text style={styles.subtitle}>Format : Photo ou PDF (5 MB max)</Text>
 
       {(Object.keys(DOCUMENT_TYPES) as Array<keyof typeof DOCUMENT_TYPES>).map(key => {
